@@ -1,0 +1,29 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "0Tugz8gj9KqqVj6JLkXUA7BXas4=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "0208149b40d863d2c1a2f8fe5753096a9cf2cc8b",
+			"revisionTime": "2017-02-27T12:44:09Z",
+			"version": "v0.11.4",
+			"versionExact": "v0.11.4"
+		},
+		{
+			"checksumSHA1": "hYqtXfZxF9wtVdtl2Ib3YvO/49Y=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "76cc09b634294339fa19ec41b5f2a0b3932cea8b",
+			"revisionTime": "2017-02-28T22:35:16Z"
+		},
+		{
+			"checksumSHA1": "brhONOPp4CSdTZf5uEtcH+FpFUI=",
+			"path": "gopkg.in/urfave/cli.v1",
+			"revision": "0bdeddeeb0f650497d603c4ad7b20cfe685682f6",
+			"revisionTime": "2016-11-22T04:36:10Z",
+			"version": "v1.19.1",
+			"versionExact": "v1.19.1"
+		}
+	],
+	"rootPath": "github.com/Financial-Times/publish-carousel"
+}
