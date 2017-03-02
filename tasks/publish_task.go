@@ -1,13 +1,64 @@
 package tasks
 
+import (
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Financial-Times/publish-carousel/cms"
+	"github.com/Financial-Times/publish-carousel/native"
+	tid "github.com/Financial-Times/transactionid-utils-go"
+)
+
 type Task interface {
-	Do(uuid string)
+	Publish(uuid string)
 }
 
-type UUIDCollector interface {
-	Collect() chan string
+type UUIDCollection interface {
+	Next() string
 	Length() int
+	Done() bool
 }
 
-type NativeContentTask struct {
+type nativeContentTask struct {
+	nativeReader native.Reader
+	cmsNotifier  cms.Notifier
+}
+
+const publishReferenceAttr = "publishReference"
+const nativeHashHeader = "X-Native-Hash"
+
+func (t *nativeContentTask) Publish(uuid string) {
+	content, hash, err := t.nativeReader.Get(uuid)
+	if err != nil {
+		return
+	}
+
+	tid, ok := content[publishReferenceAttr].(string)
+	if !ok || strings.TrimSpace(tid) == "" {
+		content[publishReferenceAttr] = generateCarouselTXID()
+	} else {
+		content[publishReferenceAttr] = toCarouselTXID(tid)
+	}
+
+	err = t.cmsNotifier.Notify(content, hash)
+	if err != nil {
+		return
+	}
+}
+
+const genTXSuffix = "_gentx"
+
+func generateCarouselTXID() string {
+	return tid.NewTransactionID() + generateTXIDSuffix() + genTXSuffix
+}
+
+func toCarouselTXID(tid string) string {
+	return tid + generateTXIDSuffix()
+}
+
+const carouselIntrafix = "_carousel_"
+
+func generateTXIDSuffix() string {
+	return carouselIntrafix + strconv.FormatInt(time.Now().Unix(), 10)
 }
