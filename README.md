@@ -1,2 +1,2 @@
-# publish-carousel
-A microservice that continuously republish content and annotations available in native store
+# Publish Carousel
+A microservice that continuously republishes content and annotations available in the native store.
