@@ -20,7 +20,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
-	app.Usage = "A microservice that continuously republish content and annotations available in native store."
+	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."
 	app.Action = func() {
 		log.Info("Hello World!")
 	}
