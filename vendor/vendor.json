@@ -39,10 +39,28 @@
 			"versionExact": "v0.11.4"
 		},
 		{
-			"checksumSHA1": "Zgqp9pp3G4cSZbepa6tzhNeHZOI=",
+			"checksumSHA1": "SnTUzwYa4snkJ/HQWcvxCnbw2eY=",
+			"path": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
+		},
+		{
+			"checksumSHA1": "xp3o8iG8/WloqNClTPgaExgWYrU=",
+			"path": "github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context",
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
+		},
+		{
+			"checksumSHA1": "jDu8F90MBsfYcFGs4YTdcgKpl3A=",
 			"path": "github.com/coreos/etcd/client",
-			"revision": "85c22f45626fb48fabedd353e88bd9f68cb67f26",
-			"revisionTime": "2017-03-03T00:53:01Z"
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
 		},
 		{
 			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",
@@ -55,18 +73,6 @@
 			"path": "github.com/coreos/etcd/pkg/types",
 			"revision": "85c22f45626fb48fabedd353e88bd9f68cb67f26",
 			"revisionTime": "2017-03-03T00:53:01Z"
-		},
-		{
-			"checksumSHA1": "sp2FkEyaIGiQFOEZCTDkBZgyHOs=",
-			"path": "github.com/coreos/etcd/version",
-			"revision": "85c22f45626fb48fabedd353e88bd9f68cb67f26",
-			"revisionTime": "2017-03-03T00:53:01Z"
-		},
-		{
-			"checksumSHA1": "nux9tCYmTA5bOCVODF3Rqzcu60U=",
-			"path": "github.com/coreos/go-semver/semver",
-			"revision": "5e3acbb5668c4c3deb4842615c4098eb61fb6b1e",
-			"revisionTime": "2017-02-09T20:17:57Z"
 		},
 		{
 			"checksumSHA1": "dvabztWVQX8f6oMLRyv4dLH+TGY=",
@@ -137,6 +143,36 @@
 			"path": "golang.org/x/time/rate",
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
+		},
+		{
+			"checksumSHA1": "1D8GzeoFGUs5FZOoyC2DpQg8c5Y=",
+			"path": "gopkg.in/mgo.v2",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "YsB2DChSV9HxdzHaKATllAUKWSI=",
+			"path": "gopkg.in/mgo.v2/bson",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "XQsrqoNT1U0KzLxOFcAZVvqhLfk=",
+			"path": "gopkg.in/mgo.v2/internal/json",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "LEvMCnprte47qdAxWvQ/zRxVF1U=",
+			"path": "gopkg.in/mgo.v2/internal/sasl",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
+		},
+		{
+			"checksumSHA1": "+1WDRPaOphSCmRMxVPIPBV4aubc=",
+			"path": "gopkg.in/mgo.v2/internal/scram",
+			"revision": "3f83fa5005286a7fe593b055f0d7771a7dce4655",
+			"revisionTime": "2016-08-18T02:01:20Z"
 		},
 		{
 			"checksumSHA1": "brhONOPp4CSdTZf5uEtcH+FpFUI=",

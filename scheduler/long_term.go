@@ -35,7 +35,7 @@ func (l *LongTermCycle) Stop() {
 }
 
 func (l *LongTermCycle) beginRun(ctx context.Context) {
-	for {
+	for l.collection.Done() {
 		if err := ctx.Err(); err != nil {
 			break
 		}
