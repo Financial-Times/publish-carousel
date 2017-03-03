@@ -10,6 +10,10 @@ func readNativeContentQuery(uuid string) bson.M {
 	return bson.M{"uuid": bson.Binary{Kind: 0x04, Data: []byte(uuid)}}
 }
 
+var contentUUIDProjection = bson.M{
+	"content.uuid": 1,
+}
+
 func findUUIDsForTimeWindow(start time.Time, end time.Time) (bson.M, bson.M) {
 	query := bson.M{
 		"$and": []bson.M{
@@ -26,9 +30,9 @@ func findUUIDsForTimeWindow(start time.Time, end time.Time) (bson.M, bson.M) {
 		},
 	}
 
-	projection := bson.M{
-		"content.uuid": 1,
-	}
+	return query, contentUUIDProjection
+}
 
-	return query, projection
+func findUUIDs() (bson.M, bson.M) {
+	return bson.M{}, contentUUIDProjection
 }
