@@ -1,16 +1,14 @@
 package scheduler
 
 type Cycle interface {
-	Start() error
-	Pause() error
-	Stop() error
+	Start()
+	Pause()
+	Resume()
+	Stop()
 	State() interface{}
-	UpdateConfiguration(config CycleConfig)
+	UpdateConfiguration()
 }
 
-type CycleConfig struct {
-}
-
-//func NewCycle(config CycleConfig, throttle Throttle) Cycle {
+//func NewCycle(throttle Throttle) Cycle {
 
 //}

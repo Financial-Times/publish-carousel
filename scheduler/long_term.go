@@ -4,30 +4,29 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 )
 
 type LongTermCycle struct {
-	collection tasks.UUIDCollection
+	collection native.UUIDCollection
 	task       tasks.Task
 	throttle   Throttle
 	cancel     context.CancelFunc
 	lock       sync.Mutex
 }
 
-func (l *LongTermCycle) Start() error {
+func (l *LongTermCycle) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
 	go l.start(ctx)
-
-	return nil
 }
 
 func (l *LongTermCycle) Pause() {
 	l.lock.Lock()
 }
 
-func (l *LongTermCycle) UnPause() {
+func (l *LongTermCycle) Resume() {
 	l.lock.Unlock()
 }
 
@@ -35,8 +34,7 @@ func (l *LongTermCycle) Stop() {
 	l.cancel()
 }
 
-func (l *LongTermCycle) start(ctx context.Context) {
-
+func (l *LongTermCycle) beginRun(ctx context.Context) {
 	for {
 		if err := ctx.Err(); err != nil {
 			break
@@ -46,7 +44,13 @@ func (l *LongTermCycle) start(ctx context.Context) {
 		uuid := l.collection.Next()
 		l.throttle.Queue()
 		l.task.Publish(uuid)
-		l.lock.Unlock()
 
+		l.lock.Unlock()
+	}
+}
+
+func (l *LongTermCycle) start(ctx context.Context) {
+	for {
+		l.beginRun(ctx)
 	}
 }

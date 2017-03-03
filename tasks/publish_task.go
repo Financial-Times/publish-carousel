@@ -14,12 +14,6 @@ type Task interface {
 	Publish(uuid string)
 }
 
-type UUIDCollection interface {
-	Next() string
-	Length() int
-	Done() bool
-}
-
 type nativeContentTask struct {
 	nativeReader native.Reader
 	cmsNotifier  cms.Notifier
@@ -34,14 +28,14 @@ func (t *nativeContentTask) Publish(uuid string) {
 		return
 	}
 
-	tid, ok := content[publishReferenceAttr].(string)
+	tid, ok := content.Body[publishReferenceAttr].(string)
 	if !ok || strings.TrimSpace(tid) == "" {
-		content[publishReferenceAttr] = generateCarouselTXID()
+		content.Body[publishReferenceAttr] = generateCarouselTXID()
 	} else {
-		content[publishReferenceAttr] = toCarouselTXID(tid)
+		content.Body[publishReferenceAttr] = toCarouselTXID(tid)
 	}
 
-	err = t.cmsNotifier.Notify(content, hash)
+	err = t.cmsNotifier.Notify(*content, hash)
 	if err != nil {
 		return
 	}
