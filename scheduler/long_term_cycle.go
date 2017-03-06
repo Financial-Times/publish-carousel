@@ -32,6 +32,7 @@ func (l *LongTermCycle) start(ctx context.Context) {
 				break
 			}
 			l.pauseLock.Lock()
+
 			uuid := uuidCollection.Next()
 			l.throttle.Queue()
 			l.publishTask.Publish(uuid)

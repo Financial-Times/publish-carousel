@@ -7,7 +7,7 @@ import (
 )
 
 type ShortTermCycle struct {
-	abstractCycle
+	*abstractCycle
 	duration time.Duration
 	mongo    native.DB
 }
