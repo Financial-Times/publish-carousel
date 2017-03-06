@@ -10,6 +10,7 @@ type UUIDCollection interface {
 	Next() string
 	Length() int
 	Done() bool
+	Close() error
 }
 
 type NativeUUIDCollection struct {
@@ -18,7 +19,7 @@ type NativeUUIDCollection struct {
 	length     int
 }
 
-type uuid struct {
+type contentUUID struct {
 	UUID string `json:"uuid",bson:"uuid"`
 }
 
@@ -52,10 +53,14 @@ func NewNativeUUIDCollection(mongo DB, collection string) (UUIDCollection, error
 
 func (n *NativeUUIDCollection) Next() string {
 	result := struct {
-		Content uuid `bson:"content"`
+		Content contentUUID `bson:"content"`
 	}{}
 	n.iter.Next(&result)
 	return result.Content.UUID
+}
+
+func (n *NativeUUIDCollection) Close() error {
+	return n.iter.Close()
 }
 
 func (n *NativeUUIDCollection) Length() int {

@@ -11,12 +11,12 @@ type Throttle interface {
 	Queue() error
 }
 
-type DynamicThrottle struct {
+type DefaultThrottle struct {
 	Context context.Context
 	Limiter *rate.Limiter
 }
 
-func (d *DynamicThrottle) Queue() error {
+func (d *DefaultThrottle) Queue() error {
 	return d.Limiter.Wait(d.Context)
 }
 
@@ -27,5 +27,11 @@ func NewDynamicThrottle(interval time.Duration, publishes int, burst int) (Throt
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(interval), burst)
-	return &DynamicThrottle{Context: ctx, Limiter: limiter}, cancel
+	return &DefaultThrottle{Context: ctx, Limiter: limiter}, cancel
+}
+
+func NewThrottle(interval time.Duration, burst int) (Throttle, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	limiter := rate.NewLimiter(rate.Every(interval), burst)
+	return &DefaultThrottle{Context: ctx, Limiter: limiter}, cancel
 }

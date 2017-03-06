@@ -8,10 +8,11 @@ import (
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	tid "github.com/Financial-Times/transactionid-utils-go"
+	"github.com/Sirupsen/logrus"
 )
 
 type Task interface {
-	Publish(uuid string)
+	Publish(uuid string) error
 }
 
 type nativeContentTask struct {
@@ -19,13 +20,18 @@ type nativeContentTask struct {
 	cmsNotifier  cms.Notifier
 }
 
+func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier) Task {
+	return &nativeContentTask{reader, notifier}
+}
+
 const publishReferenceAttr = "publishReference"
 const nativeHashHeader = "X-Native-Hash"
 
-func (t *nativeContentTask) Publish(uuid string) {
+func (t *nativeContentTask) Publish(uuid string) error {
 	content, hash, err := t.nativeReader.Get(uuid)
 	if err != nil {
-		return
+		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to read from native reader")
+		return err
 	}
 
 	tid, ok := content.Body[publishReferenceAttr].(string)
@@ -37,8 +43,11 @@ func (t *nativeContentTask) Publish(uuid string) {
 
 	err = t.cmsNotifier.Notify(*content, hash)
 	if err != nil {
-		return
+		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to post to cms notifier")
+		return err
 	}
+
+	return nil
 }
 
 const genTXSuffix = "_gentx"

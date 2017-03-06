@@ -3,11 +3,13 @@ package native
 import (
 	"time"
 
+	"github.com/pborman/uuid"
+
 	"gopkg.in/mgo.v2/bson"
 )
 
-func readNativeContentQuery(uuid string) bson.M {
-	return bson.M{"uuid": bson.Binary{Kind: 0x04, Data: []byte(uuid)}}
+func readNativeContentQuery(nativeUUID string) bson.M {
+	return bson.M{"uuid": bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(nativeUUID))}}
 }
 
 var contentUUIDProjection = bson.M{

@@ -11,8 +11,8 @@ var expectedConnections = 1
 var connections = 0
 
 type Content struct {
-	Body        map[string]interface{} `json:"content",bson:"content"`
-	ContentType string                 `json:"contentType",bson:"content-type"`
+	Body        map[string]interface{} `bson:"content"`
+	ContentType string                 `bson:"content-type"`
 }
 
 // DB contains database functions
@@ -23,7 +23,7 @@ type DB interface {
 
 // TX contains database transaction functions
 type TX interface {
-	ReadNativeContent(collectionId string, uuid string) (Content, error)
+	ReadNativeContent(collectionId string, uuid string) (*Content, error)
 	FindUUIDsInTimeWindow(collectionId string, start time.Time, end time.Time) (*mgo.Iter, int, error)
 	FindUUIDs(collectionId string) (*mgo.Iter, int, error)
 	Ping() error
@@ -37,11 +37,13 @@ type MongoTX struct {
 
 // MongoDB wraps a mango mongo session
 type MongoDB struct {
-	Urls       string
-	Timeout    int
-	MaxLimit   int
-	CacheDelay int
-	session    *mgo.Session
+	Urls    string
+	Timeout int
+	session *mgo.Session
+}
+
+func NewMongoDatabase(connection string, timeout int) DB {
+	return &MongoDB{Urls: connection, Timeout: timeout}
 }
 
 func (db *MongoDB) Open() (TX, error) {
@@ -76,28 +78,31 @@ func (tx *MongoTX) FindUUIDs(collectionID string) (*mgo.Iter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query, projection := findUUIDs()
-	find := collection.Find(query).Select(projection)
+	logrus.WithField("query", query).WithField("projection", projection).Info("Finding UUIDs")
+	find := collection.Find(query) //.Select(projection)
 
 	length, err := find.Count()
+	logrus.WithField("count", length).Info("Count")
 	return find.Iter(), length, err
 }
 
 // ReadNativeContent queries mongo for a uuid and returns the native document
-func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (Content, error) {
+func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query := readNativeContentQuery(uuid)
 	find := collection.Find(query)
 
-	results := Content{}
+	result := &Content{}
 
-	err := find.All(&results)
+	find.One(result)
+	err := find.One(&result)
 
 	if err != nil {
-		return results, err
+		return result, err
 	}
 
-	return results, nil
+	return result, nil
 }
 
 // Ping returns a mongo ping response

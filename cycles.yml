@@ -1,0 +1,12 @@
+throttles:
+   globalThrottle: 1s
+
+longTermCycles:
+   -  name: methode-whole-archive
+      collection: methode
+      throttle: globalThrottle
+
+shortTermCycles:
+   -  name: methode-one-hour
+      collection: methode
+      timeWindow: 1h

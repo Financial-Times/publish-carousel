@@ -1,8 +1,6 @@
 package native
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 type Reader interface {
 	Get(uuid string) (*Content, string, error) // TODO the second parameter is the hash of the content
@@ -11,6 +9,10 @@ type Reader interface {
 type MongoReader struct {
 	mongo      DB
 	collection string
+}
+
+func NewMongoNativeReader(mongo DB, collection string) Reader {
+	return &MongoReader{mongo, collection}
 }
 
 func (m *MongoReader) Get(uuid string) (*Content, string, error) {
@@ -37,5 +39,5 @@ func (m *MongoReader) Get(uuid string) (*Content, string, error) {
 		return nil, "", err
 	}
 
-	return &content, hash, nil
+	return content, hash, nil
 }
