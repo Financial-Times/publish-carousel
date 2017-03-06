@@ -61,7 +61,7 @@ func LoadSchedulerFromFile(mongo native.DB, configFile string) (Scheduler, error
 		reader := native.NewMongoNativeReader(mongo, cycle.Collection)
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 		longTermCycle := NewLongTermCycle(cycle.Name, mongo, cycle.Collection, throttle, task)
-		scheduler.cycles[cycle.Name] = longTermCycle
+		scheduler.Add(longTermCycle)
 	}
 
 	for _, cycle := range setup.ShortTermCycles {
@@ -75,7 +75,7 @@ func LoadSchedulerFromFile(mongo native.DB, configFile string) (Scheduler, error
 		reader := native.NewMongoNativeReader(mongo, cycle.Collection)
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 		shortTermCycle := NewShortTermCycle(cycle.Name, mongo, cycle.Collection, timeWindow, task)
-		scheduler.cycles[cycle.Name] = shortTermCycle
+		scheduler.Add(shortTermCycle)
 	}
 
 	return scheduler, nil

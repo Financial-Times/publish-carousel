@@ -2,7 +2,9 @@ package scheduler
 
 import (
 	"context"
+	"crypto/sha256"
 	"sync"
+	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
@@ -10,6 +12,7 @@ import (
 )
 
 type Cycle interface {
+	ID() string
 	Start()
 	Pause()
 	Resume()
@@ -17,8 +20,6 @@ type Cycle interface {
 	State() interface{}
 	UpdateConfiguration()
 }
-
-var cycles = map[string]Cycle{}
 
 type cycleState struct {
 	CurrentUUID string  `json:"currentUuid"`
@@ -31,6 +32,7 @@ type cycleState struct {
 }
 
 type abstractCycle struct {
+	cycleID      string      `json:"id"`
 	Name         string      `json:"name"`
 	CycleState   *cycleState `json:"state"`
 	pauseLock    *sync.Mutex
@@ -40,12 +42,9 @@ type abstractCycle struct {
 	publishTask  tasks.Task
 }
 
-func GetCycles() map[string]Cycle {
-	return cycles
-}
-
 func newAbstractCycle(name string, database native.DB, dbCollection string, task tasks.Task) *abstractCycle {
 	return &abstractCycle{
+		cycleID:      newCycleID(name),
 		Name:         name,
 		CycleState:   &cycleState{lock: &sync.RWMutex{}},
 		pauseLock:    &sync.Mutex{},
@@ -53,6 +52,12 @@ func newAbstractCycle(name string, database native.DB, dbCollection string, task
 		dbCollection: dbCollection,
 		publishTask:  task,
 	}
+}
+
+func newCycleID(name string) string {
+	h := sha256.New()
+	h.Write([]byte(name))
+	return string(h.Sum([]byte(time.Now().String())))
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) error {
@@ -94,6 +99,10 @@ func (a *abstractCycle) updateState(uuid string, err error) {
 	} else {
 		a.CycleState.Progress = float64(a.CycleState.Completed) / float64(a.CycleState.Total)
 	}
+}
+
+func (a *abstractCycle) ID() string {
+	return a.cycleID
 }
 
 func (a *abstractCycle) Pause() {
