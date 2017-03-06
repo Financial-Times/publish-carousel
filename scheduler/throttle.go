@@ -20,7 +20,11 @@ func (d *DynamicThrottle) Queue() error {
 	return d.Limiter.Wait(d.Context)
 }
 
-func NewDynamicThrottle(interval time.Duration, burst int) (Throttle, context.CancelFunc) {
+func NewDynamicThrottle(interval time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
+	pubishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
+	if pubishDelay < time.Second {
+		interval = time.Second
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(interval), burst)
 	return &DynamicThrottle{Context: ctx, Limiter: limiter}, cancel

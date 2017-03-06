@@ -27,17 +27,7 @@ func (l *LongTermCycle) start(ctx context.Context) {
 		if err != nil {
 			break
 		}
-		for uuidCollection.Done() {
-			if err := ctx.Err(); err != nil {
-				break
-			}
-			l.pauseLock.Lock()
-
-			uuid := uuidCollection.Next()
-			l.throttle.Queue()
-			l.publishTask.Publish(uuid)
-			l.pauseLock.Unlock()
-		}
+		l.publishCollection(ctx, uuidCollection, l.throttle)
 	}
 }
 

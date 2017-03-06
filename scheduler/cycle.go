@@ -50,4 +50,20 @@ func (a *abstractCycle) Resume() {
 
 func (a *abstractCycle) Stop() {
 	a.cancel()
+	//TODO Close mongo connection???
+}
+
+func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) error {
+	for collection.Done() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		a.pauseLock.Lock()
+
+		uuid := collection.Next()
+		t.Queue()
+		a.publishTask.Publish(uuid)
+		a.pauseLock.Unlock()
+	}
+	return nil
 }

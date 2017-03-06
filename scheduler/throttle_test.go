@@ -8,7 +8,7 @@ import (
 )
 
 func TestDynamicThrottle(t *testing.T) {
-	throttle, _ := NewDynamicThrottle(1*time.Second, 1)
+	throttle, _ := NewDynamicThrottle(1*time.Second, 1, 1)
 	start := time.Now()
 	throttle.Queue()
 
