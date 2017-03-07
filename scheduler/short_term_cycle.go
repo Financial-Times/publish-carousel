@@ -38,6 +38,11 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 
 		s.CycleState = &cycleState{StartedAt: time.Now(), Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
 
+		if uuidCollection.Length() == 0 {
+			time.Sleep(s.duration)
+			continue
+		}
+
 		t, cancel := NewDynamicThrottle(s.duration, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
 		s.publishCollection(ctx, uuidCollection, t)
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
