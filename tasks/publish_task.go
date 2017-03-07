@@ -12,7 +12,7 @@ import (
 )
 
 type Task interface {
-	Publish(uuid string) error
+	Publish(collection string, uuid string) error
 }
 
 type nativeContentTask struct {
@@ -27,8 +27,8 @@ func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier) Ta
 const publishReferenceAttr = "publishReference"
 const nativeHashHeader = "X-Native-Hash"
 
-func (t *nativeContentTask) Publish(uuid string) error {
-	content, hash, err := t.nativeReader.Get(uuid)
+func (t *nativeContentTask) Publish(collection string, uuid string) error {
+	content, hash, err := t.nativeReader.Get(collection, uuid)
 	if err != nil {
 		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to read from native reader")
 		return err

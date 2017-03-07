@@ -3,19 +3,18 @@ package native
 import "encoding/json"
 
 type Reader interface {
-	Get(uuid string) (*Content, string, error) // TODO the second parameter is the hash of the content
+	Get(collection string, uuid string) (*Content, string, error) // TODO the second parameter is the hash of the content
 }
 
 type MongoReader struct {
-	mongo      DB
-	collection string
+	mongo DB
 }
 
-func NewMongoNativeReader(mongo DB, collection string) Reader {
-	return &MongoReader{mongo, collection}
+func NewMongoNativeReader(mongo DB) Reader {
+	return &MongoReader{mongo}
 }
 
-func (m *MongoReader) Get(uuid string) (*Content, string, error) {
+func (m *MongoReader) Get(collection string, uuid string) (*Content, string, error) {
 	tx, err := m.mongo.Open()
 
 	if err != nil {
@@ -24,7 +23,7 @@ func (m *MongoReader) Get(uuid string) (*Content, string, error) {
 
 	defer tx.Close()
 
-	content, err := tx.ReadNativeContent(m.collection, uuid)
+	content, err := tx.ReadNativeContent(collection, uuid)
 	if err != nil {
 		return nil, "", err
 	}

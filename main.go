@@ -5,9 +5,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/scheduler"
+	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -52,9 +54,12 @@ func main() {
 		log.Info("Starting the Publish Carousel.")
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
-		sched, _ := scheduler.LoadSchedulerFromFile(mongo, ctx.String("cycles")) //TODO: do something with this error
-		sched.StartAllCycles()
+		reader := native.NewMongoNativeReader(mongo)
+		notifier := cms.NewNotifier()
 
+		task := tasks.NewNativeContentPublishTask(reader, notifier)
+
+		sched, _ := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task) //TODO: do something with this error
 		serve(mongo, sched)
 	}
 

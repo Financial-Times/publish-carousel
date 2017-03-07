@@ -39,7 +39,7 @@ func (c *cycleConfig) validate() error {
 		if strings.TrimSpace(c.Throttle) == "" {
 			return fmt.Errorf("Please provide a valid throttle name for cycle %v", c.Name)
 		}
-	case "shorterm":
+	case "shortterm":
 		if _, err := time.ParseDuration(c.TimeWindow); err != nil {
 			return fmt.Errorf("Error in parsing duration for cycle %v: %v", c.Name, err)
 		}

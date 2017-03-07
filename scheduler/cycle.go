@@ -75,7 +75,7 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		log.WithField("uuid", uuid).Info("Running publish task.")
 
 		t.Queue()
-		err := a.publishTask.Publish(uuid)
+		err := a.publishTask.Publish(a.dbCollection, uuid)
 		a.updateState(uuid, err)
 		a.pauseLock.Unlock()
 

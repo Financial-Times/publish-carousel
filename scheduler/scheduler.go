@@ -49,7 +49,6 @@ func (s *defaultScheduler) Throttles() map[string]Throttle {
 }
 
 func (s *defaultScheduler) AddCycle(config cycleConfig) error {
-
 	err := config.validate()
 	if err != nil {
 		return err
