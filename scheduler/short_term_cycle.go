@@ -12,11 +12,12 @@ import (
 
 type ShortTermCycle struct {
 	*abstractCycle
-	duration time.Duration
+	duration   time.Duration
+	TimeWindow string `json:"timeWindow"`
 }
 
 func NewShortTermCycle(name string, db native.DB, dbCollection string, duration time.Duration, publishTask tasks.Task) Cycle {
-	return &ShortTermCycle{newAbstractCycle(name, db, dbCollection, publishTask), duration}
+	return &ShortTermCycle{newAbstractCycle(name, db, dbCollection, publishTask), duration, duration.String()}
 }
 
 func (s *ShortTermCycle) Start() {
@@ -36,7 +37,7 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleState = &cycleState{StartedAt: time.Now(), Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
+		s.CycleState = &cycleState{Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
@@ -48,7 +49,6 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 		s.publishCollection(ctx, uuidCollection, t)
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
-
 	}
 }
 

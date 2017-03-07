@@ -23,13 +23,14 @@ type Cycle interface {
 }
 
 type cycleState struct {
-	CurrentUUID string    `json:"currentUuid"`
-	Errors      int       `json:"errors"`
-	Progress    float64   `json:"progress"`
-	Completed   int       `json:"completed"`
-	Total       int       `json:"total"`
-	Iteration   int       `json:"iteration"`
-	StartedAt   time.Time `json:"startedAt"`
+	CurrentUUID string     `json:"currentUuid"`
+	Errors      int        `json:"errors"`
+	Progress    float64    `json:"progress"`
+	Completed   int        `json:"completed"`
+	Total       int        `json:"total"`
+	Iteration   int        `json:"iteration"`
+	Start       *time.Time `json:"windowStart,omitempty"`
+	End         *time.Time `json:"windowEnd,omitempty"`
 	lock        *sync.RWMutex
 }
 

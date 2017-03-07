@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
@@ -34,7 +33,7 @@ func (l *LongTermCycle) start(ctx context.Context) {
 			break
 		}
 
-		l.CycleState = &cycleState{StartedAt: time.Now(), Iteration: l.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
+		l.CycleState = &cycleState{Iteration: l.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
 		l.publishCollection(ctx, uuidCollection, l.throttle)
 	}
 }
