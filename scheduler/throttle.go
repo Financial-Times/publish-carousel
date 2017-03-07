@@ -31,9 +31,12 @@ func NewDynamicThrottle(interval time.Duration, publishes int, burst int) (Throt
 	if pubishDelay < time.Second {
 		interval = time.Second
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(interval), burst)
-	return &DefaultThrottle{Context: ctx, Limiter: limiter}, cancel
+
+	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter}
+	return throttle, cancel
 }
 
 func NewThrottle(interval time.Duration, burst int) (Throttle, context.CancelFunc) {

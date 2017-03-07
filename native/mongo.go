@@ -1,6 +1,7 @@
 package native
 
 import (
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -39,19 +40,24 @@ type MongoTX struct {
 type MongoDB struct {
 	Urls    string
 	Timeout int
+	lock    *sync.Mutex
 	session *mgo.Session
 }
 
 func NewMongoDatabase(connection string, timeout int) DB {
-	return &MongoDB{Urls: connection, Timeout: timeout}
+	return &MongoDB{Urls: connection, Timeout: timeout, lock: &sync.Mutex{}}
 }
 
 func (db *MongoDB) Open() (TX, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
 	if db.session == nil {
 		session, err := mgo.DialWithTimeout(db.Urls, time.Duration(db.Timeout)*time.Millisecond)
 		if err != nil {
 			return nil, err
 		}
+
 		db.session = session
 		connections++
 
@@ -78,11 +84,9 @@ func (tx *MongoTX) FindUUIDs(collectionID string) (*mgo.Iter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query, projection := findUUIDs()
-	logrus.WithField("query", query).WithField("projection", projection).Info("Finding UUIDs")
-	find := collection.Find(query) //.Select(projection)
+	find := collection.Find(query).Select(projection)
 
 	length, err := find.Count()
-	logrus.WithField("count", length).Info("Count")
 	return find.Iter(), length, err
 }
 

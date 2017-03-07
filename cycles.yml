@@ -2,11 +2,11 @@ throttles:
    globalThrottle: 1s
 
 cycles:
-   -  name: methode-whole-archive
-      type: LongTerm
-      collection: methode
-      throttle: globalThrottle
+   #-  name: methode-whole-archive
+   #   type: LongTerm
+   #   collection: methode
+   #   throttle: globalThrottle
    -  name: methode-one-hour
       type: ShortTerm
       collection: methode
-      timeWindow: 1h
+      timeWindow: 10m
