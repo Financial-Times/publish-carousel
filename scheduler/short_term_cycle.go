@@ -37,6 +37,7 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 		}
 
 		s.CycleState = &cycleState{StartedAt: time.Now(), Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
+		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
 			time.Sleep(s.duration)
@@ -48,7 +49,6 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
 
-		startTime = endTime
 	}
 }
 

@@ -9,4 +9,4 @@ cycles:
    -  name: methode-one-hour
       type: ShortTerm
       collection: methode
-      timeWindow: 10m
+      timeWindow: 30s

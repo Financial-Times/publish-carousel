@@ -64,11 +64,12 @@ func newCycleID(name string) string {
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) error {
-	for {
+	for !collection.Done() {
 		if err := ctx.Err(); err != nil {
 			collection.Close()
 			return err
 		}
+
 		a.pauseLock.Lock()
 
 		uuid := collection.Next()
@@ -79,9 +80,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		a.updateState(uuid, err)
 		a.pauseLock.Unlock()
 
-		if collection.Done() {
-			break
-		}
 	}
 	return nil
 }
@@ -121,5 +119,5 @@ func (a *abstractCycle) Stop() {
 }
 
 func (a *abstractCycle) State() interface{} {
-	return a.CycleState
+	return *a.CycleState
 }
