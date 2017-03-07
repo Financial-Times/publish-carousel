@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -22,17 +23,18 @@ type Cycle interface {
 }
 
 type cycleState struct {
-	CurrentUUID string  `json:"currentUuid"`
-	Errors      int     `json:"errors"`
-	Progress    float64 `json:"progress"`
-	Completed   int     `json:"completed"`
-	Total       int     `json:"total"`
-	Iteration   int     `json:"iteration"`
+	CurrentUUID string    `json:"currentUuid"`
+	Errors      int       `json:"errors"`
+	Progress    float64   `json:"progress"`
+	Completed   int       `json:"completed"`
+	Total       int       `json:"total"`
+	Iteration   int       `json:"iteration"`
+	StartedAt   time.Time `json:"startedAt"`
 	lock        *sync.RWMutex
 }
 
 type abstractCycle struct {
-	cycleID      string      `json:"id"`
+	CycleID      string      `json:"id"`
 	Name         string      `json:"name"`
 	CycleState   *cycleState `json:"state"`
 	pauseLock    *sync.Mutex
@@ -44,7 +46,7 @@ type abstractCycle struct {
 
 func newAbstractCycle(name string, database native.DB, dbCollection string, task tasks.Task) *abstractCycle {
 	return &abstractCycle{
-		cycleID:      newCycleID(name),
+		CycleID:      newCycleID(name),
 		Name:         name,
 		CycleState:   &cycleState{lock: &sync.RWMutex{}},
 		pauseLock:    &sync.Mutex{},
@@ -57,7 +59,8 @@ func newAbstractCycle(name string, database native.DB, dbCollection string, task
 func newCycleID(name string) string {
 	h := sha256.New()
 	h.Write([]byte(name))
-	return string(h.Sum([]byte(time.Now().String())))
+	h.Write([]byte(time.Now().String()))
+	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) error {
@@ -102,7 +105,7 @@ func (a *abstractCycle) updateState(uuid string, err error) {
 }
 
 func (a *abstractCycle) ID() string {
-	return a.cycleID
+	return a.CycleID
 }
 
 func (a *abstractCycle) Pause() {
