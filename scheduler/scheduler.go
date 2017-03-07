@@ -16,7 +16,7 @@ type Scheduler interface {
 	Throttles() map[string]Throttle
 	AddThrottle(name string, throttleInterval string) error
 	DeleteThrottle(name string) error
-	AddCycle(config cycleConfig) error
+	AddCycle(config CycleConfig) error
 	DeleteCycle(cycleID string) error
 }
 
@@ -48,7 +48,7 @@ func (s *defaultScheduler) Throttles() map[string]Throttle {
 	return s.throttles
 }
 
-func (s *defaultScheduler) AddCycle(config cycleConfig) error {
+func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 	err := config.validate()
 	if err != nil {
 		return err
