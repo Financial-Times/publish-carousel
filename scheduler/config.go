@@ -16,18 +16,18 @@ import (
 
 type cycleSetupConfig struct {
 	Throttles map[string]string `yaml:"throttles"`
-	Cycles    []cycleConfig     `yaml:"cycles"`
+	Cycles    []CycleConfig     `yaml:"cycles"`
 }
 
-type cycleConfig struct {
-	Name       string `yaml:"name"`
-	Type       string `yaml:"type"`
-	Collection string `yaml:"collection"`
-	Throttle   string `yaml:"throttle"`
-	TimeWindow string `yaml:"timeWindow"`
+type CycleConfig struct {
+	Name       string `yaml:"name" json:"name"`
+	Type       string `yaml:"type" json:"type"`
+	Collection string `yaml:"collection" json:"collection"`
+	Throttle   string `yaml:"throttle" json:"throttle"`
+	TimeWindow string `yaml:"timeWindow" json:"timeWindow"`
 }
 
-func (c *cycleConfig) validate() error {
+func (c *CycleConfig) validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		return errors.New("Please provide a cycle name")
 	}
