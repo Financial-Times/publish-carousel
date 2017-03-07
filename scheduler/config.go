@@ -1,10 +1,12 @@
 package scheduler
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -13,20 +15,42 @@ import (
 )
 
 type cycleSetupConfig struct {
-	Throttles       map[string]string `yaml:"throttles"`
-	LongTermCycles  []cycleConfig     `yaml:"longTermCycles"`
-	ShortTermCycles []cycleConfig     `yaml:"shortTermCycles"`
+	Throttles map[string]string `yaml:"throttles"`
+	Cycles    []cycleConfig     `yaml:"cycles"`
 }
 
 type cycleConfig struct {
 	Name       string `yaml:"name"`
+	Type       string `yaml:"type"`
 	Collection string `yaml:"collection"`
 	Throttle   string `yaml:"throttle"`
 	TimeWindow string `yaml:"timeWindow"`
 }
 
-func LoadSchedulerFromFile(mongo native.DB, configFile string) (Scheduler, error) {
-	scheduler := &defaultScheduler{throttles: map[string]Throttle{}, cycles: map[string]Cycle{}}
+func (c *cycleConfig) validate() error {
+	if strings.TrimSpace(c.Name) == "" {
+		return errors.New("Please provide a cycle name")
+	}
+	if strings.TrimSpace(c.Collection) == "" {
+		return errors.New("Please provide a valid native collection")
+	}
+	switch strings.ToLower(c.Type) {
+	case "longterm":
+		if strings.TrimSpace(c.Throttle) == "" {
+			return fmt.Errorf("Please provide a valid throttle name for cycle %v", c.Name)
+		}
+	case "shorterm":
+		if _, err := time.ParseDuration(c.TimeWindow); err != nil {
+			return fmt.Errorf("Error in parsing duration for cycle %v: %v", c.Name, err)
+		}
+	default:
+		return fmt.Errorf("Please provide a valid type for cycle %v", c.Name)
+	}
+	return nil
+}
+
+func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task) (Scheduler, error) {
+	scheduler := NewScheduler(mongo, publishTask)
 
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {
@@ -40,42 +64,17 @@ func LoadSchedulerFromFile(mongo native.DB, configFile string) (Scheduler, error
 	}
 
 	for name, duration := range setup.Throttles {
-		interval, err := time.ParseDuration(duration)
+		err := scheduler.AddThrottle(name, duration)
 		if err != nil {
-			log.WithField("name", name).WithField("timeWindow", duration).Warn("Failed to parse duration for throttle! Skipping throttle, this will invalidate any cycles which use this throttle.")
-			continue
+			log.WithError(err).WithField("throttleName", name).WithField("timeWindow", duration).Warn("Skipping throttle, this will invalidate any cycles which use this throttle.")
 		}
-
-		throttle, _ := NewThrottle(interval, 1) // TODO: do we need to cancel?
-		scheduler.throttles[name] = throttle
 	}
 
-	for _, cycle := range setup.LongTermCycles {
-		throttle, ok := scheduler.throttles[cycle.Throttle]
-		if !ok {
-			log.WithField("name", cycle.Name).WithField("throttle", cycle.Throttle).Warn("No throttle found for this cycle! Skipping this cycle.")
-			continue
-		}
-
-		notifier := cms.NewNotifier()
-		reader := native.NewMongoNativeReader(mongo, cycle.Collection)
-		task := tasks.NewNativeContentPublishTask(reader, notifier)
-		longTermCycle := NewLongTermCycle(cycle.Name, mongo, cycle.Collection, throttle, task)
-		scheduler.Add(longTermCycle)
-	}
-
-	for _, cycle := range setup.ShortTermCycles {
-		timeWindow, err := time.ParseDuration(cycle.TimeWindow)
+	for _, cycle := range setup.Cycles {
+		err := scheduler.AddCycle(cycle)
 		if err != nil {
-			log.WithField("name", cycle.Name).WithField("timeWindow", cycle.TimeWindow).Warn("Failed to parse duration for short term cycle! Skipping cycle.")
-			continue
+			log.WithError(err).WithField("cycleName", cycle.Name).Warn("Skipping cycle")
 		}
-
-		notifier := cms.NewNotifier()
-		reader := native.NewMongoNativeReader(mongo, cycle.Collection)
-		task := tasks.NewNativeContentPublishTask(reader, notifier)
-		shortTermCycle := NewShortTermCycle(cycle.Name, mongo, cycle.Collection, timeWindow, task)
-		scheduler.Add(shortTermCycle)
 	}
 
 	return scheduler, nil

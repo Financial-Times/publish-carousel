@@ -9,15 +9,21 @@ import (
 
 type Throttle interface {
 	Queue() error
+	Stop()
 }
 
 type DefaultThrottle struct {
 	Context context.Context
 	Limiter *rate.Limiter
+	cancel  context.CancelFunc
 }
 
 func (d *DefaultThrottle) Queue() error {
 	return d.Limiter.Wait(d.Context)
+}
+
+func (d *DefaultThrottle) Stop() {
+	d.cancel()
 }
 
 func NewDynamicThrottle(interval time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
