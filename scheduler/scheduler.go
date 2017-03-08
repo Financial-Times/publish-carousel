@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -8,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
+	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/tasks"
+	log "github.com/Sirupsen/logrus"
 )
 
 type Scheduler interface {
@@ -18,6 +21,8 @@ type Scheduler interface {
 	DeleteThrottle(name string) error
 	AddCycle(config CycleConfig) error
 	DeleteCycle(cycleID string) error
+	RestorePreviousState()
+	Start()
 }
 
 type defaultScheduler struct {
@@ -25,15 +30,17 @@ type defaultScheduler struct {
 	database    native.DB
 	cycles      map[string]Cycle
 	throttles   map[string]Throttle
+	s3RW        s3.S3ReadWrite
 	cycleLock   *sync.RWMutex
 }
 
-func NewScheduler(database native.DB, publishTask tasks.Task) Scheduler {
+func NewScheduler(database native.DB, publishTask tasks.Task, s3RW s3.S3ReadWrite) Scheduler {
 	return &defaultScheduler{
 		database:    database,
 		publishTask: publishTask,
 		cycles:      map[string]Cycle{},
 		throttles:   map[string]Throttle{},
+		s3RW:        s3RW,
 		cycleLock:   &sync.RWMutex{},
 	}
 }
@@ -74,7 +81,6 @@ func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 	defer s.cycleLock.Unlock()
 
 	s.cycles[c.ID()] = c
-	c.Start()
 	return nil
 }
 
@@ -119,4 +125,45 @@ func (s *defaultScheduler) DeleteThrottle(name string) error {
 	t.Stop()
 	delete(s.throttles, name)
 	return nil
+}
+
+func (s *defaultScheduler) RestorePreviousState() {
+	s.cycleLock.Lock()
+	defer s.cycleLock.Unlock()
+
+	for id, cycle := range s.cycles {
+		switch cycle.(type) {
+		case *LongTermCycle:
+			key, err := s.s3RW.GetLatestKeyForID(id)
+			if err != nil {
+				log.WithError(err).Warn("Failed to retrieve carousel state from S3 - starting from initial state.")
+			}
+
+			found, body, contentType, err := s.s3RW.Read(key)
+			if err != nil || !found {
+				log.WithField("id", id).WithError(err).Warn("Failed to read carousel state from S3. Error occurred while reading from ID.")
+				return
+			}
+
+			if contentType != nil && *contentType != "application/json" {
+				log.WithField("content-type", contentType).Warn("Failed to read carousel state from S3 - unexpected content type.")
+				return
+			}
+
+			cycleState := &CycleState{}
+			dec := json.NewDecoder(body)
+			dec.Decode(cycleState)
+
+			cycle.RestoreState(cycleState)
+		}
+	}
+}
+
+func (s *defaultScheduler) Start() {
+	s.cycleLock.RLock()
+	defer s.cycleLock.RUnlock()
+	for id, cycle := range s.cycles {
+		log.WithField("cycleId", id).Info("Starting cycle...")
+		cycle.Start()
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
+	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
 
@@ -49,8 +50,8 @@ func (c *CycleConfig) validate() error {
 	return nil
 }
 
-func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task) (Scheduler, error) {
-	scheduler := NewScheduler(mongo, publishTask)
+func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, s3RW s3.S3ReadWrite) (Scheduler, error) {
+	scheduler := NewScheduler(mongo, publishTask, s3RW)
 
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {

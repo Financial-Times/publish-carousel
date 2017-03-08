@@ -19,7 +19,7 @@ type Cycle interface {
 	Resume()
 	Stop()
 	State() interface{}
-	UpdateConfiguration()
+	RestoreState(state *CycleState)
 }
 
 type CycleState struct {
@@ -34,16 +34,16 @@ type CycleState struct {
 	lock        *sync.RWMutex
 }
 
-func newCycleID(name string) string {
+func newCycleID(name string, dbcollection string) string {
 	h := sha256.New()
 	h.Write([]byte(name))
-	h.Write([]byte(time.Now().String()))
+	h.Write([]byte(dbcollection))
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
 func newAbstractCycle(name string, database native.DB, dbCollection string, task tasks.Task) *abstractCycle {
 	return &abstractCycle{
-		CycleID:      newCycleID(name),
+		CycleID:      newCycleID(name, dbCollection),
 		Name:         name,
 		CycleState:   &CycleState{lock: &sync.RWMutex{}},
 		pauseLock:    &sync.Mutex{},
@@ -120,4 +120,9 @@ func (a *abstractCycle) Stop() {
 
 func (a *abstractCycle) State() interface{} {
 	return *a.CycleState
+}
+
+func (a *abstractCycle) RestoreState(state *CycleState) {
+	state.lock = &sync.RWMutex{}
+	a.CycleState = state
 }
