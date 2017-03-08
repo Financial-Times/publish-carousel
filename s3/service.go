@@ -16,17 +16,22 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
+const fileFormat = ""
+
+// S3ReadWrite is responsible for reading, writing and locating the latest cycle restore files from S3
 type S3ReadWrite interface {
 	Write(id string, b []byte, contentType string) error
-	Read(id string) (bool, io.ReadCloser, *string, error)
-	GetLatestID() (string, error)
+	Read(key string) (bool, io.ReadCloser, *string, error)
+	GetLatestKeyForID(id string) (string, error)
 }
 
+// DefaultS3RW the default S3ReadWrite implementation
 type DefaultS3RW struct {
 	bucketName string
 	s3api      s3iface.S3API
 }
 
+// NewS3ReadWrite create a new S3 R/W for the given region and bucket
 func NewS3ReadWrite(region string, bucketName string) (S3ReadWrite, error) {
 	hc := http.Client{
 		Transport: &http.Transport{
@@ -58,10 +63,12 @@ func NewS3ReadWrite(region string, bucketName string) (S3ReadWrite, error) {
 	return &DefaultS3RW{bucketName: bucketName, s3api: s3api}, nil
 }
 
+// Write writes the given ID to S3
 func (s *DefaultS3RW) Write(id string, b []byte, contentType string) error {
+	timestamp := time.Now().UTC().Format(time.UnixDate)
 	params := &s3.PutObjectInput{
-		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(id),
+		Bucket: aws.String(s.getBucketForID(id)),
+		Key:    aws.String(timestamp),
 		Body:   bytes.NewReader(b),
 	}
 
@@ -79,9 +86,9 @@ func (s *DefaultS3RW) Write(id string, b []byte, contentType string) error {
 	return nil
 }
 
-func (s *DefaultS3RW) GetLatestID() (string, error) {
+func (s *DefaultS3RW) GetLatestKeyForID(id string) (string, error) {
 	output, err := s.s3api.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(s.getBucketForID(id)),
 	})
 
 	if err != nil {
@@ -100,10 +107,14 @@ func (s *DefaultS3RW) GetLatestID() (string, error) {
 	return latestKey, nil
 }
 
-func (s *DefaultS3RW) Read(id string) (bool, io.ReadCloser, *string, error) {
+func (s *DefaultS3RW) getBucketForID(id string) string {
+	return s.bucketName + "/" + id + "/"
+}
+
+func (s *DefaultS3RW) Read(key string) (bool, io.ReadCloser, *string, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(id),
+		Key:    aws.String(key),
 	}
 
 	resp, err := s.s3api.GetObject(params)
