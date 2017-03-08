@@ -37,7 +37,7 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleState = &cycleState{Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
+		s.CycleState = &CycleState{Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {

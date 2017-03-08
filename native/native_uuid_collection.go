@@ -20,7 +20,7 @@ type NativeUUIDCollection struct {
 }
 
 type contentUUID struct {
-	UUID string `json:"uuid",bson:"uuid"`
+	UUID string `json:"uuid" bson:"uuid"`
 }
 
 func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start time.Time, end time.Time) (UUIDCollection, error) {
@@ -37,13 +37,13 @@ func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start tim
 	return &NativeUUIDCollection{collection: collection, iter: iter, length: length}, nil
 }
 
-func NewNativeUUIDCollection(mongo DB, collection string) (UUIDCollection, error) {
+func NewNativeUUIDCollection(mongo DB, collection string, skip int) (UUIDCollection, error) {
 	tx, err := mongo.Open()
 	if err != nil {
 		return nil, err
 	}
 
-	iter, length, err := tx.FindUUIDs(collection)
+	iter, length, err := tx.FindUUIDs(collection, skip)
 	if err != nil {
 		return nil, err
 	}

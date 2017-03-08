@@ -22,7 +22,7 @@ type Cycle interface {
 	UpdateConfiguration()
 }
 
-type cycleState struct {
+type CycleState struct {
 	CurrentUUID string     `json:"currentUuid"`
 	Errors      int        `json:"errors"`
 	Progress    float64    `json:"progress"`
@@ -37,7 +37,7 @@ type cycleState struct {
 type abstractCycle struct {
 	CycleID      string      `json:"id"`
 	Name         string      `json:"name"`
-	CycleState   *cycleState `json:"state"`
+	CycleState   *CycleState `json:"state"`
 	pauseLock    *sync.Mutex
 	cancel       context.CancelFunc
 	db           native.DB
@@ -49,7 +49,7 @@ func newAbstractCycle(name string, database native.DB, dbCollection string, task
 	return &abstractCycle{
 		CycleID:      newCycleID(name),
 		Name:         name,
-		CycleState:   &cycleState{lock: &sync.RWMutex{}},
+		CycleState:   &CycleState{lock: &sync.RWMutex{}},
 		pauseLock:    &sync.Mutex{},
 		db:           database,
 		dbCollection: dbCollection,
@@ -80,7 +80,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		err := a.publishTask.Publish(a.dbCollection, uuid)
 		a.updateState(uuid, err)
 		a.pauseLock.Unlock()
-
 	}
 	return nil
 }

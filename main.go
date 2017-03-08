@@ -8,6 +8,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
+	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
@@ -42,6 +43,18 @@ func main() {
 			EnvVar: "MONGO_DB_URL",
 			Usage:  "The Mongo DB connection url string (comma delimited).",
 		},
+		cli.StringFlag{
+			Name:   "aws-region",
+			Value:  "eu-west-1",
+			EnvVar: "AWS_REGION",
+			Usage:  "The AWS Region for this cluster.",
+		},
+		cli.StringFlag{
+			Name:   "s3-bucket",
+			Value:  "/publish/carousel",
+			EnvVar: "S3_BUCKET",
+			Usage:  "The S3 Bucket to save carousel states.",
+		},
 		cli.IntFlag{
 			Name:   "mongo-timeout",
 			Value:  30000,
@@ -52,6 +65,9 @@ func main() {
 
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
+
+		s3api, err := s3.NewS3ReadWrite(ctx.String("aws-region"), ctx.String("s3-bucket"))
+
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
