@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"time"
@@ -68,6 +69,8 @@ func main() {
 
 		s3api, err := s3.NewS3ReadWrite(ctx.String("aws-region"), ctx.String("s3-bucket"))
 
+		state := restorePreviousState(s3api)
+
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
@@ -80,6 +83,29 @@ func main() {
 	}
 
 	app.Run(os.Args)
+}
+
+func restorePreviousState(s3api s3.S3ReadWrite) *scheduler.CycleState {
+	id, err := s3api.GetLatestID()
+	if err != nil {
+		log.WithError(err).Warn("Failed to retrieve carousel state from S3 - starting from initial state.")
+	}
+
+	found, state, contentType, err := s3api.Read(id)
+	if err != nil || !found {
+		log.WithField("id", id).WithError(err).Warn("Failed to read carousel state from S3. Error occurred while reading from ID.")
+		return nil
+	}
+
+	if contentType != nil && *contentType != "application/json" {
+		log.WithField("content-type", contentType).Warn("Failed to read carousel state from S3 - unexpected content type.")
+		return nil
+	}
+
+	result := &scheduler.CycleState{}
+	dec := json.NewDecoder(state)
+	dec.Decode(result)
+	return result
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler) {

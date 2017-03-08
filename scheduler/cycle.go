@@ -34,15 +34,11 @@ type CycleState struct {
 	lock        *sync.RWMutex
 }
 
-type abstractCycle struct {
-	CycleID      string      `json:"id"`
-	Name         string      `json:"name"`
-	CycleState   *CycleState `json:"state"`
-	pauseLock    *sync.Mutex
-	cancel       context.CancelFunc
-	db           native.DB
-	dbCollection string
-	publishTask  tasks.Task
+func newCycleID(name string) string {
+	h := sha256.New()
+	h.Write([]byte(name))
+	h.Write([]byte(time.Now().String()))
+	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
 func newAbstractCycle(name string, database native.DB, dbCollection string, task tasks.Task) *abstractCycle {
@@ -57,11 +53,15 @@ func newAbstractCycle(name string, database native.DB, dbCollection string, task
 	}
 }
 
-func newCycleID(name string) string {
-	h := sha256.New()
-	h.Write([]byte(name))
-	h.Write([]byte(time.Now().String()))
-	return hex.EncodeToString(h.Sum(nil))[:16]
+type abstractCycle struct {
+	CycleID      string      `json:"id"`
+	Name         string      `json:"name"`
+	CycleState   *CycleState `json:"state"`
+	pauseLock    *sync.Mutex
+	cancel       context.CancelFunc
+	db           native.DB
+	dbCollection string
+	publishTask  tasks.Task
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) error {

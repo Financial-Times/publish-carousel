@@ -18,6 +18,8 @@ import (
 
 type S3ReadWrite interface {
 	Write(id string, b []byte, contentType string) error
+	Read(id string) (bool, io.ReadCloser, *string, error)
+	GetLatestID() (string, error)
 }
 
 type DefaultS3RW struct {
