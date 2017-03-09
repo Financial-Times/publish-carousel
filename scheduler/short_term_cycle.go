@@ -17,7 +17,7 @@ type ShortTermCycle struct {
 }
 
 func NewShortTermCycle(name string, db native.DB, dbCollection string, duration time.Duration, publishTask tasks.Task) Cycle {
-	return &ShortTermCycle{newAbstractCycle(name, db, dbCollection, publishTask), duration, duration.String()}
+	return &ShortTermCycle{newAbstractCycle(name, "ShortTerm", db, dbCollection, publishTask), duration, duration.String()}
 }
 
 func (s *ShortTermCycle) Start() {
@@ -37,7 +37,7 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleState = &CycleState{Iteration: s.CycleState.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
+		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
@@ -46,7 +46,16 @@ func (s *ShortTermCycle) start(ctx context.Context) {
 		}
 
 		t, cancel := NewDynamicThrottle(s.duration, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
-		s.publishCollection(ctx, uuidCollection, t)
+		stopped, err := s.publishCollection(ctx, uuidCollection, t)
+		if stopped {
+			break
+		}
+
+		if err != nil {
+			log.WithError(err).WithField("collection", s.dbCollection).WithField("id", s.ID).Error("Unexpected error occurred while publishing collection.")
+			break
+		}
+
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
 	}

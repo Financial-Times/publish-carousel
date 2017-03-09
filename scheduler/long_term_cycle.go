@@ -15,7 +15,7 @@ type LongTermCycle struct {
 }
 
 func NewLongTermCycle(name string, db native.DB, dbCollection string, throttle Throttle, publishTask tasks.Task) Cycle {
-	return &LongTermCycle{newAbstractCycle(name, db, dbCollection, publishTask), throttle}
+	return &LongTermCycle{newAbstractCycle(name, "LongTerm", db, dbCollection, publishTask), throttle}
 }
 
 func (l *LongTermCycle) Start() {
@@ -25,19 +25,19 @@ func (l *LongTermCycle) Start() {
 	go l.start(ctx)
 }
 
-func (l *LongTermCycle) Restore(state *CycleState) {
+func (l *LongTermCycle) Restore(state *CycleMetadata) {
 	log.WithField("name", l.Name).Info("Starting long term cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
-	l.CycleState = state
+	l.CycleMetadata = state
 
 	go l.start(ctx)
 }
 
 func (l *LongTermCycle) start(ctx context.Context) {
 	skip := 0
-	if l.CycleState != nil {
-		skip = l.CycleState.Completed
+	if l.CycleMetadata != nil {
+		skip = l.CycleMetadata.Completed
 	}
 
 	for {
@@ -47,11 +47,23 @@ func (l *LongTermCycle) start(ctx context.Context) {
 			break
 		}
 
-		l.CycleState = &CycleState{Iteration: l.CycleState.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
-		l.publishCollection(ctx, uuidCollection, l.throttle)
+		l.CycleMetadata = &CycleMetadata{State: runningState, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
+
+		stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
+		if stopped {
+			log.WithField("state", l.CycleMetadata.State).Info("hi i have stopped again")
+			break
+		}
+
+		if err != nil {
+			log.WithError(err).WithField("collection", l.dbCollection).WithField("id", l.ID).Error("Unexpected error occurred while publishing collection.")
+			break
+		}
 
 		skip = 0
 	}
+
+	log.WithField("state", l.CycleMetadata.State).Info("yep i broke")
 }
 
 func (l *LongTermCycle) UpdateConfiguration() {

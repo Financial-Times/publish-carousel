@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
-	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
 
@@ -28,7 +27,8 @@ type CycleConfig struct {
 	TimeWindow string `yaml:"timeWindow" json:"timeWindow"`
 }
 
-func (c *CycleConfig) validate() error {
+// Validate checks the provided config for errors
+func (c CycleConfig) Validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		return errors.New("Please provide a cycle name")
 	}
@@ -50,8 +50,9 @@ func (c *CycleConfig) validate() error {
 	return nil
 }
 
-func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, s3RW s3.S3ReadWrite) (Scheduler, error) {
-	scheduler := NewScheduler(mongo, publishTask, s3RW)
+// LoadSchedulerFromFile loads cycles and throttles from the provided yaml config file
+func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw StateReadWriter) (Scheduler, error) {
+	scheduler := NewScheduler(mongo, publishTask, rw)
 
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {

@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
-	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
 )
@@ -26,22 +24,24 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask tasks.Task
-	database    native.DB
-	cycles      map[string]Cycle
-	throttles   map[string]Throttle
-	s3RW        s3.S3ReadWrite
-	cycleLock   *sync.RWMutex
+	publishTask     tasks.Task
+	database        native.DB
+	cycles          map[string]Cycle
+	throttles       map[string]Throttle
+	stateReadWriter StateReadWriter
+	throttleLock    *sync.RWMutex
+	cycleLock       *sync.RWMutex
 }
 
-func NewScheduler(database native.DB, publishTask tasks.Task, s3RW s3.S3ReadWrite) Scheduler {
+func NewScheduler(database native.DB, publishTask tasks.Task, stateReadWriter StateReadWriter) Scheduler {
 	return &defaultScheduler{
-		database:    database,
-		publishTask: publishTask,
-		cycles:      map[string]Cycle{},
-		throttles:   map[string]Throttle{},
-		s3RW:        s3RW,
-		cycleLock:   &sync.RWMutex{},
+		database:        database,
+		publishTask:     publishTask,
+		cycles:          map[string]Cycle{},
+		throttles:       map[string]Throttle{},
+		stateReadWriter: stateReadWriter,
+		cycleLock:       &sync.RWMutex{},
+		throttleLock:    &sync.RWMutex{},
 	}
 }
 
@@ -52,11 +52,13 @@ func (s *defaultScheduler) Cycles() map[string]Cycle {
 }
 
 func (s *defaultScheduler) Throttles() map[string]Throttle {
+	s.throttleLock.RLock()
+	defer s.throttleLock.RUnlock()
 	return s.throttles
 }
 
 func (s *defaultScheduler) AddCycle(config CycleConfig) error {
-	err := config.validate()
+	err := config.Validate()
 	if err != nil {
 		return err
 	}
@@ -118,10 +120,14 @@ func (s *defaultScheduler) AddThrottle(name string, throttleInterval string) err
 }
 
 func (s *defaultScheduler) DeleteThrottle(name string) error {
+	s.throttleLock.Lock()
+	defer s.throttleLock.Unlock()
+
 	t, ok := s.throttles[name]
 	if !ok {
 		return fmt.Errorf("Cannot delete throttle: throttle with name %v not found", name)
 	}
+
 	t.Stop()
 	delete(s.throttles, name)
 	return nil
@@ -134,27 +140,14 @@ func (s *defaultScheduler) RestorePreviousState() {
 	for id, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *LongTermCycle:
-			key, err := s.s3RW.GetLatestKeyForID(id)
+			state, err := s.stateReadWriter.LoadState(id)
 			if err != nil {
 				log.WithError(err).Warn("Failed to retrieve carousel state from S3 - starting from initial state.")
+				continue
 			}
 
-			found, body, contentType, err := s.s3RW.Read(key)
-			if err != nil || !found {
-				log.WithField("id", id).WithError(err).Warn("Failed to read carousel state from S3. Error occurred while reading from ID.")
-				return
-			}
-
-			if contentType != nil && *contentType != "application/json" {
-				log.WithField("content-type", contentType).Warn("Failed to read carousel state from S3 - unexpected content type.")
-				return
-			}
-
-			cycleState := &CycleState{}
-			dec := json.NewDecoder(body)
-			dec.Decode(cycleState)
-
-			cycle.RestoreState(cycleState)
+			log.WithField("id", cycle.ID()).WithField("iteration", state.Iteration).WithField("completed", state.Completed).Info("Restoring state for cycle.")
+			cycle.RestoreMetadata(state)
 		}
 	}
 }
@@ -162,8 +155,9 @@ func (s *defaultScheduler) RestorePreviousState() {
 func (s *defaultScheduler) Start() {
 	s.cycleLock.RLock()
 	defer s.cycleLock.RUnlock()
+
 	for id, cycle := range s.cycles {
-		log.WithField("cycleId", id).Info("Starting cycle...")
+		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
 	}
 }

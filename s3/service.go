@@ -2,10 +2,12 @@ package s3
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -16,23 +18,24 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
-const fileFormat = ""
-
-// S3ReadWrite is responsible for reading, writing and locating the latest cycle restore files from S3
-type S3ReadWrite interface {
-	Write(id string, b []byte, contentType string) error
+// ReadWriter is responsible for reading, writing and locating the latest cycle restore files from S3
+type ReadWriter interface {
+	Write(id string, key string, b []byte, contentType string) error
 	Read(key string) (bool, io.ReadCloser, *string, error)
 	GetLatestKeyForID(id string) (string, error)
+	Ping() error
 }
 
-// DefaultS3RW the default S3ReadWrite implementation
-type DefaultS3RW struct {
+// DefaultReadWriter the default S3ReadWrite implementation
+type DefaultReadWriter struct {
 	bucketName string
-	s3api      s3iface.S3API
+	session    *session.Session
+	config     *aws.Config
+	lock       *sync.Mutex
 }
 
-// NewS3ReadWrite create a new S3 R/W for the given region and bucket
-func NewS3ReadWrite(region string, bucketName string) (S3ReadWrite, error) {
+// NewReadWriter create a new S3 R/W for the given region and bucket
+func NewReadWriter(region string, bucketName string) ReadWriter {
 	hc := http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
@@ -48,27 +51,49 @@ func NewS3ReadWrite(region string, bucketName string) (S3ReadWrite, error) {
 		},
 	}
 
-	sess, err := session.NewSession(
-		&aws.Config{
-			Region:     aws.String(region),
-			MaxRetries: aws.Int(1),
-			HTTPClient: &hc,
-		})
-
-	if err != nil {
-		return nil, err
+	conf := &aws.Config{
+		Region:     aws.String(region),
+		MaxRetries: aws.Int(1),
+		HTTPClient: &hc,
 	}
 
-	s3api := s3.New(sess)
-	return &DefaultS3RW{bucketName: bucketName, s3api: s3api}, nil
+	return &DefaultReadWriter{bucketName: bucketName, config: conf, lock: &sync.Mutex{}}
+}
+
+// Ping checks whether an S3 session has been initialised
+func (s *DefaultReadWriter) Ping() error {
+	if s.session == nil {
+		return errors.New("S3 session is not initialised!")
+	}
+	return nil
+}
+
+func (s *DefaultReadWriter) open() (s3iface.S3API, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if s.session == nil {
+		sess, err := session.NewSession(s.config)
+		if err != nil {
+			return nil, err
+		}
+
+		s.session = sess
+	}
+
+	return s3.New(s.session), nil
 }
 
 // Write writes the given ID to S3
-func (s *DefaultS3RW) Write(id string, b []byte, contentType string) error {
-	timestamp := time.Now().UTC().Format(time.UnixDate)
+func (s *DefaultReadWriter) Write(id string, key string, b []byte, contentType string) error {
+	s3api, err := s.open()
+	if err != nil {
+		return err
+	}
+
 	params := &s3.PutObjectInput{
-		Bucket: aws.String(s.getBucketForID(id)),
-		Key:    aws.String(timestamp),
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
 		Body:   bytes.NewReader(b),
 	}
 
@@ -76,19 +101,26 @@ func (s *DefaultS3RW) Write(id string, b []byte, contentType string) error {
 		params.ContentType = aws.String(contentType)
 	}
 
-	resp, err := s.s3api.PutObject(params)
+	resp, err := s3api.PutObject(params)
 
 	if err != nil {
-		log.Infof("Error found, Resp was : %v", resp)
+		log.WithField("response", resp).Info("Failed to write object to S3.", resp)
 		return err
 	}
 
 	return nil
 }
 
-func (s *DefaultS3RW) GetLatestKeyForID(id string) (string, error) {
-	output, err := s.s3api.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(s.getBucketForID(id)),
+// GetLatestKeyForID lists s3 objects in the folder for the given ID
+func (s *DefaultReadWriter) GetLatestKeyForID(id string) (string, error) {
+	s3api, err := s.open()
+	if err != nil {
+		return "", err
+	}
+
+	output, err := s3api.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(s.bucketName),
+		Prefix: aws.String(s.getPrefixForID(id)),
 	})
 
 	if err != nil {
@@ -107,17 +139,24 @@ func (s *DefaultS3RW) GetLatestKeyForID(id string) (string, error) {
 	return latestKey, nil
 }
 
-func (s *DefaultS3RW) getBucketForID(id string) string {
-	return s.bucketName + "/" + id + "/"
+func (s *DefaultReadWriter) getPrefixForID(id string) string {
+	return id + "/"
 }
 
-func (s *DefaultS3RW) Read(key string) (bool, io.ReadCloser, *string, error) {
+// Read reads the provided key and returns a reader etc.
+func (s *DefaultReadWriter) Read(key string) (bool, io.ReadCloser, *string, error) {
+	s3api, err := s.open()
+	if err != nil {
+		return false, nil, nil, err
+	}
+
+	log.WithField("key", key).Info("Reading object from S3.")
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
 	}
 
-	resp, err := s.s3api.GetObject(params)
+	resp, err := s3api.GetObject(params)
 
 	if err != nil {
 		e, ok := err.(awserr.Error)
