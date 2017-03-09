@@ -168,6 +168,14 @@ func (s *defaultScheduler) Start() {
 
 	for id, cycle := range s.cycles {
 		log.WithField("id", id).Info("Starting cycle.")
-		cycle.Start()
+		switch cycle.Metadata().State {
+		case pausedState:
+			cycle.Pause()
+			cycle.Start() // this will start the cycle, but immediately pause
+		case stoppedState:
+			log.WithField("id", cycle.ID()).Info("Configured cycle has been stopped during the Carousel startup process - should this cycle be removed from the configuration file?")
+		default:
+			cycle.Start()
+		}
 	}
 }

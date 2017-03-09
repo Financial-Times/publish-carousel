@@ -77,7 +77,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 
 		if err := ctx.Err(); err != nil {
 			collection.Close()
-			log.WithField("state", a.CycleMetadata.State).Info("hi i have stopped")
 			return true, err
 		}
 

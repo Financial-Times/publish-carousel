@@ -51,7 +51,6 @@ func (l *LongTermCycle) start(ctx context.Context) {
 
 		stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
 		if stopped {
-			log.WithField("state", l.CycleMetadata.State).Info("hi i have stopped again")
 			break
 		}
 
@@ -62,8 +61,6 @@ func (l *LongTermCycle) start(ctx context.Context) {
 
 		skip = 0
 	}
-
-	log.WithField("state", l.CycleMetadata.State).Info("yep i broke")
 }
 
 func (l *LongTermCycle) UpdateConfiguration() {
