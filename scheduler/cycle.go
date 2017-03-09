@@ -22,7 +22,7 @@ type Cycle interface {
 	Pause()
 	Resume()
 	Stop()
-	State() interface{}
+	Metadata() CycleMetadata
 	RestoreMetadata(state *CycleMetadata)
 }
 
@@ -137,7 +137,7 @@ func (a *abstractCycle) Stop() {
 	a.CycleMetadata.State = stoppedState
 }
 
-func (a *abstractCycle) State() interface{} {
+func (a *abstractCycle) Metadata() CycleMetadata {
 	return *a.CycleMetadata
 }
 

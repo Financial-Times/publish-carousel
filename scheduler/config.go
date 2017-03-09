@@ -51,7 +51,7 @@ func (c CycleConfig) Validate() error {
 }
 
 // LoadSchedulerFromFile loads cycles and throttles from the provided yaml config file
-func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw StateReadWriter) (Scheduler, error) {
+func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter) (Scheduler, error) {
 	scheduler := NewScheduler(mongo, publishTask, rw)
 
 	fileData, err := ioutil.ReadFile(configFile)

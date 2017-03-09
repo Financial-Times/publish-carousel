@@ -20,28 +20,29 @@ type Scheduler interface {
 	AddCycle(config CycleConfig) error
 	DeleteCycle(cycleID string) error
 	RestorePreviousState()
+	SaveCycleMetadata()
 	Start()
 }
 
 type defaultScheduler struct {
-	publishTask     tasks.Task
-	database        native.DB
-	cycles          map[string]Cycle
-	throttles       map[string]Throttle
-	stateReadWriter StateReadWriter
-	throttleLock    *sync.RWMutex
-	cycleLock       *sync.RWMutex
+	publishTask        tasks.Task
+	database           native.DB
+	cycles             map[string]Cycle
+	throttles          map[string]Throttle
+	metadataReadWriter MetadataReadWriter
+	throttleLock       *sync.RWMutex
+	cycleLock          *sync.RWMutex
 }
 
-func NewScheduler(database native.DB, publishTask tasks.Task, stateReadWriter StateReadWriter) Scheduler {
+func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter) Scheduler {
 	return &defaultScheduler{
-		database:        database,
-		publishTask:     publishTask,
-		cycles:          map[string]Cycle{},
-		throttles:       map[string]Throttle{},
-		stateReadWriter: stateReadWriter,
-		cycleLock:       &sync.RWMutex{},
-		throttleLock:    &sync.RWMutex{},
+		database:           database,
+		publishTask:        publishTask,
+		cycles:             map[string]Cycle{},
+		throttles:          map[string]Throttle{},
+		metadataReadWriter: metadataReadWriter,
+		cycleLock:          &sync.RWMutex{},
+		throttleLock:       &sync.RWMutex{},
 	}
 }
 
@@ -133,6 +134,15 @@ func (s *defaultScheduler) DeleteThrottle(name string) error {
 	return nil
 }
 
+func (s *defaultScheduler) SaveCycleMetadata() {
+	for _, cycle := range s.cycles {
+		switch cycle.(type) {
+		case *LongTermCycle:
+			s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle.Metadata())
+		}
+	}
+}
+
 func (s *defaultScheduler) RestorePreviousState() {
 	s.cycleLock.Lock()
 	defer s.cycleLock.Unlock()
@@ -140,7 +150,7 @@ func (s *defaultScheduler) RestorePreviousState() {
 	for id, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *LongTermCycle:
-			state, err := s.stateReadWriter.LoadState(id)
+			state, err := s.metadataReadWriter.LoadMetadata(id)
 			if err != nil {
 				log.WithError(err).Warn("Failed to retrieve carousel state from S3 - starting from initial state.")
 				continue

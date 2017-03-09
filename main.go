@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/cms"
@@ -67,7 +68,7 @@ func main() {
 		log.Info("Starting the Publish Carousel.")
 
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
-		stateRw := scheduler.NewS3StateReadWriter(s3rw)
+		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
@@ -81,10 +82,25 @@ func main() {
 		sched.RestorePreviousState()
 		sched.Start()
 
+		shutdown(sched)
 		serve(mongo, sched, s3rw)
 	}
 
 	app.Run(os.Args)
+}
+
+func shutdown(sched scheduler.Scheduler) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+	go func() {
+		for sig := range signals {
+			if sig == os.Interrupt {
+				log.Info("Saving current carousel state to S3.")
+				sched.SaveCycleMetadata()
+				os.Exit(0)
+			}
+		}
+	}()
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter) {

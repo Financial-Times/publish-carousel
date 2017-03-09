@@ -12,20 +12,20 @@ import (
 
 const defaultContentType = "application/json"
 
-type StateReadWriter interface {
-	LoadState(id string) (*CycleMetadata, error)
-	WriteState(id string, state CycleMetadata) error
+type MetadataReadWriter interface {
+	LoadMetadata(id string) (*CycleMetadata, error)
+	WriteMetadata(id string, state CycleMetadata) error
 }
 
-type s3StateReadWriter struct {
+type s3MetadataReadWriter struct {
 	s3rw s3.ReadWriter
 }
 
-func NewS3StateReadWriter(rw s3.ReadWriter) StateReadWriter {
-	return &s3StateReadWriter{s3rw: rw}
+func NewS3MetadataReadWriter(rw s3.ReadWriter) MetadataReadWriter {
+	return &s3MetadataReadWriter{s3rw: rw}
 }
 
-func (s *s3StateReadWriter) LoadState(id string) (*CycleMetadata, error) {
+func (s *s3MetadataReadWriter) LoadMetadata(id string) (*CycleMetadata, error) {
 	key, err := s.s3rw.GetLatestKeyForID(id)
 	if err != nil {
 		return nil, err
@@ -55,12 +55,12 @@ func (s *s3StateReadWriter) LoadState(id string) (*CycleMetadata, error) {
 	return state, err
 }
 
-func (s *s3StateReadWriter) WriteState(id string, state CycleMetadata) error {
+func (s *s3MetadataReadWriter) WriteMetadata(id string, state CycleMetadata) error {
 	b, err := json.Marshal(state)
 	if err != nil {
 		return err
 	}
 
-	key := time.Now().UTC().Format(time.UnixDate)
+	key := time.Now().UTC().Format(`20060102T15040599`)
 	return s.s3rw.Write(id, key, b, defaultContentType)
 }
