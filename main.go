@@ -45,6 +45,12 @@ func main() {
 			Usage:  "The Mongo DB connection url string (comma delimited).",
 		},
 		cli.StringFlag{
+			Name:   "cms-notifier-url",
+			Value:  "http://localhost:8080/__cms-notifier/notify",
+			EnvVar: "CMS_NOTIFIER_URL",
+			Usage:  "The CMS Notifier instance to POST publishes to.",
+		},
+		cli.StringFlag{
 			Name:   "aws-region",
 			Value:  "eu-west-1",
 			EnvVar: "AWS_REGION",
@@ -73,7 +79,7 @@ func main() {
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
-		notifier := cms.NewNotifier()
+		notifier := cms.NewNotifier(ctx.String("cms-notifier-url"), &http.Client{})
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 

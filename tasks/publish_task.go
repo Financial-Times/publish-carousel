@@ -41,7 +41,7 @@ func (t *nativeContentTask) Publish(collection string, uuid string) error {
 		content.Body[publishReferenceAttr] = toCarouselTXID(tid)
 	}
 
-	err = t.cmsNotifier.Notify(*content, hash)
+	err = t.cmsNotifier.Notify(tid, *content, hash)
 	if err != nil {
 		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to post to cms notifier")
 		return err

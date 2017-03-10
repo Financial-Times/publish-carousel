@@ -6,6 +6,7 @@ cycles:
       type: LongTerm
       collection: methode
       throttle: globalThrottle
+
    -  name: methode-one-hour
       type: ShortTerm
       collection: methode
