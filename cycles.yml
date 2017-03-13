@@ -3,11 +3,12 @@ throttles:
 
 cycles:
    -  name: methode-whole-archive
-      type: LongTerm
+      type: ThrottledWholeCollection
       collection: methode
       throttle: globalThrottle
 
    -  name: methode-one-hour
-      type: ShortTerm
+      type: ScalingWindow
       collection: methode
       timeWindow: 1h
+      coolDown: 1m

@@ -26,9 +26,24 @@ func (d *DefaultThrottle) Stop() {
 	d.cancel()
 }
 
+func NewCappedDynamicThrottle(interval time.Duration, cap time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
+	publishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
+	if publishDelay < time.Second {
+		interval = time.Second
+	} else if publishDelay > cap {
+		interval = cap
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	limiter := rate.NewLimiter(rate.Every(interval), burst)
+
+	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter}
+	return throttle, cancel
+}
+
 func NewDynamicThrottle(interval time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
-	pubishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
-	if pubishDelay < time.Second {
+	publishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
+	if publishDelay < time.Second {
 		interval = time.Second
 	}
 

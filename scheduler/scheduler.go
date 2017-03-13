@@ -22,6 +22,7 @@ type Scheduler interface {
 	RestorePreviousState()
 	SaveCycleMetadata()
 	Start()
+	Shutdown()
 }
 
 type defaultScheduler struct {
@@ -66,16 +67,21 @@ func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 
 	var c Cycle
 	switch strings.ToLower(config.Type) {
-	case "longterm":
+	case "throttledwholecollection":
 		t, ok := s.Throttles()[config.Throttle]
 		if !ok {
 			return fmt.Errorf("Throttle not found for cycle %v", config.Name)
 		}
-		c = NewLongTermCycle(config.Name, s.database, config.Collection, t, s.publishTask)
-	case "shortterm":
+		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, t, s.publishTask)
+	case "fixedwindow":
 		interval, _ := time.ParseDuration(config.TimeWindow)
-		c = NewShortTermCycle(config.Name, s.database, config.Collection, interval, s.publishTask)
+		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, interval, s.publishTask)
+	case "scalingwindow":
+		timeWindow, _ := time.ParseDuration(config.TimeWindow)
+		coolDown, _ := time.ParseDuration(config.CoolDown)
+		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, timeWindow, coolDown, s.publishTask)
 	}
+
 	if _, ok := s.cycles[c.ID()]; ok {
 		return fmt.Errorf("Conflicting ID found for cycle %v", config.Name)
 	}
@@ -137,7 +143,7 @@ func (s *defaultScheduler) DeleteThrottle(name string) error {
 func (s *defaultScheduler) SaveCycleMetadata() {
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
-		case *LongTermCycle:
+		case *ThrottledWholeCollectionCycle:
 			s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle.Metadata())
 		}
 	}
@@ -149,7 +155,7 @@ func (s *defaultScheduler) RestorePreviousState() {
 
 	for id, cycle := range s.cycles {
 		switch cycle.(type) {
-		case *LongTermCycle:
+		case *ThrottledWholeCollectionCycle:
 			state, err := s.metadataReadWriter.LoadMetadata(id)
 			if err != nil {
 				log.WithError(err).Warn("Failed to retrieve carousel state from S3 - starting from initial state.")
@@ -167,15 +173,23 @@ func (s *defaultScheduler) Start() {
 	defer s.cycleLock.RUnlock()
 
 	for id, cycle := range s.cycles {
-		log.WithField("id", id).Info("Starting cycle.")
 		switch cycle.Metadata().State {
-		case pausedState:
-			cycle.Pause()
-			cycle.Start() // this will start the cycle, but immediately pause
 		case stoppedState:
 			log.WithField("id", cycle.ID()).Info("Configured cycle has been stopped during the Carousel startup process - should this cycle be removed from the configuration file?")
+			cycle.Start()
 		default:
+			log.WithField("id", id).Info("Starting cycle.")
 			cycle.Start()
 		}
+	}
+}
+
+func (s *defaultScheduler) Shutdown() {
+	s.cycleLock.RLock()
+	defer s.cycleLock.RUnlock()
+	log.Info("Scheduler shutdown initiated.")
+
+	for _, cycle := range s.cycles {
+		cycle.Stop()
 	}
 }

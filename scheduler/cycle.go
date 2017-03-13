@@ -13,15 +13,13 @@ import (
 )
 
 const runningState = "running"
-const pausedState = "paused"
 const stoppedState = "stopped"
 
 type Cycle interface {
 	ID() string
 	Start()
-	Pause()
-	Resume()
 	Stop()
+	Reset()
 	Metadata() CycleMetadata
 	RestoreMetadata(state *CycleMetadata)
 }
@@ -54,7 +52,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		CycleMetadata: &CycleMetadata{lock: &sync.RWMutex{}},
 		pauseLock:     &sync.Mutex{},
 		db:            database,
-		dbCollection:  dbCollection,
+		DBCollection:  dbCollection,
 		publishTask:   task,
 	}
 }
@@ -64,10 +62,10 @@ type abstractCycle struct {
 	Name          string         `json:"name"`
 	Type          string         `json:"type"`
 	CycleMetadata *CycleMetadata `json:"metadata"`
+	DBCollection  string         `json:"collection"`
 	pauseLock     *sync.Mutex
 	cancel        context.CancelFunc
 	db            native.DB
-	dbCollection  string
 	publishTask   tasks.Task
 }
 
@@ -80,17 +78,15 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			return true, err
 		}
 
-		a.pauseLock.Lock()
 		uuid := collection.Next()
 		log.WithField("uuid", uuid).Info("Running publish task.")
 
-		err := a.publishTask.Publish(a.dbCollection, uuid)
+		err := a.publishTask.Publish(a.DBCollection, uuid)
 		if err != nil {
-			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.dbCollection).Warn("Failed to publish!")
+			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.DBCollection).Warn("Failed to publish!")
 		}
 
 		a.updateState(uuid, err)
-		a.pauseLock.Unlock()
 	}
 	return false, nil
 }
@@ -117,23 +113,15 @@ func (a *abstractCycle) ID() string {
 	return a.CycleID
 }
 
-func (a *abstractCycle) Pause() {
-	a.pauseLock.Lock()
-	log.WithField("id", a.ID()).Info("Cycle paused.")
-
-	a.CycleMetadata.State = pausedState
-}
-
-func (a *abstractCycle) Resume() {
-	a.pauseLock.Unlock()
-	log.WithField("id", a.ID()).Info("Cycle resumed.")
-	a.CycleMetadata.State = runningState
-}
-
 func (a *abstractCycle) Stop() {
 	a.cancel()
 	log.WithField("id", a.ID()).Info("Cycle stopped.")
 	a.CycleMetadata.State = stoppedState
+}
+
+func (a *abstractCycle) Reset() {
+	a.Stop()
+	a.CycleMetadata = nil
 }
 
 func (a *abstractCycle) Metadata() CycleMetadata {

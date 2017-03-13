@@ -100,24 +100,6 @@ func DeleteCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 	}
 }
 
-func PauseCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cycles := sched.Cycles()
-
-		vars := mux.Vars(r)
-		cycle, ok := cycles[vars["id"]]
-		if !ok {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		}
-
-		cycle.Pause()
-		r.Body.Close()
-
-		w.WriteHeader(http.StatusOK)
-	}
-}
-
 func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
@@ -129,7 +111,23 @@ func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 			return
 		}
 
-		cycle.Resume()
+		cycle.Start()
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func ResetCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cycles := sched.Cycles()
+
+		vars := mux.Vars(r)
+		cycle, ok := cycles[vars["id"]]
+		if !ok {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		}
+
+		cycle.Reset()
 		w.WriteHeader(http.StatusOK)
 	}
 }

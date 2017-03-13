@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"time"
 
+	ui "github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
@@ -123,14 +124,21 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter) {
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
 
-	r.HandleFunc("/cycles/{id}/pause", resources.PauseCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
+
+	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
+	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
+
+	box := ui.UI()
+	dist := http.FileServer(box.HTTPBox())
+	r.PathPrefix("/").Handler(dist)
 
 	http.Handle("/", r)
 	log.Info("Publish Carousel Started!")
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8090", nil)
 	if err != nil {
 		log.WithError(err).Panic("Couldn't set up HTTP listener")
 	}
