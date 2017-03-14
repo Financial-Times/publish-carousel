@@ -4,7 +4,7 @@ COPY . /source/
 
 RUN apk add --update bash \
   && ls -lta /source/ \
-  && apk --update add git go ca-certificates \
+  && apk --update add git go libc-dev ca-certificates \
   && cd /source/ \
   && BUILDINFO_PACKAGE="github.com/Financial-Times/service-status-go/buildinfo." \
   && VERSION="version=$(git describe --tag --always 2> /dev/null)" \
@@ -20,7 +20,9 @@ RUN apk add --update bash \
   && cp -r /source/* $GOPATH/src/${REPO_PATH} \
   && cd $GOPATH/src/${REPO_PATH} \
   && echo $LDFLAGS \
-  && go get ./... \
+  && go get -u github.com/kardianos/govendor \
+  && $GOPATH/bin/govendor sync \
+  && go get -v \
   && go build -ldflags="${LDFLAGS}" \
   && mv ./publish-carousel / \
   && mv ./cycles.yml / \
