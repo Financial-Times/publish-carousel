@@ -9,7 +9,7 @@ dependencies:
     - docker port $(docker ps | grep mongo | awk '{print $1}') 27017
     - go get github.com/axw/gocov/gocov; go get github.com/matm/gocov-html; go get -u github.com/jstemmer/go-junit-report
     - go get -u github.com/kardianos/govendor
-  override:
+  post:
      - govendor sync
 
 test:
