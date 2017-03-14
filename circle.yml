@@ -3,6 +3,7 @@ machine:
       - docker
    environment:
       GOPATH: /home/ubuntu/go
+      PATH: '/usr/local/go/bin:/home/ubuntu/go/bin:$PATH'
 
 checkout:
    post:
