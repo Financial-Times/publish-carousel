@@ -12,12 +12,20 @@ import (
 
 type FixedWindowCycle struct {
 	*abstractCycle
-	timeWindow time.Duration
-	TimeWindow string `json:"timeWindow"`
+	timeWindow      time.Duration
+	minimumThrottle time.Duration
+	TimeWindow      string `json:"timeWindow"`
+	MinimumThrottle string `json:"minimumThrottle"`
 }
 
-func NewFixedWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, publishTask tasks.Task) Cycle {
-	return &FixedWindowCycle{newAbstractCycle(name, "FixedWindow", db, dbCollection, publishTask), timeWindow, timeWindow.String()}
+func NewFixedWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
+	return &FixedWindowCycle{
+		newAbstractCycle(name, "FixedWindow", db, dbCollection, publishTask),
+		timeWindow,
+		minimumThrottle,
+		timeWindow.String(),
+		minimumThrottle.String(),
+	}
 }
 
 func (s *FixedWindowCycle) Start() {
@@ -45,7 +53,7 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 			continue
 		}
 
-		t, cancel := NewDynamicThrottle(s.timeWindow, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
+		t, cancel := NewDynamicThrottle(s.minimumThrottle, s.timeWindow, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
 		stopped, err := s.publishCollection(ctx, uuidCollection, t)
 		if stopped {
 			break

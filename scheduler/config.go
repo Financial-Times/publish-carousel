@@ -20,12 +20,14 @@ type cycleSetupConfig struct {
 }
 
 type CycleConfig struct {
-	Name       string `yaml:"name" json:"name"`
-	Type       string `yaml:"type" json:"type"`
-	Collection string `yaml:"collection" json:"collection"`
-	Throttle   string `yaml:"throttle" json:"throttle,omitempty"`
-	TimeWindow string `yaml:"timeWindow" json:"timeWindow,omitempty"`
-	CoolDown   string `yaml:"coolDown" json:"coolDown,omitempty"`
+	Name            string `yaml:"name" json:"name"`
+	Type            string `yaml:"type" json:"type"`
+	Collection      string `yaml:"collection" json:"collection"`
+	Throttle        string `yaml:"throttle" json:"throttle,omitempty"`
+	TimeWindow      string `yaml:"timeWindow" json:"timeWindow,omitempty"`
+	MinimumThrottle string `yaml:"minimumThrottle" json:"minimumThrottle,omitempty"`
+	MaximumThrottle string `yaml:"maximumThrottle" json:"maximumThrottle,omitempty"`
+	CoolDown        string `yaml:"coolDown" json:"coolDown,omitempty"`
 }
 
 // Validate checks the provided config for errors
@@ -45,20 +47,26 @@ func (c CycleConfig) Validate() error {
 		}
 
 	case "fixedwindow":
-		if _, err := time.ParseDuration(c.TimeWindow); err != nil {
-			return fmt.Errorf("Error in parsing time window for cycle %v: %v", c.Name, err)
+		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle); err != nil {
+			return err
 		}
-
 	case "scalingwindow":
-		if _, err := time.ParseDuration(c.TimeWindow); err != nil {
-			return fmt.Errorf("Error in parsing time window for cycle %v: %v", c.Name, err)
-		} else if _, err := time.ParseDuration(c.CoolDown); err != nil {
-			return fmt.Errorf("Error in parsing cool down for cycle %v: %v", c.Name, err)
+		if err := checkDurations(c.Name, c.TimeWindow, c.CoolDown, c.MinimumThrottle, c.MaximumThrottle); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("Please provide a valid type for cycle %v", c.Name)
 	}
 
+	return nil
+}
+
+func checkDurations(name string, durations ...string) error {
+	for _, duration := range durations {
+		if _, err := time.ParseDuration(duration); err != nil {
+			return fmt.Errorf("Error in parsing duration for cycle %v: Duration=%v err=%v.", name, duration, err)
+		}
+	}
 	return nil
 }
 

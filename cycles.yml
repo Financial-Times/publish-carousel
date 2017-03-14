@@ -11,4 +11,6 @@ cycles:
       type: ScalingWindow
       collection: methode
       timeWindow: 1h
-      coolDown: 1m
+      minimumThrottle: 1s
+      maximumThrottle: 1m
+      coolDown: 5m

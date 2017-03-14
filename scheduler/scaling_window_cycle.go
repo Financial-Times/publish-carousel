@@ -12,14 +12,28 @@ import (
 
 type ScalingWindowCycle struct {
 	*abstractCycle
-	timeWindow time.Duration
-	coolDown   time.Duration
-	TimeWindow string `json:"timeWindow"`
-	CoolDown   string `json:"coolDown"`
+	timeWindow      time.Duration
+	coolDown        time.Duration
+	minimumThrottle time.Duration
+	maximumThrottle time.Duration
+	TimeWindow      string `json:"timeWindow"`
+	CoolDown        string `json:"coolDown"`
+	MinimumThrottle string `json:"minimumThrottle"`
+	MaximumThrottle string `json:"maximumThrottle"`
 }
 
-func NewScalingWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, coolDown time.Duration, publishTask tasks.Task) Cycle {
-	return &ScalingWindowCycle{newAbstractCycle(name, "ScalingWindow", db, dbCollection, publishTask), timeWindow, coolDown, timeWindow.String(), coolDown.String()}
+func NewScalingWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, coolDown time.Duration, minimumThrottle time.Duration, maximumThrottle time.Duration, publishTask tasks.Task) Cycle {
+	return &ScalingWindowCycle{
+		newAbstractCycle(name, "ScalingWindow", db, dbCollection, publishTask),
+		timeWindow,
+		coolDown,
+		minimumThrottle,
+		maximumThrottle,
+		timeWindow.String(),
+		coolDown.String(),
+		minimumThrottle.String(),
+		maximumThrottle.String(),
+	}
 }
 
 func (s *ScalingWindowCycle) Start() {
@@ -47,7 +61,7 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 			continue
 		}
 
-		t, cancel := NewCappedDynamicThrottle(s.timeWindow, s.coolDown, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
+		t, cancel := NewCappedDynamicThrottle(s.minimumThrottle, s.timeWindow, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
 		stopped, err := s.publishCollection(ctx, uuidCollection, t)
 		if stopped {
 			break
@@ -68,5 +82,5 @@ func (s *ScalingWindowCycle) UpdateConfiguration() {
 }
 
 func (s *ScalingWindowCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown}
+	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
 }
