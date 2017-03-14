@@ -6,6 +6,7 @@ machine:
 
 checkout:
    post:
+      - mkdir -p "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/"
       - ln -sf "${HOME}/${CIRCLE_PROJECT_REPONAME}/" "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
 dependencies:
