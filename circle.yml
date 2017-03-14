@@ -2,12 +2,14 @@ machine:
    services:
       - docker
    environment:
-      GOPATH: /home/ubuntu/go
-      PATH: '/usr/local/go/bin:/home/ubuntu/go/bin:$PATH'
+      GOPATH: "/home/ubuntu/go"
+      PATH: "/usr/local/go/bin:/home/ubuntu/go/bin:$PATH"
 
 checkout:
    post:
       - mkdir -p "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/"
+      - pwd:
+         pwd: ${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/
       - ln -sf "${HOME}/${CIRCLE_PROJECT_REPONAME}/" "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
 dependencies:
