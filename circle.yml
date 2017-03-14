@@ -8,8 +8,6 @@ machine:
 checkout:
    post:
       - mkdir -p "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/"
-      - pwd:
-         pwd: ${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/
       - ln -sf "${HOME}/${CIRCLE_PROJECT_REPONAME}/" "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
 dependencies:
@@ -20,7 +18,7 @@ dependencies:
     - go get github.com/axw/gocov/gocov; go get github.com/matm/gocov-html; go get -u github.com/jstemmer/go-junit-report
     - go get -u github.com/kardianos/govendor
     - govendor sync:
-         pwd: ${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+         pwd: ../../../${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
 
 test:
   pre:
