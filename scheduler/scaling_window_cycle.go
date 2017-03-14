@@ -66,3 +66,7 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 func (s *ScalingWindowCycle) UpdateConfiguration() {
 
 }
+
+func (s *ScalingWindowCycle) TransformToConfig() *CycleConfig {
+	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown}
+}

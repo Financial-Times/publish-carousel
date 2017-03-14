@@ -14,11 +14,16 @@ const defaultContentType = "application/json"
 
 type MetadataReadWriter interface {
 	LoadMetadata(id string) (*CycleMetadata, error)
-	WriteMetadata(id string, state CycleMetadata) error
+	WriteMetadata(id string, state Cycle) error
 }
 
 type s3MetadataReadWriter struct {
 	s3rw s3.ReadWriter
+}
+
+type s3Metadata struct {
+	Config *CycleConfig `json:"config"`
+	Metadata *CycleMetadata `json:"metadata"`
 }
 
 func NewS3MetadataReadWriter(rw s3.ReadWriter) MetadataReadWriter {
@@ -48,15 +53,15 @@ func (s *s3MetadataReadWriter) LoadMetadata(id string) (*CycleMetadata, error) {
 		return nil, fmt.Errorf(`Failed to load state for "%v". Content was in an unexpected Content-Type "%v"`, id, contentType)
 	}
 
-	state := &CycleMetadata{}
+	fromS3 := &s3Metadata{}
 	dec := json.NewDecoder(body)
-	err = dec.Decode(state)
+	err = dec.Decode(fromS3)
 
-	return state, err
+	return fromS3.Metadata, err
 }
 
-func (s *s3MetadataReadWriter) WriteMetadata(id string, state CycleMetadata) error {
-	b, err := json.Marshal(state)
+func (s *s3MetadataReadWriter) WriteMetadata(id string, cycle Cycle) error {
+	b, err := json.Marshal(&s3Metadata{cycle.TransformToConfig(), cycle.Metadata()})
 	if err != nil {
 		return err
 	}

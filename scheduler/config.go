@@ -23,9 +23,9 @@ type CycleConfig struct {
 	Name       string `yaml:"name" json:"name"`
 	Type       string `yaml:"type" json:"type"`
 	Collection string `yaml:"collection" json:"collection"`
-	Throttle   string `yaml:"throttle" json:"throttle"`
-	TimeWindow string `yaml:"timeWindow" json:"timeWindow"`
-	CoolDown   string `yaml:"coolDown" json:"coolDown"`
+	Throttle   string `yaml:"throttle" json:"throttle,omitempty"`
+	TimeWindow string `yaml:"timeWindow" json:"timeWindow,omitempty"`
+	CoolDown   string `yaml:"coolDown" json:"coolDown,omitempty"`
 }
 
 // Validate checks the provided config for errors

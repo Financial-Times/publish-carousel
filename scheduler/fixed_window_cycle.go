@@ -64,3 +64,7 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 func (s *FixedWindowCycle) UpdateConfiguration() {
 
 }
+
+func (s *FixedWindowCycle) TransformToConfig() *CycleConfig {
+	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow}
+}
