@@ -144,7 +144,7 @@ func (s *defaultScheduler) SaveCycleMetadata() {
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *ThrottledWholeCollectionCycle:
-			s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle.Metadata())
+			s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle)
 		}
 	}
 }

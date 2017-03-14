@@ -20,8 +20,9 @@ type Cycle interface {
 	Start()
 	Stop()
 	Reset()
-	Metadata() CycleMetadata
+	Metadata() *CycleMetadata
 	RestoreMetadata(state *CycleMetadata)
+	TransformToConfig() *CycleConfig
 }
 
 type CycleMetadata struct {
@@ -124,8 +125,8 @@ func (a *abstractCycle) Reset() {
 	a.CycleMetadata = nil
 }
 
-func (a *abstractCycle) Metadata() CycleMetadata {
-	return *a.CycleMetadata
+func (a *abstractCycle) Metadata() *CycleMetadata {
+	return a.CycleMetadata
 }
 
 func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {

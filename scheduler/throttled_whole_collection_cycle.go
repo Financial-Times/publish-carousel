@@ -57,3 +57,7 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 func (l *ThrottledWholeCollectionCycle) UpdateConfiguration() {
 
 }
+
+func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
+	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection}
+}
