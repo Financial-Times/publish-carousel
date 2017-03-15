@@ -1,0 +1,22 @@
+version: 2
+jobs:
+    build:
+        working_directory: ~/go/src/github.com/Financial-Times/publish-carousel
+        docker:
+            - image: golang:1.7.5
+                environment:
+                    GOPATH: ~/go
+        steps:
+            - checkout
+            - run:
+                name: External Dependencies
+                command: go get github.com/axw/gocov/gocov; go get github.com/matm/gocov-html; go get -u github.com/jstemmer/go-junit-report; go get -u github.com/kardianos/govendor;
+            - run:
+                name: Govendor Sync
+                command: govendor sync -v
+            - run:
+                name: Go Build
+                command: go build -v
+            - run:
+                name: Run Tests
+                command: go test -v -race ./...
