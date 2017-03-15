@@ -11,6 +11,14 @@
 			"versionExact": "0.1.0"
 		},
 		{
+			"checksumSHA1": "86zPm5lQZTmbpjyVlZ0Uyw4Whqk=",
+			"path": "github.com/Financial-Times/publish-carousel-ui",
+			"revision": "41e8d403b82b9cf4b2f6e3517f19544605e88bc4",
+			"revisionTime": "2017-03-15T09:57:10Z",
+			"version": "v0.0.1_rc1",
+			"versionExact": "v0.0.1_rc1"
+		},
+		{
 			"checksumSHA1": "fqpohN7Qp2qj7TLMbUxh/cK4oH0=",
 			"path": "github.com/Financial-Times/service-status-go/buildinfo",
 			"revision": "3f5199736a3d7ae52394c63aac36834786825e21",
@@ -37,6 +45,18 @@
 			"revisionTime": "2017-03-02T16:44:45Z",
 			"version": "v0.1.0_tid-gen_rc4",
 			"versionExact": "v0.1.0_tid-gen_rc4"
+		},
+		{
+			"checksumSHA1": "6xRcrOO03m/jXeopXDvcqL3/Zz0=",
+			"path": "github.com/GeertJohan/go.rice",
+			"revision": "4bbccbfa39e784796e483270451217d3369ecfbe",
+			"revisionTime": "2017-01-23T13:54:25Z"
+		},
+		{
+			"checksumSHA1": "xECV8VmnSwtMPugLqB1OAXwOs48=",
+			"path": "github.com/GeertJohan/go.rice/embedded",
+			"revision": "4bbccbfa39e784796e483270451217d3369ecfbe",
+			"revisionTime": "2017-01-23T13:54:25Z"
 		},
 		{
 			"checksumSHA1": "0Tugz8gj9KqqVj6JLkXUA7BXas4=",
@@ -275,6 +295,12 @@
 			"revisionTime": "2017-03-03T00:53:01Z"
 		},
 		{
+			"checksumSHA1": "8i+beEgcVf0q/I7lTqo2ERZM/OU=",
+			"path": "github.com/daaku/go.zipexe",
+			"revision": "a5fe2436ffcb3236e175e5149162b41cd28bd27d",
+			"revisionTime": "2015-03-29T02:31:25Z"
+		},
+		{
 			"checksumSHA1": "dvabztWVQX8f6oMLRyv4dLH+TGY=",
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "346938d642f2ec3594ed81d874461961cd0faa76",
@@ -311,6 +337,20 @@
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d",
 			"revisionTime": "2016-08-03T19:07:31Z"
+		},
+		{
+			"checksumSHA1": "eWtEV0iBNTL6DRJVqEeniS+thHA=",
+			"path": "github.com/kardianos/osext",
+			"revision": "9d302b58e975387d0b4d9be876622c86cefe64be",
+			"revisionTime": "2017-03-09T17:28:38Z"
+		},
+		{
+			"checksumSHA1": "z4XZC8hOEUSYPmX70OusGPQO2Uw=",
+			"path": "github.com/pborman/uuid",
+			"revision": "a97ce2ca70fa5a848076093f05e639a89ca34d06",
+			"revisionTime": "2016-02-09T18:59:13Z",
+			"version": "v1.0",
+			"versionExact": "v1.0"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
