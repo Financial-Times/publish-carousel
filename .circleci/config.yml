@@ -44,3 +44,7 @@ jobs:
           command: /go/bin/goveralls -coverprofile=/tmp/coverage-results/overall-coverage.result -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - store_test_results:
           path: /tmp/test-results
+      - setup_docker_engine
+      - run:
+          name: Build Dockerfile
+          command: docker build .
