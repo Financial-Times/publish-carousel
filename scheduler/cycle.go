@@ -26,15 +26,15 @@ type Cycle interface {
 }
 
 type CycleMetadata struct {
-	CurrentUUID string     `json:"currentUuid"`
-	Errors      int        `json:"errors"`
-	Progress    float64    `json:"progress"`
-	State       string     `json:"state"`
-	Completed   int        `json:"completed"`
-	Total       int        `json:"total"`
-	Iteration   int        `json:"iteration"`
-	Start       *time.Time `json:"windowStart,omitempty"`
-	End         *time.Time `json:"windowEnd,omitempty"`
+	CurrentUUID string    `json:"currentUuid"`
+	Errors      int       `json:"errors"`
+	Progress    float64   `json:"progress"`
+	State       string    `json:"state"`
+	Completed   int       `json:"completed"`
+	Total       int       `json:"total"`
+	Iteration   int       `json:"iteration"`
+	Start       time.Time `json:"windowStart,omitempty"`
+	End         time.Time `json:"windowEnd,omitempty"`
 	lock        *sync.RWMutex
 }
 
