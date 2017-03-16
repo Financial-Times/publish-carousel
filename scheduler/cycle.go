@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 const runningState = "running"
 const stoppedState = "stopped"
+const coolDownState = "cooldown"
 
 type Cycle interface {
 	ID() string
@@ -45,7 +47,7 @@ func newCycleID(name string, dbcollection string) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, task tasks.Task) *abstractCycle {
+func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, task tasks.Task) *abstractCycle {
 	return &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
@@ -54,6 +56,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		pauseLock:     &sync.Mutex{},
 		db:            database,
 		DBCollection:  dbCollection,
+		Origin:        origin,
 		publishTask:   task,
 	}
 }
@@ -64,6 +67,7 @@ type abstractCycle struct {
 	Type          string         `json:"type"`
 	CycleMetadata *CycleMetadata `json:"metadata"`
 	DBCollection  string         `json:"collection"`
+	Origin        string         `json:"origin"`
 	pauseLock     *sync.Mutex
 	cancel        context.CancelFunc
 	db            native.DB
@@ -80,9 +84,13 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		}
 
 		uuid := collection.Next()
-		log.WithField("uuid", uuid).Info("Running publish task.")
+		if strings.TrimSpace(uuid) == "" {
+			log.WithField("id", a.CycleID).WithField("cycle", a.Name).Warn("Next UUID is empty! Skipping.")
+			continue
+		}
 
-		err := a.publishTask.Publish(a.DBCollection, uuid)
+		log.WithField("id", a.CycleID).WithField("cycle", a.Name).WithField("uuid", uuid).Info("Running publish task.")
+		err := a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
 		if err != nil {
 			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.DBCollection).Warn("Failed to publish!")
 		}

@@ -11,12 +11,12 @@
 			"versionExact": "0.1.0"
 		},
 		{
-			"checksumSHA1": "86zPm5lQZTmbpjyVlZ0Uyw4Whqk=",
+			"checksumSHA1": "co7bhGOevkDM3Ps/F4PKQN/gShU=",
 			"path": "github.com/Financial-Times/publish-carousel-ui",
-			"revision": "41e8d403b82b9cf4b2f6e3517f19544605e88bc4",
-			"revisionTime": "2017-03-15T09:57:10Z",
-			"version": "v0.0.1_rc1",
-			"versionExact": "v0.0.1_rc1"
+			"revision": "f984806550dc12886294bd4ceb73e4f58432f900",
+			"revisionTime": "2017-03-16T09:52:24Z",
+			"version": "v0.0.2_rc1",
+			"versionExact": "v0.0.2_rc1"
 		},
 		{
 			"checksumSHA1": "fqpohN7Qp2qj7TLMbUxh/cK4oH0=",
@@ -359,8 +359,22 @@
 			"revisionTime": "2016-01-10T10:55:54Z"
 		},
 		{
+			"checksumSHA1": "K0crHygPTP42i1nLKWphSlvOQJw=",
+			"path": "github.com/stretchr/objx",
+			"revision": "1a9d0bb9f541897e62256577b352fdbc1fb4fd94",
+			"revisionTime": "2015-09-28T12:21:52Z"
+		},
+		{
 			"checksumSHA1": "q1qqfgDOGwfEuMlbHWNjYf09ACM=",
 			"path": "github.com/stretchr/testify/assert",
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
+		},
+		{
+			"checksumSHA1": "Je6cJkYWj2SoaHDMGpE00BGi9sw=",
+			"path": "github.com/stretchr/testify/mock",
 			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
 			"revisionTime": "2016-09-25T01:54:16Z",
 			"version": "v1.1.4",
