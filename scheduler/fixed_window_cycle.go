@@ -18,9 +18,9 @@ type FixedWindowCycle struct {
 	MinimumThrottle string `json:"minimumThrottle"`
 }
 
-func NewFixedWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
+func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
 	return &FixedWindowCycle{
-		newAbstractCycle(name, "FixedWindow", db, dbCollection, publishTask),
+		newAbstractCycle(name, "FixedWindow", db, dbCollection, origin, publishTask),
 		timeWindow,
 		minimumThrottle,
 		timeWindow.String(),

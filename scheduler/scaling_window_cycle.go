@@ -22,9 +22,20 @@ type ScalingWindowCycle struct {
 	MaximumThrottle string `json:"maximumThrottle"`
 }
 
-func NewScalingWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, coolDown time.Duration, minimumThrottle time.Duration, maximumThrottle time.Duration, publishTask tasks.Task) Cycle {
+func NewScalingWindowCycle(
+	name string,
+	db native.DB,
+	dbCollection string,
+	origin string,
+	timeWindow time.Duration,
+	coolDown time.Duration,
+	minimumThrottle time.Duration,
+	maximumThrottle time.Duration,
+	publishTask tasks.Task,
+) Cycle {
+
 	return &ScalingWindowCycle{
-		newAbstractCycle(name, "ScalingWindow", db, dbCollection, publishTask),
+		newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, publishTask),
 		timeWindow,
 		coolDown,
 		minimumThrottle,

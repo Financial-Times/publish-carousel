@@ -72,19 +72,19 @@ func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 		if !ok {
 			return fmt.Errorf("Throttle not found for cycle %v", config.Name)
 		}
-		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, t, s.publishTask)
+		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, t, s.publishTask)
 
 	case "fixedwindow":
 		interval, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, interval, minimumThrottle, s.publishTask)
+		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, interval, minimumThrottle, s.publishTask)
 
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
 		coolDown, _ := time.ParseDuration(config.CoolDown)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
 		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
-		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
+		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
 	}
 
 	if _, ok := s.cycles[c.ID()]; ok {

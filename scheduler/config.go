@@ -22,6 +22,7 @@ type cycleSetupConfig struct {
 type CycleConfig struct {
 	Name            string `yaml:"name" json:"name"`
 	Type            string `yaml:"type" json:"type"`
+	Origin          string `yaml:"origin" json:"origin,omitempty"`
 	Collection      string `yaml:"collection" json:"collection"`
 	Throttle        string `yaml:"throttle" json:"throttle,omitempty"`
 	TimeWindow      string `yaml:"timeWindow" json:"timeWindow,omitempty"`
@@ -38,6 +39,10 @@ func (c CycleConfig) Validate() error {
 
 	if strings.TrimSpace(c.Collection) == "" {
 		return errors.New("Please provide a valid native collection")
+	}
+
+	if strings.TrimSpace(c.Origin) == "" {
+		return errors.New("Please provide a valid X-Origin-System-Id")
 	}
 
 	switch strings.ToLower(c.Type) {

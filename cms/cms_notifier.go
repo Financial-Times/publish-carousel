@@ -13,7 +13,7 @@ import (
 
 // Notifier handles the publishing of the content to the cms-notifier
 type Notifier interface {
-	Notify(tid string, content native.Content, hash string) error
+	Notify(origin string, tid string, content native.Content, hash string) error
 }
 
 type cmsNotifier struct {
@@ -26,7 +26,7 @@ func NewNotifier(notifierURL string, client *http.Client) Notifier {
 	return &cmsNotifier{client: client, notifierURL: notifierURL}
 }
 
-func (c *cmsNotifier) Notify(tid string, content native.Content, hash string) error {
+func (c *cmsNotifier) Notify(origin string, tid string, content native.Content, hash string) error {
 	b := new(bytes.Buffer)
 
 	enc := json.NewEncoder(b)
@@ -39,6 +39,7 @@ func (c *cmsNotifier) Notify(tid string, content native.Content, hash string) er
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Request-Id", tid)
 	req.Header.Add("X-Native-Hash", hash)
+	req.Header.Add("X-Origin-System-Id", origin)
 
 	if err != nil {
 		return err
