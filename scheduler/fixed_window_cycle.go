@@ -45,7 +45,8 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: startTime, End: endTime, lock: &sync.RWMutex{}}
+		copiedStartTime := startTime // Copy so that we don't change the time for the cycle
+		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedStartTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {

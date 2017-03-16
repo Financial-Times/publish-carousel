@@ -64,7 +64,8 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: startTime, End: endTime, lock: &sync.RWMutex{}}
+		copiedTime := startTime // Copy so that we don't change the time for the cycle
+		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
@@ -72,7 +73,7 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 			continue
 		}
 
-		t, cancel := NewCappedDynamicThrottle(s.minimumThrottle, s.timeWindow, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
+		t, cancel := NewCappedDynamicThrottle(s.timeWindow, s.minimumThrottle, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
 		stopped, err := s.publishCollection(ctx, uuidCollection, t)
 		if stopped {
 			break
