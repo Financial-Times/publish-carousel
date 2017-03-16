@@ -6,6 +6,8 @@ jobs:
       - image: golang:1.7.5
         environment:
           GOPATH: /go
+          MONGO_TEST_URL: localhost:27017
+      - image: mongo:3.0.2
     steps:
       - checkout
       - run:
