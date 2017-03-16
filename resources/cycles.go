@@ -2,6 +2,7 @@ package resources
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
@@ -38,9 +39,11 @@ func GetCycleForID(sched scheduler.Scheduler) func(w http.ResponseWriter, r *htt
 		cycles := sched.Cycles()
 
 		vars := mux.Vars(r)
-		cycle, ok := cycles[vars["id"]]
+		cycleID := vars["id"]
+		cycle, ok := cycles[cycleID]
 		if !ok {
-			http.Error(w, "", http.StatusNotFound)
+			log.WithField("cycleID", cycleID).Warn("Cycle not found")
+			http.Error(w, fmt.Sprintf("Cycle not found with ID: %v", cycleID), http.StatusNotFound)
 			return
 		}
 

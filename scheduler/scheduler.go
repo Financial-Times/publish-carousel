@@ -3,6 +3,7 @@ package scheduler
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,8 +22,9 @@ type Scheduler interface {
 	DeleteCycle(cycleID string) error
 	RestorePreviousState()
 	SaveCycleMetadata()
-	Start()
-	Shutdown()
+	Start() error
+	Shutdown() error
+	ToggleHandler(toggleValue string)
 }
 
 type defaultScheduler struct {
@@ -33,6 +35,10 @@ type defaultScheduler struct {
 	metadataReadWriter MetadataReadWriter
 	throttleLock       *sync.RWMutex
 	cycleLock          *sync.RWMutex
+	isRunningLock      *sync.RWMutex
+	isEnabledLock      *sync.RWMutex
+	running            bool
+	enabled            bool
 }
 
 func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter) Scheduler {
@@ -44,6 +50,10 @@ func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter
 		metadataReadWriter: metadataReadWriter,
 		cycleLock:          &sync.RWMutex{},
 		throttleLock:       &sync.RWMutex{},
+		isRunningLock:      &sync.RWMutex{},
+		isEnabledLock:      &sync.RWMutex{},
+		running:            false,
+		enabled:            false,
 	}
 }
 
@@ -93,8 +103,14 @@ func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 
 	s.cycleLock.Lock()
 	defer s.cycleLock.Unlock()
-
 	s.cycles[c.ID()] = c
+
+	if s.isEnabled() && s.isRunning() {
+		err := s.Start()
+		if err != nil {
+			return fmt.Errorf("Error in starting cycle with ID: %v - %v", c.ID(), err)
+		}
+	}
 	return nil
 }
 
@@ -126,6 +142,8 @@ func (s *defaultScheduler) AddThrottle(name string, throttleInterval string) err
 	}
 
 	t, _ := NewThrottle(interval, 1)
+	s.throttleLock.Lock()
+	defer s.throttleLock.Unlock()
 	s.throttles[name] = t
 
 	return nil
@@ -173,9 +191,17 @@ func (s *defaultScheduler) RestorePreviousState() {
 	}
 }
 
-func (s *defaultScheduler) Start() {
+func (s *defaultScheduler) Start() error {
 	s.cycleLock.RLock()
 	defer s.cycleLock.RUnlock()
+
+	if !s.isEnabled() {
+		return errors.New("carousel scheduler is not enabled")
+	}
+
+	if s.isRunning() {
+		return errors.New("carousel scheduler is already running")
+	}
 
 	for id, cycle := range s.cycles {
 		switch cycle.Metadata().State {
@@ -187,14 +213,65 @@ func (s *defaultScheduler) Start() {
 			cycle.Start()
 		}
 	}
+
+	s.setRunningState(true)
+	return nil
 }
 
-func (s *defaultScheduler) Shutdown() {
+func (s *defaultScheduler) Shutdown() error {
 	s.cycleLock.RLock()
 	defer s.cycleLock.RUnlock()
 	log.Info("Scheduler shutdown initiated.")
 
+	if !s.isRunning() {
+		return errors.New("carousel scheduler have been already shutted down")
+	}
+
 	for _, cycle := range s.cycles {
 		cycle.Stop()
 	}
+
+	s.setRunningState(false)
+	return nil
+}
+
+func (s *defaultScheduler) ToggleHandler(toggleValue string) {
+	shouldBeEnabled, err := strconv.ParseBool(toggleValue)
+	if err != nil {
+		log.WithError(err).Error("Invalid toggle value for carousel scheduler")
+	}
+	if shouldBeEnabled && !s.isEnabled() && s.isRunning() {
+		s.RestorePreviousState()
+		s.Start()
+	}
+	if !shouldBeEnabled && s.isEnabled() && s.isRunning() {
+		s.Shutdown()
+		s.SaveCycleMetadata()
+	}
+
+	s.setEnableState(shouldBeEnabled)
+}
+
+func (s *defaultScheduler) isEnabled() bool {
+	s.isEnabledLock.RLock()
+	defer s.isEnabledLock.RUnlock()
+	return s.enabled
+}
+
+func (s *defaultScheduler) setEnableState(state bool) {
+	s.isEnabledLock.Lock()
+	defer s.isEnabledLock.Unlock()
+	s.enabled = state
+}
+
+func (s *defaultScheduler) isRunning() bool {
+	s.isRunningLock.RLock()
+	defer s.isRunningLock.RUnlock()
+	return s.running
+}
+
+func (s *defaultScheduler) setRunningState(state bool) {
+	s.isRunningLock.Lock()
+	defer s.isRunningLock.Unlock()
+	s.running = state
 }
