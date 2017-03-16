@@ -50,6 +50,7 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
+			s.CycleMetadata.UpdateState(coolDownState)
 			time.Sleep(s.timeWindow)
 			continue
 		}

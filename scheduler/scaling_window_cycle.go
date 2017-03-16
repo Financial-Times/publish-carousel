@@ -55,9 +55,10 @@ func (s *ScalingWindowCycle) Start() {
 }
 
 func (s *ScalingWindowCycle) start(ctx context.Context) {
-	startTime := time.Now().Add(-1 * s.timeWindow)
+	endTime := time.Now()
+	startTime := endTime.Add(-1 * s.timeWindow)
+
 	for {
-		endTime := startTime.Add(s.timeWindow)
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
 		if err != nil {
 			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
@@ -69,7 +70,9 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
+			s.CycleMetadata.UpdateState(coolDownState)
 			time.Sleep(s.coolDown)
+			endTime = time.Now()
 			continue
 		}
 
@@ -86,6 +89,8 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
+
+		endTime = time.Now()
 	}
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+
 	"golang.org/x/time/rate"
 )
 
@@ -38,11 +40,12 @@ func NewCappedDynamicThrottle(interval time.Duration, minThrottle time.Duration,
 func determineRateInterval(interval time.Duration, minThrottle time.Duration, maxThrottle time.Duration, publishes int) time.Duration {
 	publishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
 	if publishDelay < minThrottle {
-		return minThrottle
+		publishDelay = minThrottle
 	} else if publishDelay > maxThrottle {
-		return maxThrottle
+		publishDelay = maxThrottle
 	}
 
+	log.WithField("publishes", publishes).WithField("rate", publishDelay.String()).Info("Determined rate for dynamic throttle.")
 	return publishDelay
 }
 

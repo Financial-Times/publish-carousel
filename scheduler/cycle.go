@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 const runningState = "running"
 const stoppedState = "stopped"
+const coolDownState = "cooldown"
 
 type Cycle interface {
 	ID() string
@@ -82,8 +84,12 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		}
 
 		uuid := collection.Next()
-		log.WithField("uuid", uuid).Info("Running publish task.")
+		if strings.TrimSpace(uuid) == "" {
+			log.WithField("id", a.CycleID).WithField("cycle", a.Name).Warn("Next UUID is empty! Skipping.")
+			continue
+		}
 
+		log.WithField("id", a.CycleID).WithField("cycle", a.Name).WithField("uuid", uuid).Info("Running publish task.")
 		err := a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
 		if err != nil {
 			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.DBCollection).Warn("Failed to publish!")
