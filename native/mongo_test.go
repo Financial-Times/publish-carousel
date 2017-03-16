@@ -44,6 +44,7 @@ func insertTestContent(t *testing.T, mongo DB, testUUID string) {
 	testContent["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(testUUID))}
 
 	session := mongo.(*MongoDB).session.Copy()
+	defer session.Close()
 
 	err := session.DB("native-store").C("methode").Insert(testContent)
 	assert.NoError(t, err)
@@ -51,6 +52,7 @@ func insertTestContent(t *testing.T, mongo DB, testUUID string) {
 
 func cleanupTestContent(t *testing.T, mongo DB, testUUID string) {
 	session := mongo.(*MongoDB).session.Copy()
+	defer session.Close()
 
 	err := session.DB("native-store").C("methode").Remove(bson.M{"content.uuid": testUUID})
 	assert.NoError(t, err)
@@ -58,8 +60,10 @@ func cleanupTestContent(t *testing.T, mongo DB, testUUID string) {
 
 func TestFindByUUID(t *testing.T) {
 	db := startMongo(t)
+	defer db.Close()
 
 	tx, err := db.Open()
+	defer tx.Close()
 	assert.NoError(t, err)
 
 	testUUID := uuid.NewUUID().String()
@@ -89,8 +93,10 @@ func TestFindByUUID(t *testing.T) {
 
 func TestFindByTimeWindow(t *testing.T) {
 	db := startMongo(t)
+	defer db.Close()
 
 	tx, err := db.Open()
+	defer tx.Close()
 	assert.NoError(t, err)
 
 	testUUID := uuid.NewUUID().String()
@@ -121,6 +127,60 @@ func TestFindByTimeWindow(t *testing.T) {
 	cleanupTestContent(t, db, testUUID)
 }
 
-func TestPing(t *testing.T) {
+func TestReadNativeContent(t *testing.T) {
+	db := startMongo(t)
+	defer db.Close()
 
+	tx, err := db.Open()
+	defer tx.Close()
+	assert.NoError(t, err)
+
+	testUUID := uuid.NewUUID().String()
+	t.Log("Test uuid to use", testUUID)
+	insertTestContent(t, db, testUUID)
+
+	content, err := tx.ReadNativeContent("methode", testUUID)
+	assert.NoError(t, err)
+	assert.NotNil(t, content)
+
+	assert.Equal(t, testUUID, content.Body["uuid"])
+	assert.Equal(t, "tid_"+testUUID, content.Body["publishReference"])
+	cleanupTestContent(t, db, testUUID)
+}
+
+func TestPing(t *testing.T) {
+	db := startMongo(t)
+	defer db.Close()
+
+	tx, err := db.Open()
+	defer tx.Close()
+	assert.NoError(t, err)
+
+	err = tx.Ping()
+	assert.NoError(t, err)
+}
+
+func TestTransactionCloses(t *testing.T) {
+	db := startMongo(t)
+	defer db.Close()
+
+	tx, err := db.Open()
+	assert.NoError(t, err)
+
+	tx.Close()
+	assert.Panics(t, func() {
+		tx.(*MongoTX).session.Ping()
+	})
+}
+
+func TestDBCloses(t *testing.T) {
+	db := startMongo(t)
+	tx, err := db.Open()
+	assert.NoError(t, err)
+
+	tx.Close()
+	db.Close()
+	assert.Panics(t, func() {
+		db.(*MongoDB).session.Ping()
+	})
 }

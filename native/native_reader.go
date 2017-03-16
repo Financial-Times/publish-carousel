@@ -3,7 +3,7 @@ package native
 import "encoding/json"
 
 type Reader interface {
-	Get(collection string, uuid string) (*Content, string, error) // TODO the second parameter is the hash of the content
+	Get(collection string, uuid string) (*Content, string, error)
 }
 
 type MongoReader struct {
