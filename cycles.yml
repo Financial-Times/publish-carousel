@@ -4,11 +4,13 @@ throttles:
 cycles:
    -  name: methode-whole-archive
       type: ThrottledWholeCollection
+      origin: non-existent-origin
       collection: methode
       throttle: globalThrottle
 
    -  name: methode-one-hour
       type: ScalingWindow
+      origin: non-existent-origin
       collection: methode
       timeWindow: 1h
       minimumThrottle: 1s

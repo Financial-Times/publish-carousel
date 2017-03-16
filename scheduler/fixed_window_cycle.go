@@ -18,9 +18,9 @@ type FixedWindowCycle struct {
 	MinimumThrottle string `json:"minimumThrottle"`
 }
 
-func NewFixedWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
+func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
 	return &FixedWindowCycle{
-		newAbstractCycle(name, "FixedWindow", db, dbCollection, publishTask),
+		newAbstractCycle(name, "FixedWindow", db, dbCollection, origin, publishTask),
 		timeWindow,
 		minimumThrottle,
 		timeWindow.String(),
@@ -45,10 +45,12 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 			break
 		}
 
-		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
+		copiedStartTime := startTime // Copy so that we don't change the time for the cycle
+		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedStartTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
+			s.CycleMetadata.UpdateState(coolDownState)
 			time.Sleep(s.timeWindow)
 			continue
 		}

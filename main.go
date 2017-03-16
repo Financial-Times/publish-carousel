@@ -138,7 +138,7 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter) {
 	http.Handle("/", r)
 	log.Info("Publish Carousel Started!")
 
-	err := http.ListenAndServe(":8090", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.WithError(err).Panic("Couldn't set up HTTP listener")
 	}

@@ -14,8 +14,8 @@ type ThrottledWholeCollectionCycle struct {
 	throttle Throttle
 }
 
-func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, throttle Throttle, publishTask tasks.Task) Cycle {
-	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, "ThrottledWholeCollection", db, dbCollection, publishTask), throttle}
+func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, throttle Throttle, publishTask tasks.Task) Cycle {
+	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, "ThrottledWholeCollection", db, dbCollection, origin, publishTask), throttle}
 }
 
 func (l *ThrottledWholeCollectionCycle) Start() {

@@ -22,9 +22,20 @@ type ScalingWindowCycle struct {
 	MaximumThrottle string `json:"maximumThrottle"`
 }
 
-func NewScalingWindowCycle(name string, db native.DB, dbCollection string, timeWindow time.Duration, coolDown time.Duration, minimumThrottle time.Duration, maximumThrottle time.Duration, publishTask tasks.Task) Cycle {
+func NewScalingWindowCycle(
+	name string,
+	db native.DB,
+	dbCollection string,
+	origin string,
+	timeWindow time.Duration,
+	coolDown time.Duration,
+	minimumThrottle time.Duration,
+	maximumThrottle time.Duration,
+	publishTask tasks.Task,
+) Cycle {
+
 	return &ScalingWindowCycle{
-		newAbstractCycle(name, "ScalingWindow", db, dbCollection, publishTask),
+		newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, publishTask),
 		timeWindow,
 		coolDown,
 		minimumThrottle,
@@ -44,24 +55,28 @@ func (s *ScalingWindowCycle) Start() {
 }
 
 func (s *ScalingWindowCycle) start(ctx context.Context) {
-	startTime := time.Now().Add(-1 * s.timeWindow)
+	endTime := time.Now()
+	startTime := endTime.Add(-1 * s.timeWindow)
+
 	for {
-		endTime := startTime.Add(s.timeWindow)
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
 		if err != nil {
 			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
 			break
 		}
 
-		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &startTime, End: &endTime, lock: &sync.RWMutex{}}
+		copiedTime := startTime // Copy so that we don't change the time for the cycle
+		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}}
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
+			s.CycleMetadata.UpdateState(coolDownState)
 			time.Sleep(s.coolDown)
+			endTime = time.Now()
 			continue
 		}
 
-		t, cancel := NewCappedDynamicThrottle(s.minimumThrottle, s.timeWindow, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
+		t, cancel := NewCappedDynamicThrottle(s.timeWindow, s.minimumThrottle, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
 		stopped, err := s.publishCollection(ctx, uuidCollection, t)
 		if stopped {
 			break
@@ -74,6 +89,8 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
+
+		endTime = time.Now()
 	}
 }
 
