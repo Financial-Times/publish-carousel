@@ -52,6 +52,12 @@ func main() {
 			Usage:  "The CMS Notifier instance to POST publishes to.",
 		},
 		cli.StringFlag{
+			Name:   "cms-notifier-gtg",
+			Value:  "http://localhost:8080/__cms-notifier/__gtg",
+			EnvVar: "CMS_NOTIFIER_GTG",
+			Usage:  "The CMS Notifier GTG url.",
+		},
+		cli.StringFlag{
 			Name:   "aws-region",
 			Value:  "eu-west-1",
 			EnvVar: "AWS_REGION",
@@ -65,7 +71,7 @@ func main() {
 		},
 		cli.IntFlag{
 			Name:   "mongo-timeout",
-			Value:  30000,
+			Value:  10000,
 			EnvVar: "MONGO_DB_TIMEOUT",
 			Usage:  "The timeout (in milliseconds) for Mongo DB connections.",
 		},
@@ -80,7 +86,7 @@ func main() {
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
-		notifier := cms.NewNotifier(ctx.String("cms-notifier-url"), &http.Client{})
+		notifier := cms.NewNotifier(ctx.String("cms-notifier-url"), ctx.String("cms-notifier-gtg"), &http.Client{Timeout: time.Second * 30})
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 
@@ -90,7 +96,7 @@ func main() {
 		sched.Start()
 
 		shutdown(sched)
-		serve(mongo, sched, s3rw)
+		serve(mongo, sched, s3rw, notifier)
 	}
 
 	app.Run(os.Args)
@@ -110,13 +116,13 @@ func shutdown(sched scheduler.Scheduler) {
 	}()
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter) {
+func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier) {
 	r := mux.NewRouter()
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw)).Methods("GET")
+	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier)).Methods("GET")
+	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier)).Methods("GET")
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")

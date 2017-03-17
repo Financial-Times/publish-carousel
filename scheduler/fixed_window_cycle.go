@@ -18,9 +18,9 @@ type FixedWindowCycle struct {
 	MinimumThrottle string `json:"minimumThrottle"`
 }
 
-func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin string, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
+func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin string, coolDown time.Duration, timeWindow time.Duration, minimumThrottle time.Duration, publishTask tasks.Task) Cycle {
 	return &FixedWindowCycle{
-		newAbstractCycle(name, "FixedWindow", db, dbCollection, origin, publishTask),
+		newAbstractCycle(name, "FixedWindow", db, dbCollection, origin, coolDown, publishTask),
 		timeWindow,
 		minimumThrottle,
 		timeWindow.String(),
@@ -32,6 +32,7 @@ func (s *FixedWindowCycle) Start() {
 	log.WithField("collection", s.DBCollection).WithField("name", s.Name).WithField("timeWindow", s.timeWindow).Info("Starting fixed window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
+	s.Metadata().UpdateState(startingState)
 	go s.start(ctx)
 }
 
@@ -42,7 +43,9 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
 		if err != nil {
 			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
-			break
+			s.Metadata().UpdateState(coolDownState)
+			time.Sleep(s.coolDown)
+			continue
 		}
 
 		copiedStartTime := startTime // Copy so that we don't change the time for the cycle
@@ -69,6 +72,8 @@ func (s *FixedWindowCycle) start(ctx context.Context) {
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		cancel()
 	}
+
+	s.Metadata().UpdateState(stoppedState)
 }
 
 func (s *FixedWindowCycle) UpdateConfiguration() {

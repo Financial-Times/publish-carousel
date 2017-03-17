@@ -13,6 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const startingState = "starting"
 const runningState = "running"
 const stoppedState = "stopped"
 const coolDownState = "cooldown"
@@ -47,7 +48,7 @@ func newCycleID(name string, dbcollection string) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, task tasks.Task) *abstractCycle {
+func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
 	return &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
@@ -57,6 +58,8 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		db:            database,
 		DBCollection:  dbCollection,
 		Origin:        origin,
+		CoolDown:      coolDown.String(),
+		coolDown:      coolDown,
 		publishTask:   task,
 	}
 }
@@ -68,14 +71,17 @@ type abstractCycle struct {
 	CycleMetadata *CycleMetadata `json:"metadata"`
 	DBCollection  string         `json:"collection"`
 	Origin        string         `json:"origin"`
-	pauseLock     *sync.Mutex
-	cancel        context.CancelFunc
-	db            native.DB
-	publishTask   tasks.Task
+	CoolDown      string         `json:"coolDown"`
+
+	coolDown    time.Duration
+	pauseLock   *sync.Mutex
+	cancel      context.CancelFunc
+	db          native.DB
+	publishTask tasks.Task
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) (bool, error) {
-	for !collection.Done() {
+	for {
 		t.Queue()
 
 		if err := ctx.Err(); err != nil {
@@ -83,21 +89,25 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			return true, err
 		}
 
-		uuid := collection.Next()
+		finished, uuid, err := collection.Next()
+		if finished {
+			log.Info("Finished publishing collection.")
+			return false, err
+		}
+
 		if strings.TrimSpace(uuid) == "" {
 			log.WithField("id", a.CycleID).WithField("cycle", a.Name).Warn("Next UUID is empty! Skipping.")
 			continue
 		}
 
 		log.WithField("id", a.CycleID).WithField("cycle", a.Name).WithField("uuid", uuid).Info("Running publish task.")
-		err := a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
+		err = a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
 		if err != nil {
 			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.DBCollection).Warn("Failed to publish!")
 		}
 
 		a.updateState(uuid, err)
 	}
-	return false, nil
 }
 
 func (a *abstractCycle) updateState(uuid string, err error) {
@@ -140,6 +150,11 @@ func (a *abstractCycle) Metadata() *CycleMetadata {
 func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {
 	metadata.lock = &sync.RWMutex{}
 	a.CycleMetadata = metadata
+}
+
+func (a *abstractCycle) poll() {
+	a.Metadata().UpdateState(coolDownState)
+	time.Sleep(a.coolDown)
 }
 
 func (c *CycleMetadata) UpdateState(state string) {

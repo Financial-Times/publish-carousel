@@ -66,22 +66,23 @@ func (s *defaultScheduler) AddCycle(config CycleConfig) error {
 	}
 
 	var c Cycle
+	coolDown, _ := time.ParseDuration(config.CoolDown)
+
 	switch strings.ToLower(config.Type) {
 	case "throttledwholecollection":
 		t, ok := s.Throttles()[config.Throttle]
 		if !ok {
 			return fmt.Errorf("Throttle not found for cycle %v", config.Name)
 		}
-		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, t, s.publishTask)
+		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
 	case "fixedwindow":
 		interval, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, interval, minimumThrottle, s.publishTask)
+		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, interval, minimumThrottle, s.publishTask)
 
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
-		coolDown, _ := time.ParseDuration(config.CoolDown)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
 		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
 		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)

@@ -25,12 +25,11 @@ func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier) Ta
 }
 
 const publishReferenceAttr = "publishReference"
-const nativeHashHeader = "X-Native-Hash"
 
 func (t *nativeContentTask) Publish(origin string, collection string, uuid string) error {
 	content, hash, err := t.nativeReader.Get(collection, uuid)
 	if err != nil {
-		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to read from native reader")
+		logrus.WithField("uuid", uuid).WithError(err).Warn("Failed to read from native reader")
 		return err
 	}
 
@@ -43,7 +42,7 @@ func (t *nativeContentTask) Publish(origin string, collection string, uuid strin
 
 	err = t.cmsNotifier.Notify(origin, tid, *content, hash)
 	if err != nil {
-		logrus.WithField("uuid", uuid).WithError(err).Error("Failed to post to cms notifier")
+		logrus.WithField("uuid", uuid).WithError(err).Warn("Failed to post to cms notifier")
 		return err
 	}
 

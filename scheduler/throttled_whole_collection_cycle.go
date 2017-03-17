@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
@@ -14,14 +15,15 @@ type ThrottledWholeCollectionCycle struct {
 	throttle Throttle
 }
 
-func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, throttle Throttle, publishTask tasks.Task) Cycle {
-	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, "ThrottledWholeCollection", db, dbCollection, origin, publishTask), throttle}
+func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
+	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, "ThrottledWholeCollection", db, dbCollection, origin, coolDown, publishTask), throttle}
 }
 
 func (l *ThrottledWholeCollectionCycle) Start() {
 	log.WithField("collection", l.DBCollection).WithField("name", l.Name).Info("Starting throttled whole collection cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
+	l.Metadata().UpdateState(startingState)
 	go l.start(ctx)
 }
 
@@ -34,8 +36,10 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 	for {
 		uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip)
 		if err != nil {
+			l.poll()
 			log.WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
-			break
+			skip = l.CycleMetadata.Completed
+			continue
 		}
 
 		l.CycleMetadata = &CycleMetadata{State: runningState, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
@@ -52,6 +56,8 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 
 		skip = 0
 	}
+
+	l.Metadata().UpdateState(stoppedState)
 }
 
 func (l *ThrottledWholeCollectionCycle) UpdateConfiguration() {

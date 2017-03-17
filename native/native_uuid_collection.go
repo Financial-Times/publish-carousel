@@ -1,13 +1,14 @@
 package native
 
 import (
+	"errors"
 	"time"
 
 	mgo "gopkg.in/mgo.v2"
 )
 
 type UUIDCollection interface {
-	Next() string
+	Next() (bool, string, error)
 	Length() int
 	Done() bool
 	Close() error
@@ -51,12 +52,25 @@ func NewNativeUUIDCollection(mongo DB, collection string, skip int) (UUIDCollect
 	return &NativeUUIDCollection{collection: collection, iter: iter, length: length}, nil
 }
 
-func (n *NativeUUIDCollection) Next() string {
+func (n *NativeUUIDCollection) Next() (bool, string, error) {
 	result := struct {
 		Content contentUUID `bson:"content"`
 	}{}
-	n.iter.Next(&result)
-	return result.Content.UUID
+	success := n.iter.Next(&result)
+
+	if !success && n.iter.Err() != nil {
+		return true, "", n.iter.Err()
+	}
+
+	if n.iter.Timeout() {
+		return true, result.Content.UUID, errors.New("Mongo timeout detected")
+	}
+
+	if !success {
+		return true, "", nil
+	}
+
+	return false, result.Content.UUID, nil
 }
 
 func (n *NativeUUIDCollection) Close() error {

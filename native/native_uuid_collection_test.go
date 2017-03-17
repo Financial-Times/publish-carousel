@@ -133,7 +133,10 @@ func TestNativeUUIDCollection(t *testing.T) {
 
 	found := false
 	for !uuidCollection.Done() {
-		if uuidCollection.Next() == testUUID {
+		_, result, err := uuidCollection.Next()
+		assert.NoError(t, err)
+
+		if result == testUUID {
 			found = true
 		}
 	}

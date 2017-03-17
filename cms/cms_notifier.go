@@ -14,16 +14,18 @@ import (
 // Notifier handles the publishing of the content to the cms-notifier
 type Notifier interface {
 	Notify(origin string, tid string, content native.Content, hash string) error
+	GTG() error
 }
 
 type cmsNotifier struct {
 	client      *http.Client
 	notifierURL string
+	notifierGTG string
 }
 
 // NewNotifier returns a new cms notifier instance
-func NewNotifier(notifierURL string, client *http.Client) Notifier {
-	return &cmsNotifier{client: client, notifierURL: notifierURL}
+func NewNotifier(notifierURL string, notifierGTG string, client *http.Client) Notifier {
+	return &cmsNotifier{client: client, notifierURL: notifierURL, notifierGTG: notifierGTG}
 }
 
 func (c *cmsNotifier) Notify(origin string, tid string, content native.Content, hash string) error {
@@ -58,4 +60,17 @@ func (c *cmsNotifier) Notify(origin string, tid string, content native.Content, 
 	log.Info(string(dump))
 
 	return fmt.Errorf("A non 2xx error code was received by the CMS Notifier! Status: %v", resp.StatusCode)
+}
+
+func (c *cmsNotifier) GTG() error {
+	resp, err := c.client.Get(c.notifierGTG)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf(`CMS Notifier located at "%v" has responded with a "%v" status`, c.notifierGTG, resp.StatusCode)
+	}
+
+	return nil
 }

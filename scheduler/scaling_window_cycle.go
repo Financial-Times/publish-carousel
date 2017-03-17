@@ -13,11 +13,9 @@ import (
 type ScalingWindowCycle struct {
 	*abstractCycle
 	timeWindow      time.Duration
-	coolDown        time.Duration
 	minimumThrottle time.Duration
 	maximumThrottle time.Duration
 	TimeWindow      string `json:"timeWindow"`
-	CoolDown        string `json:"coolDown"`
 	MinimumThrottle string `json:"minimumThrottle"`
 	MaximumThrottle string `json:"maximumThrottle"`
 }
@@ -35,13 +33,11 @@ func NewScalingWindowCycle(
 ) Cycle {
 
 	return &ScalingWindowCycle{
-		newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, publishTask),
+		newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, coolDown, publishTask),
 		timeWindow,
-		coolDown,
 		minimumThrottle,
 		maximumThrottle,
 		timeWindow.String(),
-		coolDown.String(),
 		minimumThrottle.String(),
 		maximumThrottle.String(),
 	}
@@ -51,6 +47,7 @@ func (s *ScalingWindowCycle) Start() {
 	log.WithField("collection", s.DBCollection).WithField("name", s.Name).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
+	s.Metadata().UpdateState(startingState)
 	go s.start(ctx)
 }
 
@@ -62,7 +59,10 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
 		if err != nil {
 			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
-			break
+			s.Metadata().UpdateState(coolDownState)
+			time.Sleep(s.coolDown)
+			endTime = time.Now()
+			continue
 		}
 
 		copiedTime := startTime // Copy so that we don't change the time for the cycle
@@ -92,6 +92,8 @@ func (s *ScalingWindowCycle) start(ctx context.Context) {
 
 		endTime = time.Now()
 	}
+
+	s.Metadata().UpdateState(stoppedState)
 }
 
 func (s *ScalingWindowCycle) UpdateConfiguration() {

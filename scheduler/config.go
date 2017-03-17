@@ -22,13 +22,13 @@ type cycleSetupConfig struct {
 type CycleConfig struct {
 	Name            string `yaml:"name" json:"name"`
 	Type            string `yaml:"type" json:"type"`
-	Origin          string `yaml:"origin" json:"origin,omitempty"`
+	Origin          string `yaml:"origin" json:"origin"`
 	Collection      string `yaml:"collection" json:"collection"`
+	CoolDown        string `yaml:"coolDown" json:"coolDown"`
 	Throttle        string `yaml:"throttle" json:"throttle,omitempty"`
 	TimeWindow      string `yaml:"timeWindow" json:"timeWindow,omitempty"`
 	MinimumThrottle string `yaml:"minimumThrottle" json:"minimumThrottle,omitempty"`
 	MaximumThrottle string `yaml:"maximumThrottle" json:"maximumThrottle,omitempty"`
-	CoolDown        string `yaml:"coolDown" json:"coolDown,omitempty"`
 }
 
 // Validate checks the provided config for errors
@@ -45,6 +45,10 @@ func (c CycleConfig) Validate() error {
 		return errors.New("Please provide a valid X-Origin-System-Id")
 	}
 
+	if err := checkDurations(c.CoolDown); err != nil {
+		return err
+	}
+
 	switch strings.ToLower(c.Type) {
 	case "throttledwholecollection":
 		if strings.TrimSpace(c.Throttle) == "" {
@@ -56,7 +60,7 @@ func (c CycleConfig) Validate() error {
 			return err
 		}
 	case "scalingwindow":
-		if err := checkDurations(c.Name, c.TimeWindow, c.CoolDown, c.MinimumThrottle, c.MaximumThrottle); err != nil {
+		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle, c.MaximumThrottle); err != nil {
 			return err
 		}
 	default:
