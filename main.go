@@ -121,8 +121,8 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier)).Methods("GET")
+	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched)).Methods("GET")
+	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched)).Methods("GET")
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")

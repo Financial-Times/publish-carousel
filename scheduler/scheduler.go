@@ -179,14 +179,8 @@ func (s *defaultScheduler) Start() {
 	defer s.cycleLock.RUnlock()
 
 	for id, cycle := range s.cycles {
-		switch cycle.Metadata().State {
-		case stoppedState:
-			log.WithField("id", cycle.ID()).Info("Configured cycle has been stopped during the Carousel startup process - should this cycle be removed from the configuration file?")
-			cycle.Start()
-		default:
-			log.WithField("id", id).Info("Starting cycle.")
-			cycle.Start()
-		}
+		log.WithField("id", id).Info("Starting cycle.")
+		cycle.Start()
 	}
 }
 

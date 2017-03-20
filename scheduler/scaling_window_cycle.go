@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/native"
@@ -11,12 +10,8 @@ import (
 )
 
 type ScalingWindowCycle struct {
-	*abstractCycle
-	timeWindow      time.Duration
-	minimumThrottle time.Duration
+	*abstractTimeWindowedCycle
 	maximumThrottle time.Duration
-	TimeWindow      string `json:"timeWindow"`
-	MinimumThrottle string `json:"minimumThrottle"`
 	MaximumThrottle string `json:"maximumThrottle"`
 }
 
@@ -32,13 +27,10 @@ func NewScalingWindowCycle(
 	publishTask tasks.Task,
 ) Cycle {
 
+	base := newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, coolDown, publishTask)
 	return &ScalingWindowCycle{
-		newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, coolDown, publishTask),
-		timeWindow,
-		minimumThrottle,
+		newAbstractTimeWindowedCycle(base, timeWindow, minimumThrottle),
 		maximumThrottle,
-		timeWindow.String(),
-		minimumThrottle.String(),
 		maximumThrottle.String(),
 	}
 }
@@ -48,56 +40,11 @@ func (s *ScalingWindowCycle) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Metadata().UpdateState(startingState)
-	go s.start(ctx)
-}
 
-func (s *ScalingWindowCycle) start(ctx context.Context) {
-	endTime := time.Now()
-	startTime := endTime.Add(-1 * s.timeWindow)
-
-	for {
-		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
-		if err != nil {
-			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
-			s.Metadata().UpdateState(coolDownState)
-			time.Sleep(s.coolDown)
-			endTime = time.Now()
-			continue
-		}
-
-		copiedTime := startTime // Copy so that we don't change the time for the cycle
-		s.CycleMetadata = &CycleMetadata{State: runningState, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}}
-		startTime = endTime
-
-		if uuidCollection.Length() == 0 {
-			s.CycleMetadata.UpdateState(coolDownState)
-			time.Sleep(s.coolDown)
-			endTime = time.Now()
-			continue
-		}
-
-		t, cancel := NewCappedDynamicThrottle(s.timeWindow, s.minimumThrottle, s.maximumThrottle, uuidCollection.Length()+1, 1) // add one to the length to increase the wait time
-		stopped, err := s.publishCollection(ctx, uuidCollection, t)
-		if stopped {
-			break
-		}
-
-		if err != nil {
-			log.WithError(err).WithField("collection", s.DBCollection).WithField("id", s.ID).Error("Unexpected error occurred while publishing collection.")
-			break
-		}
-
-		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
-		cancel()
-
-		endTime = time.Now()
+	throttle := func(publishes int) (Throttle, context.CancelFunc) {
+		return NewCappedDynamicThrottle(s.minimumThrottle, s.maximumThrottle, s.timeWindow, publishes, 1)
 	}
-
-	s.Metadata().UpdateState(stoppedState)
-}
-
-func (s *ScalingWindowCycle) UpdateConfiguration() {
-
+	go s.start(ctx, throttle)
 }
 
 func (s *ScalingWindowCycle) TransformToConfig() *CycleConfig {

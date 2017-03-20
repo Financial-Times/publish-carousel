@@ -36,13 +36,18 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 	for {
 		uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip)
 		if err != nil {
-			l.poll()
-			log.WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
+			log.WithField("id", l.ID()).WithField("collection", l.DBCollection).WithField("name", l.Name).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
+			l.Metadata().UpdateState(unhealthyState, coolDownState)
+			time.Sleep(l.coolDown)
 			skip = l.CycleMetadata.Completed
 			continue
 		}
 
-		l.CycleMetadata = &CycleMetadata{State: runningState, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}}
+		l.CycleMetadata = &CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+		if uuidCollection.Length() == 0 {
+			l.Metadata().UpdateState(unhealthyState) // assume unhealthy, as the whole archive should *always* have content
+			break
+		}
 
 		stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
 		if stopped {
@@ -51,6 +56,7 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 
 		if err != nil {
 			log.WithError(err).WithField("collection", l.DBCollection).WithField("id", l.ID).Error("Unexpected error occurred while publishing collection.")
+			l.Metadata().UpdateState(unhealthyState)
 			break
 		}
 
@@ -58,10 +64,6 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 	}
 
 	l.Metadata().UpdateState(stoppedState)
-}
-
-func (l *ThrottledWholeCollectionCycle) UpdateConfiguration() {
-
 }
 
 func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
