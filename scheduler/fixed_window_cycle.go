@@ -28,7 +28,7 @@ func (s *FixedWindowCycle) Start() {
 	s.Metadata().UpdateState(startingState)
 
 	throttle := func(publishes int) (Throttle, context.CancelFunc) {
-		return NewDynamicThrottle(s.minimumThrottle, s.timeWindow, publishes, 1)
+		return NewDynamicThrottle(s.timeWindow, s.minimumThrottle, publishes, 1)
 	}
 	go s.start(ctx, throttle)
 }

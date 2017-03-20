@@ -42,7 +42,7 @@ func (s *ScalingWindowCycle) Start() {
 	s.Metadata().UpdateState(startingState)
 
 	throttle := func(publishes int) (Throttle, context.CancelFunc) {
-		return NewCappedDynamicThrottle(s.minimumThrottle, s.maximumThrottle, s.timeWindow, publishes, 1)
+		return NewCappedDynamicThrottle(s.timeWindow, s.minimumThrottle, s.maximumThrottle, publishes, 1)
 	}
 	go s.start(ctx, throttle)
 }

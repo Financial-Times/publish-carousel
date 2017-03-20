@@ -49,7 +49,7 @@ func determineRateInterval(interval time.Duration, minThrottle time.Duration, ma
 	return publishDelay
 }
 
-func NewDynamicThrottle(minimumThrottle time.Duration, interval time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
+func NewDynamicThrottle(interval time.Duration, minimumThrottle time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
 	publishDelay := time.Duration(interval.Nanoseconds() / int64(publishes))
 	if publishDelay < minimumThrottle {
 		interval = minimumThrottle
