@@ -6,6 +6,7 @@ cycles:
       type: ThrottledWholeCollection
       origin: non-existent-origin
       collection: methode
+      coolDown: 5m
       throttle: globalThrottle
 
    -  name: methode-one-hour
