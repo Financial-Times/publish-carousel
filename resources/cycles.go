@@ -116,6 +116,7 @@ func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 	}
 }
 
+// ResetCycle stops and completely resets the given cycle
 func ResetCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
@@ -132,6 +133,7 @@ func ResetCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.R
 	}
 }
 
+// StopCycle stops the given cycle ID
 func StopCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()

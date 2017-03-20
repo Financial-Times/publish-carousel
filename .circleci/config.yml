@@ -40,7 +40,7 @@ jobs:
           command: |
             sed -i '1d' /tmp/coverage-results/*.out
             echo "mode: atomic" > /tmp/coverage-results/overall-coverage.result
-            cat /tmp/coverage-results/*.out >> overall-coverage.result
+            cat /tmp/coverage-results/*.out >> /tmp/coverage-results/overall-coverage.result
       - run:
           name: Upload Coverage
           command: /go/bin/goveralls -coverprofile=/tmp/coverage-results/overall-coverage.result -service=circle-ci -repotoken=$COVERALLS_TOKEN
