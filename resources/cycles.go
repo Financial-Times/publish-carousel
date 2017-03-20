@@ -15,7 +15,7 @@ func GetCycles(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Re
 		w.Header().Add("Content-Type", "application/json")
 		cycles := sched.Cycles()
 
-		var arr []scheduler.Cycle
+		arr := make([]scheduler.Cycle, 0)
 		for _, c := range cycles {
 			arr = append(arr, c)
 		}
@@ -100,6 +100,7 @@ func DeleteCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 	}
 }
 
+// ResumeCycle resumes the stopped cycle.
 func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
@@ -111,6 +112,7 @@ func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 			return
 		}
 
+		//TODO: Add stopped validation?
 		cycle.Start()
 		w.WriteHeader(http.StatusOK)
 	}
