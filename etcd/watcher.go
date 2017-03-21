@@ -13,6 +13,7 @@ import (
 // Watcher see Watch func for details
 type Watcher interface {
 	Watch(key string, callback func(val string))
+	Read(key string) (string, error)
 }
 
 type etcdWatcher struct {
@@ -43,6 +44,15 @@ func NewEtcdWatcher(endpointsList []string) (Watcher, error) {
 	return &etcdWatcher{api}, nil
 }
 
+func (e *etcdWatcher) Read(key string) (string, error) {
+	resp, err := e.api.Get(context.Background(), key, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Node.Value, nil
+}
+
 // Watch starts an etcd watch on a given key, and triggers the callback when found
 func (e *etcdWatcher) Watch(key string, callback func(val string)) {
 	watcher := e.api.Watcher(key, &etcdClient.WatcherOptions{AfterIndex: 0, Recursive: false})
@@ -50,7 +60,7 @@ func (e *etcdWatcher) Watch(key string, callback func(val string)) {
 	for {
 		resp, err := watcher.Next(context.Background())
 		if err != nil {
-			log.Info("Error waiting for change under %v in etcd. %v\n Sleeping 10s...", key, err.Error())
+			log.Info("Error waiting for change under %v in etcd. %v\n Sleeping 10s", key, err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		}

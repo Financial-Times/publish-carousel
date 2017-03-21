@@ -22,9 +22,6 @@ const disabled = false
 // which handles the publish cycles.
 type Scheduler interface {
 	Cycles() map[string]Cycle
-	Throttles() map[string]Throttle
-	AddThrottle(name string, throttleInterval string) error
-	DeleteThrottle(name string) error
 	NewCycle(config CycleConfig) (Cycle, error)
 	AddCycle(cycle Cycle) error
 	DeleteCycle(cycleID string) error
@@ -39,9 +36,7 @@ type defaultScheduler struct {
 	publishTask                tasks.Task
 	database                   native.DB
 	cycles                     map[string]Cycle
-	throttles                  map[string]Throttle
 	metadataReadWriter         MetadataReadWriter
-	throttleLock               *sync.RWMutex
 	cycleLock                  *sync.RWMutex
 	currentExecutionStateLock  *sync.RWMutex
 	previousExecutionStateLock *sync.RWMutex
@@ -57,10 +52,8 @@ func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter
 		database:                   database,
 		publishTask:                publishTask,
 		cycles:                     map[string]Cycle{},
-		throttles:                  map[string]Throttle{},
 		metadataReadWriter:         metadataReadWriter,
 		cycleLock:                  &sync.RWMutex{},
-		throttleLock:               &sync.RWMutex{},
 		currentExecutionStateLock:  &sync.RWMutex{},
 		previousExecutionStateLock: &sync.RWMutex{},
 		toggleLock:                 &sync.RWMutex{},
@@ -76,14 +69,7 @@ func (s *defaultScheduler) Cycles() map[string]Cycle {
 	return s.cycles
 }
 
-func (s *defaultScheduler) Throttles() map[string]Throttle {
-	s.throttleLock.RLock()
-	defer s.throttleLock.RUnlock()
-	return s.throttles
-}
-
 func (s *defaultScheduler) AddCycle(c Cycle) error {
-
 	if _, ok := s.cycles[c.ID()]; ok {
 		return fmt.Errorf("Conflicting ID found for cycle %v", c.ID())
 	}
@@ -111,42 +97,6 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 	}
 	c.Stop()
 	delete(s.cycles, cycleID)
-	return nil
-}
-
-func (s *defaultScheduler) AddThrottle(name string, throttleInterval string) error {
-	if strings.TrimSpace(name) == "" {
-		return errors.New("Invalid throttle name")
-	}
-
-	interval, err := time.ParseDuration(throttleInterval)
-	if err != nil {
-		return fmt.Errorf("Error parsing throttle interval for %v: %v", name, err)
-	}
-
-	if _, ok := s.throttles[name]; ok {
-		return fmt.Errorf("Conflicting throttle name: %v ", name)
-	}
-
-	t, _ := NewThrottle(interval, 1)
-	s.throttleLock.Lock()
-	defer s.throttleLock.Unlock()
-	s.throttles[name] = t
-
-	return nil
-}
-
-func (s *defaultScheduler) DeleteThrottle(name string) error {
-	s.throttleLock.Lock()
-	defer s.throttleLock.Unlock()
-
-	t, ok := s.throttles[name]
-	if !ok {
-		return fmt.Errorf("Cannot delete throttle: throttle with name %v not found", name)
-	}
-
-	t.Stop()
-	delete(s.throttles, name)
 	return nil
 }
 
@@ -268,10 +218,8 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 
 	switch strings.ToLower(config.Type) {
 	case "throttledwholecollection":
-		t, ok := s.Throttles()[config.Throttle]
-		if !ok {
-			return nil, fmt.Errorf("Throttle not found for cycle %v", config.Name)
-		}
+		throttleInterval, _ := time.ParseDuration(config.Throttle)
+		t, _ := NewThrottle(throttleInterval, 1)
 		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
 	case "fixedwindow":

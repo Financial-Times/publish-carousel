@@ -1,13 +1,10 @@
-throttles:
-   globalThrottle: 15s
-
 cycles:
    -  name: methode-whole-archive
       type: ThrottledWholeCollection
       origin: methode-web-pub
       collection: methode
       coolDown: 5m
-      throttle: globalThrottle
+      throttle: 15s
 
    -  name: methode-one-hour
       type: ScalingWindow
@@ -23,7 +20,7 @@ cycles:
       origin: wordpress
       collection: wordpress
       coolDown: 5m
-      throttle: globalThrottle
+      throttle: 15s
 
    -  name: wordpress-one-hour
       type: ScalingWindow
@@ -39,7 +36,7 @@ cycles:
       origin: brightcove
       collection: brightcove
       coolDown: 5m
-      throttle: globalThrottle
+      throttle: 15s
 
    -  name: brightcove-one-hour
       type: ScalingWindow

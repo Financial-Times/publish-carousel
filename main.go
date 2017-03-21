@@ -105,20 +105,30 @@ func main() {
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
-		if (err) != nil {
+		if err != nil {
 			panic(err)
 		}
 
 		sched, err := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
 		//TODO: do something with this error
-		if (err) != nil {
+		if err != nil {
 			log.WithError(err).Error("Failed to load cycles configuration file")
 		}
 
-		etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
+		toggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
+		if err != nil {
+			panic(err) // TODO: do something better
+		}
+
+		sched.ToggleHandler(toggle)
+
+		go etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
 
 		sched.RestorePreviousState()
-		sched.Start()
+		err = sched.Start()
+		if err != nil {
+			panic(err)
+		}
 
 		shutdown(sched)
 		serve(mongo, sched, s3rw, notifier)

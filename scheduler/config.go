@@ -15,8 +15,7 @@ import (
 )
 
 type cycleSetupConfig struct {
-	Throttles map[string]string `yaml:"throttles"`
-	Cycles    []CycleConfig     `yaml:"cycles"`
+	Cycles []CycleConfig `yaml:"cycles"`
 }
 
 type CycleConfig struct {
@@ -51,8 +50,8 @@ func (c CycleConfig) Validate() error {
 
 	switch strings.ToLower(c.Type) {
 	case "throttledwholecollection":
-		if strings.TrimSpace(c.Throttle) == "" {
-			return fmt.Errorf("Please provide a valid throttle name for cycle %v", c.Name)
+		if err := checkDurations(c.Name, c.Throttle); err != nil {
+			return err
 		}
 
 	case "fixedwindow":
@@ -92,13 +91,6 @@ func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks
 	err = yaml.Unmarshal(fileData, &setup)
 	if err != nil {
 		return scheduler, err
-	}
-
-	for name, duration := range setup.Throttles {
-		err := scheduler.AddThrottle(name, duration)
-		if err != nil {
-			log.WithError(err).WithField("throttle", name).WithField("timeWindow", duration).Warn("Skipping throttle, this will invalidate any cycles which use this throttle.")
-		}
 	}
 
 	for _, cycleConfig := range setup.Cycles {
