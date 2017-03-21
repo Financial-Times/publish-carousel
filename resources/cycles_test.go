@@ -11,7 +11,7 @@ import (
 )
 
 func TestGetCycles(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 	cycles := make(map[string]scheduler.Cycle)
 
 	cycle := scheduler.ScalingWindowCycle{MaximumThrottle: `maxThrottle`}
@@ -28,7 +28,7 @@ func TestGetCycles(t *testing.T) {
 }
 
 func TestGetCyclesForID(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 	cycles := make(map[string]scheduler.Cycle)
 
 	cycle := scheduler.ScalingWindowCycle{MaximumThrottle: `maxThrottle`}
@@ -45,7 +45,7 @@ func TestGetCyclesForID(t *testing.T) {
 }
 
 func TestGetCyclesForIDCycleNotFound(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 	cycles := make(map[string]scheduler.Cycle)
 
 	sched.On("Cycles").Return(cycles)
@@ -58,7 +58,7 @@ func TestGetCyclesForIDCycleNotFound(t *testing.T) {
 }
 
 func TestDeleteCycle(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 	sched.On("DeleteCycle", "hello").Return(nil)
 
 	req := httptest.NewRequest("DELETE", "/cycles/hello", nil)
@@ -69,7 +69,7 @@ func TestDeleteCycle(t *testing.T) {
 }
 
 func TestDeleteCycleFails(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 	sched.On("DeleteCycle", "hello").Return(errors.New(`nope didn't delete`))
 
 	req := httptest.NewRequest("DELETE", "/cycles/hello", nil)
@@ -80,8 +80,8 @@ func TestDeleteCycleFails(t *testing.T) {
 }
 
 func TestResumeCycle(t *testing.T) {
-	sched := new(MockScheduler)
-	cycle := new(MockCycle)
+	sched := new(scheduler.MockScheduler)
+	cycle := new(scheduler.MockCycle)
 
 	cycles := make(map[string]scheduler.Cycle)
 	cycles["hello"] = cycle
@@ -97,7 +97,7 @@ func TestResumeCycle(t *testing.T) {
 }
 
 func TestResumeCycleNotFound(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 
 	cycles := make(map[string]scheduler.Cycle)
 
@@ -111,8 +111,8 @@ func TestResumeCycleNotFound(t *testing.T) {
 }
 
 func TestResetCycle(t *testing.T) {
-	sched := new(MockScheduler)
-	cycle := new(MockCycle)
+	sched := new(scheduler.MockScheduler)
+	cycle := new(scheduler.MockCycle)
 
 	cycles := make(map[string]scheduler.Cycle)
 	cycles["hello"] = cycle
@@ -128,7 +128,7 @@ func TestResetCycle(t *testing.T) {
 }
 
 func TestResetCycleNotFound(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 
 	cycles := make(map[string]scheduler.Cycle)
 
@@ -142,8 +142,8 @@ func TestResetCycleNotFound(t *testing.T) {
 }
 
 func TestStopCycle(t *testing.T) {
-	sched := new(MockScheduler)
-	cycle := new(MockCycle)
+	sched := new(scheduler.MockScheduler)
+	cycle := new(scheduler.MockCycle)
 
 	cycles := make(map[string]scheduler.Cycle)
 	cycles["hello"] = cycle
@@ -159,7 +159,7 @@ func TestStopCycle(t *testing.T) {
 }
 
 func TestStopCycleNotFound(t *testing.T) {
-	sched := new(MockScheduler)
+	sched := new(scheduler.MockScheduler)
 
 	cycles := make(map[string]scheduler.Cycle)
 

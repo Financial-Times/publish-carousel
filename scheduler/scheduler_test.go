@@ -14,10 +14,10 @@ const expectedColletion = "a-collection"
 
 func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MetadataRWMock{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
 
-	c1 := new(CycleMock)
-	c2 := new(CycleMock)
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
 
 	c1.On("ID").Return("id1")
 	c2.On("ID").Return("id2")
@@ -41,10 +41,10 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MetadataRWMock{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
 
-	c1 := new(CycleMock)
-	c2 := new(CycleMock)
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
 
 	c1.On("ID").Return("id1")
 	c2.On("ID").Return("id2")
@@ -65,10 +65,10 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 func TestSchedulerResumeAfterDisable(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MetadataRWMock{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
 
-	c1 := new(CycleMock)
-	c2 := new(CycleMock)
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
 
 	c1.On("ID").Return("id1")
 	c2.On("ID").Return("id2")
@@ -129,10 +129,10 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 
 func TestSchedulerInvalidToggleValue(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MetadataRWMock{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
 
-	c1 := new(CycleMock)
-	c2 := new(CycleMock)
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
 
 	c1.On("ID").Return("id1")
 	c2.On("ID").Return("id2")

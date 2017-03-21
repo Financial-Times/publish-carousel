@@ -76,10 +76,15 @@ func CreateCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		err = sched.AddCycle(cycleConfig)
+		cycle, err := sched.NewCycle(cycleConfig)
 		if err != nil {
 			log.WithError(err).WithField("cycle", cycleConfig.Name).Warn("Failed to create new cycle.")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = sched.AddCycle(cycle)
+		if err != nil {
+			log.WithError(err).WithField("cycle", cycleConfig.Name).Warn("Failed to add the cycle to the scheduler")
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
