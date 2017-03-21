@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
-
-	"gopkg.in/yaml.v2"
 )
 
 type cycleSetupConfig struct {
@@ -101,10 +101,14 @@ func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks
 		}
 	}
 
-	for _, cycle := range setup.Cycles {
-		err := scheduler.AddCycle(cycle)
+	for _, cycleConfig := range setup.Cycles {
+		cycle, err := scheduler.NewCycle(cycleConfig)
 		if err != nil {
-			log.WithError(err).WithField("cycle", cycle.Name).Warn("Skipping cycle")
+			log.WithError(err).WithField("cycleName", cycleConfig.Name).Warn("Skipping cycle")
+		}
+		err = scheduler.AddCycle(cycle)
+		if err != nil {
+			log.WithError(err).WithField("cycleName", cycleConfig.Name).Warn("Skipping cycle")
 		}
 	}
 

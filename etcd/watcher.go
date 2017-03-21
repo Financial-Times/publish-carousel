@@ -1,13 +1,12 @@
-package cluster
+package etcd
 
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	etcd "github.com/coreos/etcd/client"
+	etcdClient "github.com/coreos/etcd/client"
 	"golang.org/x/net/proxy"
 )
 
@@ -17,36 +16,36 @@ type Watcher interface {
 }
 
 type etcdWatcher struct {
-	api etcd.KeysAPI
+	api etcdClient.KeysAPI
 }
 
 // NewEtcdWatcher returns a new etcd watcher
-func NewEtcdWatcher(connection string) (Watcher, error) {
+func NewEtcdWatcher(endpointsList []string) (Watcher, error) {
 	transport := &http.Transport{
 		Dial: proxy.Direct.Dial,
 		ResponseHeaderTimeout: 10 * time.Second,
 		MaxIdleConnsPerHost:   100,
 	}
 
-	etcdCfg := etcd.Config{
-		Endpoints:               strings.Split(connection, ","),
+	etcdCfg := etcdClient.Config{
+		Endpoints:               endpointsList,
 		Transport:               transport,
 		HeaderTimeoutPerRequest: 10 * time.Second,
 	}
 
-	etcdClient, err := etcd.New(etcdCfg)
+	client, err := etcdClient.New(etcdCfg)
 	if err != nil {
 		log.Printf("Cannot load etcd configuration: [%v]", err)
 		return nil, err
 	}
 
-	api := etcd.NewKeysAPI(etcdClient)
+	api := etcdClient.NewKeysAPI(client)
 	return &etcdWatcher{api}, nil
 }
 
 // Watch starts an etcd watch on a given key, and triggers the callback when found
 func (e *etcdWatcher) Watch(key string, callback func(val string)) {
-	watcher := e.api.Watcher(key, &etcd.WatcherOptions{AfterIndex: 0, Recursive: false})
+	watcher := e.api.Watcher(key, &etcdClient.WatcherOptions{AfterIndex: 0, Recursive: false})
 
 	for {
 		resp, err := watcher.Next(context.Background())

@@ -9,6 +9,7 @@ import (
 
 	ui "github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/cms"
+	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/s3"
@@ -76,6 +77,18 @@ func main() {
 			EnvVar: "MONGO_DB_TIMEOUT",
 			Usage:  "The timeout (in milliseconds) for Mongo DB connections.",
 		},
+		cli.StringSliceFlag{
+			Name:   "etcd-peers",
+			Value:  &cli.StringSlice{"http://localhost:2379"},
+			EnvVar: "ETCD_PEERS",
+			Usage:  `The list of ETCD peers (e,g. "http://localhost:2379")`,
+		},
+		cli.StringFlag{
+			Name:   "toggle-etcd-key",
+			Value:  "/ft/config/publish-carousel/enable",
+			EnvVar: "TOGGLE_ETCD_KEY",
+			Usage:  "The ETCD key that enables or disables the carousel",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -91,7 +104,18 @@ func main() {
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 
-		sched, _ := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw) //TODO: do something with this error
+		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
+		if (err) != nil {
+			panic(err)
+		}
+
+		sched, err := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
+		//TODO: do something with this error
+		if (err) != nil {
+			log.WithError(err).Error("Failed to load cycles configuration file")
+		}
+
+		etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
 
 		sched.RestorePreviousState()
 		sched.Start()
