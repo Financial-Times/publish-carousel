@@ -102,12 +102,16 @@ func main() {
 			panic(err)
 		}
 
-		sched, err := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw) //TODO: do something with this error
+		sched, err := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
+		//TODO: do something with this error
 		if (err) != nil {
-			panic(err)
+			log.WithError(err).Error("Failed to load cycles configuration file")
 		}
 
 		etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
+
+		sched.RestorePreviousState()
+		sched.Start()
 
 		shutdown(sched)
 		serve(mongo, sched, s3rw)

@@ -13,12 +13,20 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const running = true
+const stopped = false
+const enabled = true
+const disabled = false
+
+// Scheduler is the main component of the publish carousel,
+// which handles the publish cycles.
 type Scheduler interface {
 	Cycles() map[string]Cycle
 	Throttles() map[string]Throttle
 	AddThrottle(name string, throttleInterval string) error
 	DeleteThrottle(name string) error
-	AddCycle(config CycleConfig) error
+	NewCycle(config CycleConfig) (Cycle, error)
+	AddCycle(cycle Cycle) error
 	DeleteCycle(cycleID string) error
 	RestorePreviousState()
 	SaveCycleMetadata()
@@ -28,32 +36,37 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask        tasks.Task
-	database           native.DB
-	cycles             map[string]Cycle
-	throttles          map[string]Throttle
-	metadataReadWriter MetadataReadWriter
-	throttleLock       *sync.RWMutex
-	cycleLock          *sync.RWMutex
-	isRunningLock      *sync.RWMutex
-	isEnabledLock      *sync.RWMutex
-	running            bool
-	enabled            bool
+	publishTask                tasks.Task
+	database                   native.DB
+	cycles                     map[string]Cycle
+	throttles                  map[string]Throttle
+	metadataReadWriter         MetadataReadWriter
+	throttleLock               *sync.RWMutex
+	cycleLock                  *sync.RWMutex
+	currentExecutionStateLock  *sync.RWMutex
+	previousExecutionStateLock *sync.RWMutex
+	toggleLock                 *sync.RWMutex
+	currentExecutionState      bool
+	previousExecutionState     bool
+	toggle                     bool
 }
 
+// NewScheduler returns a new instance of the cycles scheduler
 func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter) Scheduler {
 	return &defaultScheduler{
-		database:           database,
-		publishTask:        publishTask,
-		cycles:             map[string]Cycle{},
-		throttles:          map[string]Throttle{},
-		metadataReadWriter: metadataReadWriter,
-		cycleLock:          &sync.RWMutex{},
-		throttleLock:       &sync.RWMutex{},
-		isRunningLock:      &sync.RWMutex{},
-		isEnabledLock:      &sync.RWMutex{},
-		running:            false,
-		enabled:            false,
+		database:                   database,
+		publishTask:                publishTask,
+		cycles:                     map[string]Cycle{},
+		throttles:                  map[string]Throttle{},
+		metadataReadWriter:         metadataReadWriter,
+		cycleLock:                  &sync.RWMutex{},
+		throttleLock:               &sync.RWMutex{},
+		currentExecutionStateLock:  &sync.RWMutex{},
+		previousExecutionStateLock: &sync.RWMutex{},
+		toggleLock:                 &sync.RWMutex{},
+		currentExecutionState:      stopped,
+		previousExecutionState:     stopped,
+		toggle:                     disabled,
 	}
 }
 
@@ -69,36 +82,10 @@ func (s *defaultScheduler) Throttles() map[string]Throttle {
 	return s.throttles
 }
 
-func (s *defaultScheduler) AddCycle(config CycleConfig) error {
-	err := config.Validate()
-	if err != nil {
-		return err
-	}
-
-	var c Cycle
-	switch strings.ToLower(config.Type) {
-	case "throttledwholecollection":
-		t, ok := s.Throttles()[config.Throttle]
-		if !ok {
-			return fmt.Errorf("Throttle not found for cycle %v", config.Name)
-		}
-		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, t, s.publishTask)
-
-	case "fixedwindow":
-		interval, _ := time.ParseDuration(config.TimeWindow)
-		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, interval, minimumThrottle, s.publishTask)
-
-	case "scalingwindow":
-		timeWindow, _ := time.ParseDuration(config.TimeWindow)
-		coolDown, _ := time.ParseDuration(config.CoolDown)
-		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
-		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
-	}
+func (s *defaultScheduler) AddCycle(c Cycle) error {
 
 	if _, ok := s.cycles[c.ID()]; ok {
-		return fmt.Errorf("Conflicting ID found for cycle %v", config.Name)
+		return fmt.Errorf("Conflicting ID found for cycle %v", c.ID())
 	}
 
 	s.cycleLock.Lock()
@@ -203,6 +190,8 @@ func (s *defaultScheduler) Start() error {
 		return errors.New("carousel scheduler is already running")
 	}
 
+	s.setCurrentExecutionState(running)
+
 	for id, cycle := range s.cycles {
 		switch cycle.Metadata().State {
 		case stoppedState:
@@ -213,8 +202,6 @@ func (s *defaultScheduler) Start() error {
 			cycle.Start()
 		}
 	}
-
-	s.setRunningState(true)
 	return nil
 }
 
@@ -227,51 +214,82 @@ func (s *defaultScheduler) Shutdown() error {
 		return errors.New("carousel scheduler have been already shutted down")
 	}
 
-	for _, cycle := range s.cycles {
+	for id, cycle := range s.cycles {
+		log.WithField("id", id).Info("Stopping cycle.")
 		cycle.Stop()
 	}
-
-	s.setRunningState(false)
+	s.setCurrentExecutionState(stopped)
 	return nil
 }
 
 func (s *defaultScheduler) ToggleHandler(toggleValue string) {
-	shouldBeEnabled, err := strconv.ParseBool(toggleValue)
+	toggleState, err := strconv.ParseBool(toggleValue)
 	if err != nil {
 		log.WithError(err).Error("Invalid toggle value for carousel scheduler")
 	}
-	if shouldBeEnabled && !s.isEnabled() && s.isRunning() {
-		s.RestorePreviousState()
-		s.Start()
-	}
-	if !shouldBeEnabled && s.isEnabled() && s.isRunning() {
-		s.Shutdown()
+	if toggleState == disabled && s.isEnabled() && s.isRunning() {
+		log.Info("Disabling carousel scheduler...")
+		err := s.Shutdown()
+		if err != nil {
+			log.WithError(err).Error("Error in stopping carousel scheduler")
+			return
+		}
 		s.SaveCycleMetadata()
 	}
-
-	s.setEnableState(shouldBeEnabled)
+	s.setToggleState(toggleState)
 }
 
 func (s *defaultScheduler) isEnabled() bool {
-	s.isEnabledLock.RLock()
-	defer s.isEnabledLock.RUnlock()
-	return s.enabled
+	s.toggleLock.RLock()
+	defer s.toggleLock.RUnlock()
+	return s.toggle
 }
 
-func (s *defaultScheduler) setEnableState(state bool) {
-	s.isEnabledLock.Lock()
-	defer s.isEnabledLock.Unlock()
-	s.enabled = state
+func (s *defaultScheduler) setToggleState(state bool) {
+	s.toggleLock.Lock()
+	defer s.toggleLock.Unlock()
+	s.toggle = state
 }
 
 func (s *defaultScheduler) isRunning() bool {
-	s.isRunningLock.RLock()
-	defer s.isRunningLock.RUnlock()
-	return s.running
+	s.currentExecutionStateLock.RLock()
+	defer s.currentExecutionStateLock.RUnlock()
+	return s.currentExecutionState
 }
 
-func (s *defaultScheduler) setRunningState(state bool) {
-	s.isRunningLock.Lock()
-	defer s.isRunningLock.Unlock()
-	s.running = state
+func (s *defaultScheduler) setCurrentExecutionState(state bool) {
+	s.currentExecutionStateLock.Lock()
+	defer s.currentExecutionStateLock.Unlock()
+	s.currentExecutionState = state
+}
+
+func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
+	err := config.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	var c Cycle
+	switch strings.ToLower(config.Type) {
+	case "throttledwholecollection":
+		t, ok := s.Throttles()[config.Throttle]
+		if !ok {
+			return nil, fmt.Errorf("Throttle not found for cycle %v", config.Name)
+		}
+		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, t, s.publishTask)
+
+	case "fixedwindow":
+		interval, _ := time.ParseDuration(config.TimeWindow)
+		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
+		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, interval, minimumThrottle, s.publishTask)
+
+	case "scalingwindow":
+		timeWindow, _ := time.ParseDuration(config.TimeWindow)
+		coolDown, _ := time.ParseDuration(config.CoolDown)
+		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
+		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
+		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
+	}
+
+	return c, nil
 }
