@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	ui "github.com/Financial-Times/publish-carousel-ui"
@@ -104,15 +105,13 @@ func main() {
 
 func shutdown(sched scheduler.Scheduler) {
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, os.Kill)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
-		for sig := range signals {
-			if sig == os.Interrupt {
-				log.Info("Saving current carousel state to S3.")
-				sched.SaveCycleMetadata()
-				os.Exit(0)
-			}
-		}
+		<-signals
+		log.Info("Saving current carousel state to S3.")
+		sched.SaveCycleMetadata()
+		os.Exit(0)
 	}()
 }
 
