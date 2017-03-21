@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pborman/uuid"
 
 	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const mongoCursorTimeout = 10 * time.Minute
@@ -23,10 +25,6 @@ type NativeUUIDCollection struct {
 	collection string
 	iter       *mgo.Iter
 	length     int
-}
-
-type contentUUID struct {
-	UUID string `json:"uuid" bson:"uuid"`
 }
 
 func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start time.Time, end time.Time, maximumThrottle time.Duration) (UUIDCollection, error) {
@@ -83,9 +81,7 @@ func NewNativeUUIDCollection(mongo DB, collection string, skip int, maximumThrot
 }
 
 func (n *NativeUUIDCollection) Next() (bool, string, error) {
-	result := struct {
-		Content contentUUID `bson:"content"`
-	}{}
+	result := map[string]interface{}{}
 
 	success := n.iter.Next(&result)
 
@@ -94,14 +90,23 @@ func (n *NativeUUIDCollection) Next() (bool, string, error) {
 	}
 
 	if n.iter.Timeout() {
-		return true, result.Content.UUID, errors.New("Mongo timeout detected")
+		return true, "", errors.New("Mongo timeout detected")
 	}
 
 	if !success {
 		return true, "", nil
 	}
 
-	return false, result.Content.UUID, nil
+	val, ok := result["uuid"]
+	if !ok {
+		return false, "", nil // this document has no uuid
+	}
+
+	return false, parseBinaryUUID(val), nil
+}
+
+func parseBinaryUUID(bin interface{}) string {
+	return uuid.UUID(bin.(bson.Binary).Data).String()
 }
 
 func (n *NativeUUIDCollection) Close() error {

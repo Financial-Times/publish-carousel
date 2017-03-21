@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -95,11 +96,13 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		finished, uuid, err := collection.Next()
 		if finished {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
+			a.updateState("", err)
 			return false, err
 		}
 
 		if strings.TrimSpace(uuid) == "" {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
+			a.updateState(uuid, errors.New("Empty uuid"))
 			continue
 		}
 

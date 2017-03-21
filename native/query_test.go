@@ -22,7 +22,7 @@ func TestReadNativeContentQuery(t *testing.T) {
 func TestFindUUIDs(t *testing.T) {
 	query, projection := findUUIDs()
 	assert.Equal(t, bson.M{}, query)
-	assert.Equal(t, contentUUIDProjection, projection)
+	assert.Equal(t, uuidProjection, projection)
 }
 
 func TestFindUUIDsForTimeWindow(t *testing.T) {
@@ -34,5 +34,5 @@ func TestFindUUIDsForTimeWindow(t *testing.T) {
 	data, err := bson.MarshalJSON(query)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"$and":[{"content.lastModified":{"$gte":"2017-03-15T23:59:00Z"}},{"content.lastModified":{"$lt":"2017-03-16T00:00:00Z"}}]}`, strings.TrimSpace(string(data)))
-	assert.Equal(t, contentUUIDProjection, projection)
+	assert.Equal(t, uuidProjection, projection)
 }

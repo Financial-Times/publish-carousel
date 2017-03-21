@@ -76,13 +76,16 @@ func TestFindByUUID(t *testing.T) {
 
 	found := false
 	for !iter.Done() {
-		result := struct {
-			Content contentUUID `bson:"content"`
-		}{}
+		result := map[string]interface{}{}
 		iter.Next(&result)
 
-		t.Log(result.Content.UUID)
-		if result.Content.UUID == testUUID {
+		t.Log(result)
+		val, ok := result["uuid"]
+		if !ok {
+			continue
+		}
+
+		if parseBinaryUUID(val) == testUUID {
 			found = true
 		}
 	}
@@ -112,13 +115,11 @@ func TestFindByTimeWindow(t *testing.T) {
 
 	found := false
 	for !iter.Done() {
-		result := struct {
-			Content contentUUID `bson:"content"`
-		}{}
+		result := map[string]interface{}{}
 		iter.Next(&result)
 
-		t.Log(result.Content.UUID)
-		if result.Content.UUID == testUUID {
+		t.Log(result)
+		if parseBinaryUUID(result["uuid"]) == testUUID {
 			found = true
 		}
 	}
