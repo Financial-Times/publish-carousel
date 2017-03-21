@@ -29,14 +29,14 @@ func NewScalingWindowCycle(
 
 	base := newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, coolDown, publishTask)
 	return &ScalingWindowCycle{
-		newAbstractTimeWindowedCycle(base, timeWindow, minimumThrottle),
+		newAbstractTimeWindowedCycle(base, timeWindow, minimumThrottle, maximumThrottle),
 		maximumThrottle,
 		maximumThrottle.String(),
 	}
 }
 
 func (s *ScalingWindowCycle) Start() {
-	log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
+	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Metadata().UpdateState(startingState)

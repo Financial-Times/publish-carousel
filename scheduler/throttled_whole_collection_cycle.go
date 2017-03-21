@@ -20,7 +20,7 @@ func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection st
 }
 
 func (l *ThrottledWholeCollectionCycle) Start() {
-	log.WithField("id", l.ID).WithField("name", l.Name).WithField("collection", l.DBCollection).Info("Starting throttled whole collection cycle.")
+	log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).Info("Starting throttled whole collection cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
 	l.Metadata().UpdateState(startingState)
@@ -34,9 +34,9 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 	}
 
 	for {
-		uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip)
+		uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
 		if err != nil {
-			log.WithField("id", l.ID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
+			log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
 			l.Metadata().UpdateState(unhealthyState, coolDownState)
 			time.Sleep(l.coolDown)
 			skip = l.CycleMetadata.Completed
@@ -55,7 +55,7 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 		}
 
 		if err != nil {
-			log.WithField("id", l.ID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
+			log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
 			l.Metadata().UpdateState(unhealthyState)
 			break
 		}

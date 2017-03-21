@@ -13,16 +13,18 @@ type abstractTimeWindowedCycle struct {
 	*abstractCycle
 	timeWindow      time.Duration
 	minimumThrottle time.Duration
+	batchDuration   time.Duration
 
 	TimeWindow      string `json:"timeWindow"`
 	MinimumThrottle string `json:"minimumThrottle"`
 }
 
-func newAbstractTimeWindowedCycle(base *abstractCycle, timeWindow time.Duration, minimumThrottle time.Duration) *abstractTimeWindowedCycle {
+func newAbstractTimeWindowedCycle(base *abstractCycle, timeWindow time.Duration, minimumThrottle time.Duration, batchDuration time.Duration) *abstractTimeWindowedCycle {
 	return &abstractTimeWindowedCycle{
 		base,
 		timeWindow,
 		minimumThrottle,
+		batchDuration,
 		timeWindow.String(),
 		minimumThrottle.String(),
 	}
@@ -33,11 +35,11 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 	startTime := endTime.Add(-1 * s.timeWindow)
 
 	for {
-		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
+		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
 		if err != nil {
-			log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
-			endTime = s.performCooldown(unhealthyState, coolDownState)
-			continue
+			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
+			s.Metadata().UpdateState(unhealthyState)
+			break
 		}
 
 		copiedTime := startTime // Copy so that we don't change the time for the cycle
@@ -58,9 +60,9 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 		}
 
 		if err != nil {
-			log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
-			endTime = s.performCooldown(unhealthyState, coolDownState)
-			continue
+			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
+			s.Metadata().UpdateState(unhealthyState)
+			break
 		}
 
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration

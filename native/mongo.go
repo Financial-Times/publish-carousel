@@ -25,8 +25,8 @@ type DB interface {
 // TX contains database transaction functions
 type TX interface {
 	ReadNativeContent(collectionId string, uuid string) (*Content, error)
-	FindUUIDsInTimeWindow(collectionId string, start time.Time, end time.Time) (*mgo.Iter, int, error)
-	FindUUIDs(collectionId string, skip int) (*mgo.Iter, int, error)
+	FindUUIDsInTimeWindow(collectionId string, start time.Time, end time.Time, batchsize int) (*mgo.Iter, int, error)
+	FindUUIDs(collectionId string, skip int, batchsize int) (*mgo.Iter, int, error)
 	Ping() error
 	Close()
 }
@@ -70,21 +70,21 @@ func (db *MongoDB) Open() (TX, error) {
 }
 
 // FindUUIDsInTimeWindow queries mongo for a list of uuids and returns an iterator
-func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, end time.Time) (*mgo.Iter, int, error) {
+func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, end time.Time, batchsize int) (*mgo.Iter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query, projection := findUUIDsForTimeWindow(start, end)
-	find := collection.Find(query).Select(projection)
+	find := collection.Find(query).Select(projection).Batch(batchsize)
 
 	length, err := find.Count()
 	return find.Iter(), length, err
 }
 
-func (tx *MongoTX) FindUUIDs(collectionID string, skip int) (*mgo.Iter, int, error) {
+func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (*mgo.Iter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query, projection := findUUIDs()
-	find := collection.Find(query).Select(projection)
+	find := collection.Find(query).Select(projection).Batch(batchsize)
 
 	if skip > 0 {
 		find.Skip(skip)

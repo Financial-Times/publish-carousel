@@ -2,10 +2,15 @@ package native
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 
 	mgo "gopkg.in/mgo.v2"
 )
+
+const mongoCursorTimeout = 10 * time.Minute
 
 type UUIDCollection interface {
 	Next() (bool, string, error)
@@ -24,13 +29,18 @@ type contentUUID struct {
 	UUID string `json:"uuid" bson:"uuid"`
 }
 
-func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start time.Time, end time.Time) (UUIDCollection, error) {
+func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start time.Time, end time.Time, maximumThrottle time.Duration) (UUIDCollection, error) {
 	tx, err := mongo.Open()
 	if err != nil {
 		return nil, err
 	}
 
-	iter, length, err := tx.FindUUIDsInTimeWindow(collection, start, end)
+	batchsize, err := computeBatchsize(maximumThrottle)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, length, err := tx.FindUUIDsInTimeWindow(collection, start, end, batchsize)
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +48,33 @@ func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start tim
 	return &NativeUUIDCollection{collection: collection, iter: iter, length: length}, nil
 }
 
-func NewNativeUUIDCollection(mongo DB, collection string, skip int) (UUIDCollection, error) {
+// This computes the batch size to use for the mongo cursor. We need to ensure the cursor does not timeout server side during the cycle
+func computeBatchsize(interval time.Duration) (int, error) {
+	if interval >= mongoCursorTimeout {
+		return -1, fmt.Errorf("Cannot have an interval greater than the mongo default timeout. Interval %v, mongo timeout %v", interval.String(), mongoCursorTimeout.String())
+	}
+
+	size := mongoCursorTimeout.Nanoseconds() / interval.Nanoseconds()
+	if size <= 1 {
+		return 1, nil
+	}
+
+	logrus.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
+	return int(size - 1), nil
+}
+
+func NewNativeUUIDCollection(mongo DB, collection string, skip int, maximumThrottle time.Duration) (UUIDCollection, error) {
 	tx, err := mongo.Open()
 	if err != nil {
 		return nil, err
 	}
 
-	iter, length, err := tx.FindUUIDs(collection, skip)
+	batchsize, err := computeBatchsize(maximumThrottle)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, length, err := tx.FindUUIDs(collection, skip, batchsize)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +86,7 @@ func (n *NativeUUIDCollection) Next() (bool, string, error) {
 	result := struct {
 		Content contentUUID `bson:"content"`
 	}{}
+
 	success := n.iter.Next(&result)
 
 	if !success && n.iter.Err() != nil {

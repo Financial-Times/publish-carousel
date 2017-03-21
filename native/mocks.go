@@ -29,13 +29,13 @@ func (t *MockTX) ReadNativeContent(collectionID string, uuid string) (*Content, 
 	return args.Get(0).(*Content), args.Error(1)
 }
 
-func (t *MockTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, end time.Time) (*mgo.Iter, int, error) {
-	args := t.Called(collectionID, start, end)
+func (t *MockTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, end time.Time, batchsize int) (*mgo.Iter, int, error) {
+	args := t.Called(collectionID, start, end, batchsize)
 	return args.Get(0).(*mgo.Iter), args.Int(1), args.Error(2)
 }
 
-func (t *MockTX) FindUUIDs(collectionID string, skip int) (*mgo.Iter, int, error) {
-	args := t.Called(collectionID, skip)
+func (t *MockTX) FindUUIDs(collectionID string, skip int, batchsize int) (*mgo.Iter, int, error) {
+	args := t.Called(collectionID, skip, batchsize)
 	return args.Get(0).(*mgo.Iter), args.Int(1), args.Error(2)
 }
 

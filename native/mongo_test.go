@@ -70,7 +70,7 @@ func TestFindByUUID(t *testing.T) {
 	t.Log("Test uuid to use", testUUID)
 	insertTestContent(t, db, testUUID)
 
-	iter, count, err := tx.FindUUIDs("methode", 0)
+	iter, count, err := tx.FindUUIDs("methode", 0, 10)
 	assert.NotEqual(t, 0, count)
 	assert.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestFindByTimeWindow(t *testing.T) {
 	start := end.Add(time.Minute * -1)
 	insertTestContent(t, db, testUUID)
 
-	iter, count, err := tx.FindUUIDsInTimeWindow("methode", start, end)
+	iter, count, err := tx.FindUUIDsInTimeWindow("methode", start, end, 10)
 	assert.NotEqual(t, 0, count)
 	assert.NoError(t, err)
 

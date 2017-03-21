@@ -12,12 +12,14 @@ import (
 type Throttle interface {
 	Queue() error
 	Stop()
+	Interval() time.Duration
 }
 
 type DefaultThrottle struct {
-	Context context.Context
-	Limiter *rate.Limiter
-	cancel  context.CancelFunc
+	Context  context.Context
+	Limiter  *rate.Limiter
+	cancel   context.CancelFunc
+	interval time.Duration
 }
 
 func (d *DefaultThrottle) Queue() error {
@@ -28,12 +30,16 @@ func (d *DefaultThrottle) Stop() {
 	d.cancel()
 }
 
+func (d *DefaultThrottle) Interval() time.Duration {
+	return d.interval
+}
+
 func NewCappedDynamicThrottle(interval time.Duration, minThrottle time.Duration, maxThrottle time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
 	rateInterval := determineRateInterval(interval, minThrottle, maxThrottle, publishes)
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(rateInterval), burst)
 
-	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter}
+	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter, interval: rateInterval, cancel: cancel}
 	return throttle, cancel
 }
 
@@ -58,12 +64,12 @@ func NewDynamicThrottle(interval time.Duration, minimumThrottle time.Duration, p
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(interval), burst)
 
-	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter}
+	throttle := &DefaultThrottle{Context: ctx, Limiter: limiter, interval: interval, cancel: cancel}
 	return throttle, cancel
 }
 
 func NewThrottle(interval time.Duration, burst int) (Throttle, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := rate.NewLimiter(rate.Every(interval), burst)
-	return &DefaultThrottle{Context: ctx, Limiter: limiter}, cancel
+	return &DefaultThrottle{Context: ctx, Limiter: limiter, interval: interval, cancel: cancel}, cancel
 }

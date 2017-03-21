@@ -17,12 +17,12 @@ func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin 
 	basis := newAbstractCycle(name, "FixedWindow", db, dbCollection, origin, coolDown, publishTask)
 
 	return &FixedWindowCycle{
-		newAbstractTimeWindowedCycle(basis, timeWindow, minimumThrottle),
+		newAbstractTimeWindowedCycle(basis, timeWindow, minimumThrottle, 3*time.Second), // TODO: do we need the fixed window? Fixing the batch duration to three seconds, which means batch size will always be 200.
 	}
 }
 
 func (s *FixedWindowCycle) Start() {
-	log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("timeWindow", s.timeWindow).Info("Starting fixed window cycle.")
+	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("timeWindow", s.timeWindow).Info("Starting fixed window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Metadata().UpdateState(startingState)

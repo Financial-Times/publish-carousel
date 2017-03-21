@@ -11,6 +11,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestComputeBatchSize(t *testing.T) {
+	batch, err := computeBatchsize(1 * time.Minute)
+	assert.NoError(t, err)
+	assert.Equal(t, 9, batch)
+
+	batch, err = computeBatchsize(15 * time.Second)
+	assert.NoError(t, err)
+	assert.Equal(t, 39, batch)
+
+	batch, err = computeBatchsize(9 * time.Minute)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, batch)
+
+	batch, err = computeBatchsize(10 * time.Minute)
+	assert.Error(t, err)
+
+	batch, err = computeBatchsize(1 * time.Hour)
+	assert.Error(t, err)
+}
+
 func TestNewNativeUUIDCollection(t *testing.T) {
 	mockDb := new(MockDB)
 	mockTx := new(MockTX)
@@ -19,9 +39,9 @@ func TestNewNativeUUIDCollection(t *testing.T) {
 	iter := &mgo.Iter{}
 
 	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDs", testCollection, 0).Return(iter, 11234, nil)
+	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, nil)
 
-	actual, err := NewNativeUUIDCollection(mockDb, testCollection, 0)
+	actual, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
 	assert.NoError(t, err)
 	assert.Equal(t, iter, actual.(*NativeUUIDCollection).iter)
 	assert.Equal(t, 11234, actual.Length())
@@ -37,7 +57,7 @@ func TestNewNativeUUIDCollectionOpenFails(t *testing.T) {
 	testCollection := "testing-123"
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0)
+	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -52,9 +72,9 @@ func TestNewNativeUUIDCollectionFindFails(t *testing.T) {
 	iter := &mgo.Iter{}
 
 	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDs", testCollection, 0).Return(iter, 11234, errors.New("fail"))
+	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0)
+	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -72,9 +92,9 @@ func TestNewNativeUUIDCollectionForTimeWindow(t *testing.T) {
 	start := end.Add(time.Minute * -1)
 
 	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end).Return(iter, 11234, nil)
+	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end, 9).Return(iter, 11234, nil)
 
-	actual, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end)
+	actual, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
 	assert.NoError(t, err)
 	assert.Equal(t, iter, actual.(*NativeUUIDCollection).iter)
 	assert.Equal(t, 11234, actual.Length())
@@ -93,7 +113,7 @@ func TestNewNativeUUIDCollectionForTimeWindowOpenFails(t *testing.T) {
 
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end)
+	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -111,9 +131,9 @@ func TestNewNativeUUIDCollectionForTimeWindowFindFails(t *testing.T) {
 	iter := &mgo.Iter{}
 
 	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end).Return(iter, 11234, errors.New("fail"))
+	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end, 9).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end)
+	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -128,7 +148,7 @@ func TestNativeUUIDCollection(t *testing.T) {
 	testUUID := uuid.New()
 	insertTestContent(t, db, testUUID)
 
-	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0)
+	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0, 15*time.Second)
 	assert.NoError(t, err)
 
 	found := false
