@@ -29,7 +29,7 @@ type ReadWriter interface {
 // DefaultReadWriter the default S3ReadWrite implementation
 type DefaultReadWriter struct {
 	bucketName string
-	session    *session.Session
+	session    s3iface.S3API
 	config     *aws.Config
 	lock       *sync.Mutex
 }
@@ -78,10 +78,10 @@ func (s *DefaultReadWriter) open() (s3iface.S3API, error) {
 			return nil, err
 		}
 
-		s.session = sess
+		s.session = s3.New(sess)
 	}
 
-	return s3.New(s.session), nil
+	return s.session, nil
 }
 
 // Write writes the given ID to S3
@@ -104,7 +104,7 @@ func (s *DefaultReadWriter) Write(id string, key string, b []byte, contentType s
 	resp, err := s3api.PutObject(params)
 
 	if err != nil {
-		log.WithField("response", resp).Info("Failed to write object to S3.", resp)
+		log.WithField("response", resp).Info("Failed to write object to S3.")
 		return err
 	}
 

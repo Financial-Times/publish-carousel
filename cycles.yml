@@ -4,15 +4,47 @@ throttles:
 cycles:
    -  name: methode-whole-archive
       type: ThrottledWholeCollection
-      origin: non-existent-origin
+      origin: methode-web-pub
       collection: methode
       coolDown: 5m
       throttle: globalThrottle
 
    -  name: methode-one-hour
       type: ScalingWindow
-      origin: non-existent-origin
+      origin: methode-web-pub
       collection: methode
+      timeWindow: 1h
+      minimumThrottle: 1s
+      maximumThrottle: 1m
+      coolDown: 5m
+
+   -  name: wordpress-whole-archive
+      type: ThrottledWholeCollection
+      origin: wordpress
+      collection: wordpress
+      coolDown: 5m
+      throttle: globalThrottle
+
+   -  name: wordpress-one-hour
+      type: ScalingWindow
+      origin: wordpress
+      collection: wordpress
+      timeWindow: 1h
+      minimumThrottle: 1s
+      maximumThrottle: 1m
+      coolDown: 5m
+
+   -  name: brightcove-whole-archive
+      type: ThrottledWholeCollection
+      origin: brightcove
+      collection: brightcove
+      coolDown: 5m
+      throttle: globalThrottle
+
+   -  name: brightcove-one-hour
+      type: ScalingWindow
+      origin: brightcove
+      collection: brightcove
       timeWindow: 1h
       minimumThrottle: 1s
       maximumThrottle: 1m
