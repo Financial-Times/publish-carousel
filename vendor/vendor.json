@@ -353,6 +353,14 @@
 			"versionExact": "v1.0"
 		},
 		{
+			"checksumSHA1": "oiJq0u34a83t4gxrw18l/creS5g=",
+			"path": "github.com/peteclark-ft/aws-testify-mocks",
+			"revision": "da8655f4ea121cef8b38a4df4cab052e61b8a60c",
+			"revisionTime": "2017-03-20T16:35:37Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
 			"path": "github.com/pmezard/go-difflib/difflib",
 			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
