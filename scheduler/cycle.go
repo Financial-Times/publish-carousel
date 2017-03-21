@@ -94,7 +94,7 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 
 		finished, uuid, err := collection.Next()
 		if finished {
-			log.WithField("id", a.CycleID).WithField("cycle", a.Name).Info("Finished publishing collection.")
+			log.WithField("id", a.ID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
 			return false, err
 		}
 
@@ -103,10 +103,10 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			continue
 		}
 
-		log.WithField("id", a.CycleID).WithField("cycle", a.Name).WithField("uuid", uuid).Info("Running publish task.")
+		log.WithField("id", a.ID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
 		err = a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
 		if err != nil {
-			log.WithError(err).WithField("uuid", uuid).WithField("collection", a.DBCollection).Warn("Failed to publish!")
+			log.WithField("id", a.ID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 		}
 
 		a.updateState(uuid, err)
@@ -137,7 +137,7 @@ func (a *abstractCycle) ID() string {
 
 func (a *abstractCycle) Stop() {
 	a.cancel()
-	log.WithField("id", a.ID()).Info("Cycle stopped.")
+	log.WithField("id", a.ID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Cycle stopped.")
 	a.Metadata().UpdateState(stoppedState)
 }
 

@@ -97,14 +97,14 @@ func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks
 	for name, duration := range setup.Throttles {
 		err := scheduler.AddThrottle(name, duration)
 		if err != nil {
-			log.WithError(err).WithField("throttleName", name).WithField("timeWindow", duration).Warn("Skipping throttle, this will invalidate any cycles which use this throttle.")
+			log.WithError(err).WithField("throttle", name).WithField("timeWindow", duration).Warn("Skipping throttle, this will invalidate any cycles which use this throttle.")
 		}
 	}
 
 	for _, cycle := range setup.Cycles {
 		err := scheduler.AddCycle(cycle)
 		if err != nil {
-			log.WithError(err).WithField("cycleName", cycle.Name).Warn("Skipping cycle")
+			log.WithError(err).WithField("cycle", cycle.Name).Warn("Skipping cycle")
 		}
 	}
 

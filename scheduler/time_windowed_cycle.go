@@ -35,10 +35,8 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 	for {
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime)
 		if err != nil {
-			log.WithError(err).WithField("start", startTime).WithField("end", endTime).Warn("Failed to query native collection for time window.")
-			s.Metadata().UpdateState(unhealthyState, coolDownState)
-			time.Sleep(s.coolDown)
-			endTime = time.Now()
+			log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
+			endTime = s.performCooldown(unhealthyState, coolDownState)
 			continue
 		}
 
@@ -47,29 +45,33 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
-			s.Metadata().UpdateState(coolDownState)
-			time.Sleep(s.coolDown)
-			endTime = time.Now()
+			endTime = s.performCooldown(coolDownState)
 			continue
 		}
 
 		t, cancel := throttle(uuidCollection.Length() + 1) // add one to the length to increase the wait time
 		stopped, err := s.publishCollection(ctx, uuidCollection, t)
+
+		cancel()
 		if stopped {
 			break
 		}
 
 		if err != nil {
-			log.WithError(err).WithField("collection", s.DBCollection).WithField("id", s.ID).Error("Unexpected error occurred while publishing collection.")
-			s.Metadata().UpdateState(unhealthyState)
-			break
+			log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
+			endTime = s.performCooldown(unhealthyState, coolDownState)
+			continue
 		}
 
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
-		cancel()
-
 		endTime = time.Now()
 	}
 
 	s.Metadata().UpdateState(stoppedState)
+}
+
+func (s *abstractTimeWindowedCycle) performCooldown(states ...string) time.Time {
+	s.Metadata().UpdateState(states...)
+	time.Sleep(s.coolDown)
+	return time.Now()
 }

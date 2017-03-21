@@ -36,7 +36,7 @@ func NewScalingWindowCycle(
 }
 
 func (s *ScalingWindowCycle) Start() {
-	log.WithField("collection", s.DBCollection).WithField("name", s.Name).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
+	log.WithField("id", s.ID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Metadata().UpdateState(startingState)
