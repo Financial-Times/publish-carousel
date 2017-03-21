@@ -33,33 +33,29 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask                tasks.Task
-	database                   native.DB
-	cycles                     map[string]Cycle
-	metadataReadWriter         MetadataReadWriter
-	cycleLock                  *sync.RWMutex
-	currentExecutionStateLock  *sync.RWMutex
-	previousExecutionStateLock *sync.RWMutex
-	toggleLock                 *sync.RWMutex
-	currentExecutionState      bool
-	previousExecutionState     bool
-	toggle                     bool
+	publishTask        tasks.Task
+	database           native.DB
+	cycles             map[string]Cycle
+	metadataReadWriter MetadataReadWriter
+	cycleLock          *sync.RWMutex
+	executionStateLock *sync.RWMutex
+	toggleLock         *sync.RWMutex
+	executionState     bool
+	toggle             bool
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
 func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter) Scheduler {
 	return &defaultScheduler{
-		database:                   database,
-		publishTask:                publishTask,
-		cycles:                     map[string]Cycle{},
-		metadataReadWriter:         metadataReadWriter,
-		cycleLock:                  &sync.RWMutex{},
-		currentExecutionStateLock:  &sync.RWMutex{},
-		previousExecutionStateLock: &sync.RWMutex{},
-		toggleLock:                 &sync.RWMutex{},
-		currentExecutionState:      stopped,
-		previousExecutionState:     stopped,
-		toggle:                     disabled,
+		database:           database,
+		publishTask:        publishTask,
+		cycles:             map[string]Cycle{},
+		metadataReadWriter: metadataReadWriter,
+		cycleLock:          &sync.RWMutex{},
+		executionStateLock: &sync.RWMutex{},
+		toggleLock:         &sync.RWMutex{},
+		executionState:     stopped,
+		toggle:             disabled,
 	}
 }
 
@@ -196,15 +192,15 @@ func (s *defaultScheduler) setToggleState(state bool) {
 }
 
 func (s *defaultScheduler) isRunning() bool {
-	s.currentExecutionStateLock.RLock()
-	defer s.currentExecutionStateLock.RUnlock()
-	return s.currentExecutionState
+	s.executionStateLock.RLock()
+	defer s.executionStateLock.RUnlock()
+	return s.executionState
 }
 
 func (s *defaultScheduler) setCurrentExecutionState(state bool) {
-	s.currentExecutionStateLock.Lock()
-	defer s.currentExecutionStateLock.Unlock()
-	s.currentExecutionState = state
+	s.executionStateLock.Lock()
+	defer s.executionStateLock.Unlock()
+	s.executionState = state
 }
 
 func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
