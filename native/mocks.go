@@ -47,3 +47,12 @@ func (t *MockTX) Ping() error {
 func (t *MockTX) Close() {
 	t.Called()
 }
+
+type MockReader struct {
+	mock.Mock
+}
+
+func (m *MockReader) Get(collection string, uuid string) (*Content, string, error) {
+	args := m.Called(collection, uuid)
+	return args.Get(0).(*Content), args.String(1), args.Error(2)
+}

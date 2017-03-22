@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -33,12 +34,19 @@ func (t *nativeContentTask) Publish(origin string, collection string, uuid strin
 		return err
 	}
 
+	if content.Body == nil {
+		logrus.WithField("uuid", uuid).Warn("No Content found for uuid. Skipping.")
+		return fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
+	}
+
 	tid, ok := content.Body[publishReferenceAttr].(string)
 	if !ok || strings.TrimSpace(tid) == "" {
-		content.Body[publishReferenceAttr] = generateCarouselTXID()
+		tid = generateCarouselTXID()
 	} else {
-		content.Body[publishReferenceAttr] = toCarouselTXID(tid)
+		tid = toCarouselTXID(tid)
 	}
+
+	content.Body[publishReferenceAttr] = tid
 
 	err = t.cmsNotifier.Notify(origin, tid, *content, hash)
 	if err != nil {
