@@ -7,7 +7,7 @@ cycles:
       throttle: 15s
 
    -  name: methode-one-hour
-      # type: ScalingWindow
+      type: ScalingWindow
       origin: methode-web-pub
       collection: methode
       timeWindow: 1h
