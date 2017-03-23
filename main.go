@@ -105,19 +105,19 @@ func main() {
 		task := tasks.NewNativeContentPublishTask(reader, notifier)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
+
 		if err != nil {
 			panic(err)
 		}
 
-		sched, err := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
-		//TODO: do something with this error
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
 		if err != nil {
-			log.WithError(err).Error("Failed to load cycles configuration file")
+			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
 
 		toggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
 		if err != nil {
-			panic(err) // TODO: do something better
+			panic(err)
 		}
 
 		sched.ToggleHandler(toggle)
@@ -125,13 +125,10 @@ func main() {
 		go etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
 
 		sched.RestorePreviousState()
-		err = sched.Start()
-		if err != nil {
-			panic(err)
-		}
+		sched.Start()
 
 		shutdown(sched)
-		serve(mongo, sched, s3rw, notifier)
+		serve(mongo, sched, s3rw, notifier, configError)
 	}
 
 	app.Run(os.Args)
@@ -149,13 +146,13 @@ func shutdown(sched scheduler.Scheduler) {
 	}()
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier) {
+func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error) {
 	r := mux.NewRouter()
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched)).Methods("GET")
+	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError)).Methods("GET")
+	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError)).Methods("GET")
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")

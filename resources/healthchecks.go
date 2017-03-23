@@ -13,14 +13,14 @@ import (
 )
 
 // Health returns a handler for the standard FT healthchecks
-func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
-	return fthealth.Handler("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched)...)
+func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) func(w http.ResponseWriter, r *http.Request) {
+	return fthealth.Handler("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError)...)
 }
 
 // GTG returns a handler for a standard GTG endpoint.
-func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
+func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError)}
 
 		for _, check := range checks {
 			_, err := check()
@@ -34,7 +34,7 @@ func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched sch
 	}
 }
 
-func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler) []fthealth.Check {
+func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) []fthealth.Check {
 	return []fthealth.Check{
 		{
 			Name:             "CheckConnectivityToNativeDatabase",
@@ -67,6 +67,14 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			Severity:         1,
 			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
 			Checker:          unhealthyCycles(sched),
+		},
+		{
+			Name:             "InvalidCycleConfiguration",
+			BusinessImpact:   "No Business Impact.",
+			TechnicalSummary: `At least one error occurred while intialising cycles from the "cycles.yml" file.`,
+			Severity:         1,
+			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			Checker:          configHealthcheck(configError),
 		},
 	}
 }
@@ -113,5 +121,11 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	return func() (string, error) {
 		return "", notifier.GTG()
+	}
+}
+
+func configHealthcheck(err error) func() (string, error) {
+	return func() (string, error) {
+		return "", err
 	}
 }

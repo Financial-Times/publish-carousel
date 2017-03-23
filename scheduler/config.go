@@ -93,16 +93,37 @@ func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks
 		return scheduler, err
 	}
 
+	if len(setup.Cycles) == 0 {
+		return scheduler, errors.New("No configured cycles")
+	}
+
+	var errs []error
 	for _, cycleConfig := range setup.Cycles {
 		cycle, err := scheduler.NewCycle(cycleConfig)
 		if err != nil {
 			log.WithError(err).WithField("cycleName", cycleConfig.Name).Warn("Skipping cycle")
+			errs = append(errs, err)
+			continue
 		}
+
 		err = scheduler.AddCycle(cycle)
 		if err != nil {
 			log.WithError(err).WithField("cycleName", cycleConfig.Name).Warn("Skipping cycle")
+			errs = append(errs, err)
 		}
 	}
 
-	return scheduler, nil
+	return scheduler, combineConfigErrors(errs)
+}
+
+func combineConfigErrors(errs []error) error {
+	if len(errs) == 0 {
+		return nil
+	}
+
+	msg := ""
+	for _, err := range errs {
+		msg = `"` + err.Error() + `" ` + msg
+	}
+	return errors.New(msg)
 }

@@ -75,10 +75,7 @@ func (s *defaultScheduler) AddCycle(c Cycle) error {
 	s.cycles[c.ID()] = c
 
 	if s.isEnabled() && s.isRunning() {
-		err := s.Start()
-		if err != nil {
-			return fmt.Errorf("Error in starting cycle with ID: %v - %v", c.ID(), err)
-		}
+		c.Start()
 	}
 	return nil
 }
@@ -91,6 +88,7 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 	if !ok {
 		return fmt.Errorf("Cannot stop cycle: cycle with id %v not found", cycleID)
 	}
+
 	c.Stop()
 	delete(s.cycles, cycleID)
 	return nil
@@ -129,11 +127,11 @@ func (s *defaultScheduler) Start() error {
 	defer s.cycleLock.RUnlock()
 
 	if !s.isEnabled() {
-		return errors.New("carousel scheduler is not enabled")
+		return errors.New("Scheduler is not enabled")
 	}
 
 	if s.isRunning() {
-		return errors.New("carousel scheduler is already running")
+		return errors.New("Scheduler is already running")
 	}
 
 	s.setCurrentExecutionState(running)
@@ -151,7 +149,7 @@ func (s *defaultScheduler) Shutdown() error {
 	log.Info("Scheduler shutdown initiated.")
 
 	if !s.isRunning() {
-		return errors.New("carousel scheduler have been already shutted down")
+		return errors.New("Scheduler has already been shut down")
 	}
 
 	for id, cycle := range s.cycles {
@@ -167,6 +165,7 @@ func (s *defaultScheduler) ToggleHandler(toggleValue string) {
 	if err != nil {
 		log.WithError(err).Error("Invalid toggle value for carousel scheduler")
 	}
+
 	if toggleState == disabled && s.isEnabled() && s.isRunning() {
 		log.Info("Disabling carousel scheduler...")
 		err := s.Shutdown()
@@ -176,6 +175,7 @@ func (s *defaultScheduler) ToggleHandler(toggleValue string) {
 		}
 		s.SaveCycleMetadata()
 	}
+
 	s.setToggleState(toggleState)
 }
 

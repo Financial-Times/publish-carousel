@@ -54,7 +54,7 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 	s.ToggleHandler("false")
 	err := s.Start()
-	assert.EqualError(t, err, "carousel scheduler is not enabled", "It should not return an error to Start")
+	assert.EqualError(t, err, "Scheduler is not enabled", "It should not return an error to Start")
 
 	time.Sleep(2 * time.Second) // wait cycles to start
 
@@ -142,7 +142,7 @@ func TestSchedulerInvalidToggleValue(t *testing.T) {
 
 	s.ToggleHandler("invalid-value")
 	err := s.Start()
-	assert.EqualError(t, err, "carousel scheduler is not enabled", "It should not return an error to Start")
+	assert.EqualError(t, err, "Scheduler is not enabled", "It should not return an error to Start")
 	c1.AssertNotCalled(t, "Start")
 	c2.AssertNotCalled(t, "Start")
 }
