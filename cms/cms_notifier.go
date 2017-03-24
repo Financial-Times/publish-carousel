@@ -32,16 +32,19 @@ func (c *cmsNotifier) Notify(origin string, tid string, content native.Content, 
 	b := new(bytes.Buffer)
 
 	enc := json.NewEncoder(b)
-	err := enc.Encode(content)
+	err := enc.Encode(content.Body)
 	if err != nil {
 		return err
 	}
 
 	req, err := http.NewRequest("POST", c.notifierURL, b)
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Type", content.ContentType)
 	req.Header.Add("X-Request-Id", tid)
 	req.Header.Add("X-Native-Hash", hash)
 	req.Header.Add("X-Origin-System-Id", origin)
+
+	d, _ := httputil.DumpRequest(req, false)
+	log.Info(string(d))
 
 	if err != nil {
 		return err
