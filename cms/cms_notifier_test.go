@@ -1,6 +1,7 @@
 package cms
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,13 +12,23 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func (m *mockNotifier) startMockNotifier() *httptest.Server {
+func (m *mockNotifier) startMockNotifier(t *testing.T) *httptest.Server {
 	r := mux.NewRouter()
 	r.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
 		tid := r.Header.Get("X-Request-Id")
 		hash := r.Header.Get("X-Native-Hash")
 		origin := r.Header.Get("X-Origin-System-Id")
 		contentType := r.Header.Get("Content-Type")
+
+		body := make(map[string]interface{})
+		dec := json.NewDecoder(r.Body)
+		err := dec.Decode(&body)
+
+		assert.NoError(t, err)
+
+		uuid, ok := body["uuid"]
+		assert.NotNil(t, uuid)
+		assert.True(t, ok)
 
 		w.WriteHeader(m.Notify(origin, tid, hash, contentType))
 	}).Methods("POST")
@@ -47,11 +58,11 @@ func TestNotify(t *testing.T) {
 	mockNotifier := new(mockNotifier)
 	mockNotifier.On("Notify", "origin", "tid_1234", "12345", "application/json").Return(200)
 
-	server := mockNotifier.startMockNotifier()
+	server := mockNotifier.startMockNotifier(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
-	err := notifier.Notify("origin", "tid_1234", native.Content{ContentType: "application/json"}, "12345")
+	err := notifier.Notify("origin", "tid_1234", native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
 	assert.NoError(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -60,11 +71,11 @@ func TestNotifyFails(t *testing.T) {
 	mockNotifier := new(mockNotifier)
 	mockNotifier.On("Notify", "origin", "tid_1234", "12345", "application/json").Return(500)
 
-	server := mockNotifier.startMockNotifier()
+	server := mockNotifier.startMockNotifier(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
-	err := notifier.Notify("origin", "tid_1234", native.Content{ContentType: "application/json"}, "12345")
+	err := notifier.Notify("origin", "tid_1234", native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
 	assert.Error(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -89,7 +100,7 @@ func TestOKGTG(t *testing.T) {
 	mockNotifier := new(mockNotifier)
 	mockNotifier.On("GTG").Return(200)
 
-	server := mockNotifier.startMockNotifier()
+	server := mockNotifier.startMockNotifier(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
@@ -102,7 +113,7 @@ func TestFailingGTG(t *testing.T) {
 	mockNotifier := new(mockNotifier)
 	mockNotifier.On("GTG").Return(500)
 
-	server := mockNotifier.startMockNotifier()
+	server := mockNotifier.startMockNotifier(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
