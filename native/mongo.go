@@ -76,8 +76,8 @@ func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, e
 	query, projection := findUUIDsForTimeWindow(start, end)
 	find := collection.Find(query).Select(projection).Batch(batchsize)
 
-	length, err := find.Count()
-	return find.Iter(), length, err
+	count, err := find.Count()
+	return find.Iter(), count, err
 }
 
 func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (*mgo.Iter, int, error) {
@@ -90,8 +90,8 @@ func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (*mgo
 		find.Skip(skip)
 	}
 
-	length, err := find.Count()
-	return find.Iter(), length, err
+	count, err := find.Count()
+	return find.Iter(), count + skip, err // add count to skip as this correctly computes the total size of the cursor
 }
 
 // ReadNativeContent queries mongo for a uuid and returns the native document

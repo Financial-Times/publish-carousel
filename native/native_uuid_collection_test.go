@@ -12,23 +12,45 @@ import (
 )
 
 func TestComputeBatchSize(t *testing.T) {
-	batch, err := computeBatchsize(1 * time.Minute)
-	assert.NoError(t, err)
-	assert.Equal(t, 9, batch)
+	tests := []struct {
+		expected int
+		duration time.Duration
+		err      bool
+	}{
+		{
+			expected: 9,
+			duration: 1 * time.Minute,
+			err:      false,
+		},
+		{
+			expected: 39,
+			duration: 15 * time.Second,
+			err:      false,
+		},
+		{
+			expected: 1,
+			duration: 9 * time.Minute,
+			err:      false,
+		},
+		{
+			duration: 10 * time.Minute,
+			err:      true,
+		},
+		{
+			duration: 1 * time.Hour,
+			err:      true,
+		},
+	}
 
-	batch, err = computeBatchsize(15 * time.Second)
-	assert.NoError(t, err)
-	assert.Equal(t, 39, batch)
-
-	batch, err = computeBatchsize(9 * time.Minute)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, batch)
-
-	batch, err = computeBatchsize(10 * time.Minute)
-	assert.Error(t, err)
-
-	batch, err = computeBatchsize(1 * time.Hour)
-	assert.Error(t, err)
+	for _, test := range tests {
+		batch, err := computeBatchsize(test.duration)
+		if test.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, batch)
+		}
+	}
 }
 
 func TestNewNativeUUIDCollection(t *testing.T) {
@@ -146,7 +168,7 @@ func TestNativeUUIDCollection(t *testing.T) {
 	defer db.Close()
 
 	testUUID := uuid.New()
-	insertTestContent(t, db, testUUID)
+	insertTestContent(t, db, testUUID, time.Now())
 
 	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0, 15*time.Second)
 	assert.NoError(t, err)

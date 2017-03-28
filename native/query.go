@@ -21,12 +21,12 @@ func findUUIDsForTimeWindow(start time.Time, end time.Time) (bson.M, bson.M) {
 		"$and": []bson.M{
 			{
 				"content.lastModified": bson.M{
-					"$gte": start.Format(time.RFC3339),
+					"$gte": start.UTC().Format(time.RFC3339),
 				},
 			},
 			{
 				"content.lastModified": bson.M{
-					"$lt": end.Format(time.RFC3339),
+					"$lt": end.UTC().Format(time.RFC3339),
 				},
 			},
 		},

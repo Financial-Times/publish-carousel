@@ -32,13 +32,13 @@ func TestCreateDB(t *testing.T) {
 	assert.NotNil(t, mongo.lock)
 }
 
-func insertTestContent(t *testing.T, mongo DB, testUUID string) {
+func insertTestContent(t *testing.T, mongo DB, testUUID string, lastModified time.Time) {
 	testContent := make(map[string]interface{})
 
 	props := make(map[string]interface{})
 	props["uuid"] = testUUID
 	props["publishReference"] = "tid_" + testUUID
-	props["lastModified"] = time.Now().Format(time.RFC3339Nano)
+	props["lastModified"] = lastModified.UTC().Format(time.RFC3339)
 
 	testContent["content"] = props
 	testContent["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(testUUID))}
@@ -68,11 +68,11 @@ func TestFindByUUID(t *testing.T) {
 
 	testUUID := uuid.NewUUID().String()
 	t.Log("Test uuid to use", testUUID)
-	insertTestContent(t, db, testUUID)
+	insertTestContent(t, db, testUUID, time.Now())
 
 	iter, count, err := tx.FindUUIDs("methode", 0, 10)
-	assert.NotEqual(t, 0, count)
 	assert.NoError(t, err)
+	assert.NotEqual(t, 0, count)
 
 	found := false
 	for !iter.Done() {
@@ -103,15 +103,18 @@ func TestFindByTimeWindow(t *testing.T) {
 	assert.NoError(t, err)
 
 	testUUID := uuid.NewUUID().String()
-	t.Log("Test uuid to use", testUUID)
+	testUUID2 := uuid.NewUUID().String()
+	t.Log("Test uuids to use", testUUID, testUUID2)
+
+	insertTestContent(t, db, testUUID, time.Now().Add(time.Second*-1))
+	insertTestContent(t, db, testUUID2, time.Now().Add(time.Minute*-2))
 
 	end := time.Now()
 	start := end.Add(time.Minute * -1)
-	insertTestContent(t, db, testUUID)
 
 	iter, count, err := tx.FindUUIDsInTimeWindow("methode", start, end, 10)
-	assert.NotEqual(t, 0, count)
 	assert.NoError(t, err)
+	assert.NotEqual(t, 0, count)
 
 	found := false
 	for !iter.Done() {
@@ -122,10 +125,16 @@ func TestFindByTimeWindow(t *testing.T) {
 		if parseBinaryUUID(result["uuid"]) == testUUID {
 			found = true
 		}
+
+		if parseBinaryUUID(result["uuid"]) == testUUID2 {
+			t.Log("Should not find this uuid as it is outside the window.")
+			t.Fail()
+		}
 	}
 
 	assert.True(t, found)
 	cleanupTestContent(t, db, testUUID)
+	cleanupTestContent(t, db, testUUID2)
 }
 
 func TestReadNativeContent(t *testing.T) {
@@ -138,7 +147,7 @@ func TestReadNativeContent(t *testing.T) {
 
 	testUUID := uuid.NewUUID().String()
 	t.Log("Test uuid to use", testUUID)
-	insertTestContent(t, db, testUUID)
+	insertTestContent(t, db, testUUID, time.Now())
 
 	content, err := tx.ReadNativeContent("methode", testUUID)
 	assert.NoError(t, err)

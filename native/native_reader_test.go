@@ -47,6 +47,7 @@ func TestNativeReaderMongoOpenFails(t *testing.T) {
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
 }
 
 func TestNativeReaderMongoReadFails(t *testing.T) {
