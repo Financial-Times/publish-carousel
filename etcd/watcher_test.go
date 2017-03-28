@@ -17,11 +17,7 @@ func TestWatch(t *testing.T) {
 	watcher, err := NewEtcdWatcher([]string{"http://localhost:2379"})
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	go watcher.Watch(ctx, "/ft/cluster/health/test_key", func(val string) {
-		t.Log(val)
-		assert.Equal(t, "testing 1 2 3", val)
-	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 
 	cfg := etcdClient.Config{
 		Endpoints: []string{"http://localhost:2379"},
@@ -31,9 +27,15 @@ func TestWatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	api := etcdClient.NewKeysAPI(client)
-	api.Set(context.Background(), "/ft/cluster/health/test_key", "testing 1 2 3", nil)
+	go func() {
+		time.Sleep(3 * time.Second)
+		api.Set(context.Background(), "/ft/cluster/health/test_key", "testing 1 2 3", nil)
+	}()
 
-	cancel()
+	watcher.Watch(ctx, "/ft/cluster/health/test_key", func(val string) {
+		assert.Equal(t, "testing 1 2 3", val)
+		cancel()
+	})
 }
 
 func TestWatchCallbackPanics(t *testing.T) {
@@ -53,14 +55,14 @@ func TestWatchCallbackPanics(t *testing.T) {
 
 	api := etcdClient.NewKeysAPI(client)
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 		api.Set(context.Background(), "/ft/cluster/health/test_key", "panic", nil)
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 		api.Set(context.Background(), "/ft/cluster/health/test_key", "don't panic", nil)
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*7)
 
 	success := false
 	watcher.Watch(ctx, "/ft/cluster/health/test_key", func(val string) {
