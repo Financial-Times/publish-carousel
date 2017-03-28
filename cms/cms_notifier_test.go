@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func (m *mockNotifier) startMockNotifier(t *testing.T) *httptest.Server {
+func (m *mockNotifierServer) startMockNotifierServer(t *testing.T) *httptest.Server {
 	r := mux.NewRouter()
 	r.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
 		tid := r.Header.Get("X-Request-Id")
@@ -40,25 +40,25 @@ func (m *mockNotifier) startMockNotifier(t *testing.T) *httptest.Server {
 	return httptest.NewServer(r)
 }
 
-func (m *mockNotifier) GTG() int {
+func (m *mockNotifierServer) GTG() int {
 	args := m.Called()
 	return args.Int(0)
 }
 
-func (m *mockNotifier) Notify(origin string, tid string, hash string, contentType string) int {
+func (m *mockNotifierServer) Notify(origin string, tid string, hash string, contentType string) int {
 	args := m.Called(origin, tid, hash, contentType)
 	return args.Int(0)
 }
 
-type mockNotifier struct {
+type mockNotifierServer struct {
 	mock.Mock
 }
 
 func TestNotify(t *testing.T) {
-	mockNotifier := new(mockNotifier)
+	mockNotifier := new(mockNotifierServer)
 	mockNotifier.On("Notify", "origin", "tid_1234", "12345", "application/json").Return(200)
 
-	server := mockNotifier.startMockNotifier(t)
+	server := mockNotifier.startMockNotifierServer(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
@@ -68,10 +68,10 @@ func TestNotify(t *testing.T) {
 }
 
 func TestNotifyFails(t *testing.T) {
-	mockNotifier := new(mockNotifier)
+	mockNotifier := new(mockNotifierServer)
 	mockNotifier.On("Notify", "origin", "tid_1234", "12345", "application/json").Return(500)
 
-	server := mockNotifier.startMockNotifier(t)
+	server := mockNotifier.startMockNotifierServer(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
@@ -97,10 +97,10 @@ func TestJSONFails(t *testing.T) {
 }
 
 func TestOKGTG(t *testing.T) {
-	mockNotifier := new(mockNotifier)
+	mockNotifier := new(mockNotifierServer)
 	mockNotifier.On("GTG").Return(200)
 
-	server := mockNotifier.startMockNotifier(t)
+	server := mockNotifier.startMockNotifierServer(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
@@ -110,10 +110,10 @@ func TestOKGTG(t *testing.T) {
 }
 
 func TestFailingGTG(t *testing.T) {
-	mockNotifier := new(mockNotifier)
+	mockNotifier := new(mockNotifierServer)
 	mockNotifier.On("GTG").Return(500)
 
-	server := mockNotifier.startMockNotifier(t)
+	server := mockNotifier.startMockNotifierServer(t)
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 

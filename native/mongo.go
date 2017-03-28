@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -62,7 +62,7 @@ func (db *MongoDB) Open() (TX, error) {
 		connections++
 
 		if connections > expectedConnections {
-			logrus.Warnf("There are more MongoDB connections opened than expected! Are you sure this is what you want? Open connections: %v, expected %v.", connections, expectedConnections)
+			log.Warnf("There are more MongoDB connections opened than expected! Are you sure this is what you want? Open connections: %v, expected %v.", connections, expectedConnections)
 		}
 	}
 
@@ -102,9 +102,7 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	find := collection.Find(query)
 
 	result := &Content{}
-
-	find.One(result)
-	err := find.One(&result)
+	err := find.One(result)
 
 	if err != nil {
 		return result, err
