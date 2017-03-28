@@ -11,12 +11,12 @@
 			"versionExact": "0.1.0"
 		},
 		{
-			"checksumSHA1": "co7bhGOevkDM3Ps/F4PKQN/gShU=",
+			"checksumSHA1": "02cqJu3dzV5lC722gSIbjd+dWqY=",
 			"path": "github.com/Financial-Times/publish-carousel-ui",
-			"revision": "f984806550dc12886294bd4ceb73e4f58432f900",
-			"revisionTime": "2017-03-16T09:52:24Z",
-			"version": "v0.0.2_rc1",
-			"versionExact": "v0.0.2_rc1"
+			"revision": "06a6ab3691f5bd38bf74dcdffd409fed868af322",
+			"revisionTime": "2017-03-28T08:28:53Z",
+			"version": "v0.0.2_rc3",
+			"versionExact": "v0.0.2_rc3"
 		},
 		{
 			"checksumSHA1": "fqpohN7Qp2qj7TLMbUxh/cK4oH0=",

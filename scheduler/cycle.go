@@ -146,7 +146,7 @@ func (a *abstractCycle) Stop() {
 
 func (a *abstractCycle) Reset() {
 	a.Stop()
-	a.CycleMetadata = nil
+	a.CycleMetadata = &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})}
 }
 
 func (a *abstractCycle) Metadata() *CycleMetadata {
