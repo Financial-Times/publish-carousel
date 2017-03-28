@@ -43,7 +43,7 @@ func TestPublishWithTID(t *testing.T) {
 	}
 
 	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselTidMatcher, *content, "hash").Return(nil)
+	notifier.On("Notify", origin, carouselTidMatcher, content, "hash").Return(nil)
 
 	task := NewNativeContentPublishTask(reader, notifier)
 
@@ -69,7 +69,7 @@ func TestPublishWithGeneratedTID(t *testing.T) {
 	}
 
 	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselGentxTidMatcher, *content, "hash").Return(nil)
+	notifier.On("Notify", origin, carouselGentxTidMatcher, content, "hash").Return(nil)
 
 	task := NewNativeContentPublishTask(reader, notifier)
 
@@ -135,7 +135,7 @@ func TestFailedNotify(t *testing.T) {
 	}
 
 	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselTidMatcher, *content, "hash").Return(errors.New("fail"))
+	notifier.On("Notify", origin, carouselTidMatcher, content, "hash").Return(errors.New("fail"))
 
 	task := NewNativeContentPublishTask(reader, notifier)
 

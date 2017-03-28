@@ -48,7 +48,7 @@ func (t *nativeContentTask) Publish(origin string, collection string, uuid strin
 
 	content.Body[publishReferenceAttr] = tid
 
-	err = t.cmsNotifier.Notify(origin, tid, *content, hash)
+	err = t.cmsNotifier.Notify(origin, tid, content, hash)
 	if err != nil {
 		logrus.WithField("uuid", uuid).WithError(err).Warn("Failed to post to cms notifier")
 		return err

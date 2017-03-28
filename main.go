@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"os/signal"
@@ -61,14 +62,14 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "aws-region",
-			Value:  "eu-west-1",
 			EnvVar: "AWS_REGION",
+			Value:  "",
 			Usage:  "The AWS Region for this cluster.",
 		},
 		cli.StringFlag{
 			Name:   "s3-bucket",
-			Value:  "com.ft.universalpublishing.publish-carousel.dynpub-uk",
 			EnvVar: "S3_BUCKET",
+			Value:  "",
 			Usage:  "The S3 Bucket to save carousel states.",
 		},
 		cli.IntFlag{
@@ -122,7 +123,7 @@ func main() {
 
 		sched.ToggleHandler(toggle)
 
-		go etcdWatcher.Watch(ctx.String("toggle-etcd-key"), sched.ToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ToggleHandler)
 
 		sched.RestorePreviousState()
 		sched.Start()

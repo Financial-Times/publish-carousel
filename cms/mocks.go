@@ -9,7 +9,7 @@ type MockNotifier struct {
 	mock.Mock
 }
 
-func (m *MockNotifier) Notify(origin string, tid string, content native.Content, hash string) error {
+func (m *MockNotifier) Notify(origin string, tid string, content *native.Content, hash string) error {
 	args := m.Called(origin, tid, content, hash)
 	return args.Error(0)
 }

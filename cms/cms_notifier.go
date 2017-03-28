@@ -13,7 +13,7 @@ import (
 
 // Notifier handles the publishing of the content to the cms-notifier
 type Notifier interface {
-	Notify(origin string, tid string, content native.Content, hash string) error
+	Notify(origin string, tid string, content *native.Content, hash string) error
 	GTG() error
 }
 
@@ -28,7 +28,7 @@ func NewNotifier(notifierURL string, notifierGTG string, client *http.Client) No
 	return &cmsNotifier{client: client, notifierURL: notifierURL, notifierGTG: notifierGTG}
 }
 
-func (c *cmsNotifier) Notify(origin string, tid string, content native.Content, hash string) error {
+func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content, hash string) error {
 	b := new(bytes.Buffer)
 
 	enc := json.NewEncoder(b)

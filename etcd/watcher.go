@@ -12,7 +12,7 @@ import (
 
 // Watcher see Watch func for details
 type Watcher interface {
-	Watch(key string, callback func(val string))
+	Watch(ctx context.Context, key string, callback func(val string))
 	Read(key string) (string, error)
 }
 
@@ -54,19 +54,33 @@ func (e *etcdWatcher) Read(key string) (string, error) {
 }
 
 // Watch starts an etcd watch on a given key, and triggers the callback when found
-func (e *etcdWatcher) Watch(key string, callback func(val string)) {
+func (e *etcdWatcher) Watch(ctx context.Context, key string, callback func(val string)) {
 	watcher := e.api.Watcher(key, &etcdClient.WatcherOptions{AfterIndex: 0, Recursive: false})
 
 	for {
-		resp, err := watcher.Next(context.Background())
+		if ctx.Err() != nil {
+			log.WithField("key", key).Info("Etcd watcher cancelled.")
+			break
+		}
+
+		resp, err := watcher.Next(ctx)
 		if err != nil {
-			log.Info("Error waiting for change under %v in etcd. %v\n Sleeping 10s", key, err.Error())
+			log.WithError(err).WithField("key", key).Info("Error occurred while waiting for change in etcd. Sleeping 10s")
 			time.Sleep(10 * time.Second)
 			continue
 		}
 
 		if resp != nil && resp.Node != nil {
-			callback(resp.Node.Value)
+			runCallback(resp, callback)
 		}
 	}
+}
+
+func runCallback(resp *etcdClient.Response, callback func(val string)) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithField("panic", r).Error("Watcher callback panicked! This should not happen, and indicates there is a bug.")
+		}
+	}()
+	callback(resp.Node.Value)
 }

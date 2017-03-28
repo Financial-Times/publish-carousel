@@ -62,7 +62,7 @@ func TestNotify(t *testing.T) {
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
-	err := notifier.Notify("origin", "tid_1234", native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
+	err := notifier.Notify("origin", "tid_1234", &native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
 	assert.NoError(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -75,7 +75,7 @@ func TestNotifyFails(t *testing.T) {
 
 	notifier := NewNotifier(server.URL+"/notify", server.URL+"/__gtg", &http.Client{})
 
-	err := notifier.Notify("origin", "tid_1234", native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
+	err := notifier.Notify("origin", "tid_1234", &native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json"}, "12345")
 	assert.Error(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -83,7 +83,7 @@ func TestNotifyFails(t *testing.T) {
 func TestNotifierNotRunning(t *testing.T) {
 	notifier := NewNotifier("http://localhost/notify", "http://localhost/__gtg", &http.Client{})
 
-	err := notifier.Notify("origin", "tid_1234", native.Content{}, "12345")
+	err := notifier.Notify("origin", "tid_1234", &native.Content{}, "12345")
 	assert.Error(t, err)
 }
 
@@ -92,7 +92,7 @@ func TestJSONFails(t *testing.T) {
 
 	body := make(map[string]interface{})
 	body["error"] = func() {}
-	err := notifier.Notify("origin", "tid_1234", native.Content{Body: body}, "12345")
+	err := notifier.Notify("origin", "tid_1234", &native.Content{Body: body}, "12345")
 	assert.Error(t, err)
 }
 
