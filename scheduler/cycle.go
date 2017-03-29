@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -162,6 +163,7 @@ func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {
 func (c *CycleMetadata) UpdateState(states ...string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.state = make(map[string]struct{})
 
 	for _, state := range states {
 		c.state[state] = struct{}{}
@@ -172,5 +174,6 @@ func (c *CycleMetadata) UpdateState(states ...string) {
 		arr = append(arr, k)
 	}
 
+	sort.Strings(arr)
 	c.State = arr
 }

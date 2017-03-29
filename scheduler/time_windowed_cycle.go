@@ -38,7 +38,7 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
 		if err != nil {
 			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
-			s.Metadata().UpdateState(unhealthyState)
+			s.Metadata().UpdateState(stoppedState, unhealthyState)
 			break
 		}
 
@@ -56,20 +56,19 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 
 		cancel()
 		if stopped {
+			s.Metadata().UpdateState(stoppedState)
 			break
 		}
 
 		if err != nil {
 			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
-			s.Metadata().UpdateState(unhealthyState)
+			s.Metadata().UpdateState(stoppedState, unhealthyState)
 			break
 		}
 
 		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
 		endTime = time.Now()
 	}
-
-	s.Metadata().UpdateState(stoppedState)
 }
 
 func (s *abstractTimeWindowedCycle) performCooldown(states ...string) time.Time {
