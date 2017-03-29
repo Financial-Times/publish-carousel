@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ui "github.com/Financial-Times/publish-carousel-ui"
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/Financial-Times/publish-carousel/native"
@@ -38,9 +39,16 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "cycles",
-			Value: "./cycles.yml",
-			Usage: "Path to the YML cycle configuration file.",
+			Name:   "cycles",
+			Value:  "./cycles.yml",
+			EnvVar: "CYCLES_FILE",
+			Usage:  "Path to the YML cycle configuration file.",
+		},
+		cli.StringFlag{
+			Name:   "blacklist",
+			Value:  "./carousel_blacklist.txt",
+			EnvVar: "BLACKLIST_FILE",
+			Usage:  "Path to the plaintxt blacklist file, which contains blacklisted uuids.",
 		},
 		cli.StringFlag{
 			Name:   "mongo-db",
@@ -98,12 +106,17 @@ func main() {
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
+		blist, err := blacklist.NewBuilder().FilterImages().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		if err != nil {
+			panic(err)
+		}
+
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
 		notifier := cms.NewNotifier(ctx.String("cms-notifier-url"), ctx.String("cms-notifier-gtg"), &http.Client{Timeout: time.Second * 30})
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier)
+		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 
