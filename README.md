@@ -124,7 +124,9 @@ A cycle can be in several states, but most of them are mutually exclusive, with 
 
 The Carosuel will run in the Publishing Cluster, which is an Active/Passive environment. As a result, the Carousel will also run in an Active/Passive manner, and will be disabled by default in the Passive region.
 
-The Carousel, however, will **not** be automatically started during a failover scenario, and will remain passive. This is to ensure we do not overload the Cluster, which could potentially exacerbate any .
+The Carousel, however, will **not** be automatically started during a failover scenario, and will remain passive. This is to ensure we do not overload the Cluster, which could potentially exacerbate any problems within the Publishing environment.
+
+The Carousel uses the etcd key `/ft/config/publish-carousel/enable` to determine whether or not it needs to be in the Active or Passive modes on startup. If this toggle changes at any time, the Carousel will shutdown or startup as required.
 
 # Developers on Windows
 
