@@ -46,11 +46,11 @@ A **Cycle** is responsible for continuously iterating over a subset of the nativ
 
 There are currently three different **Types** of cycle.
 
-#### ThrottledWholeCollection
+### ThrottledWholeCollection
 
 The `ThrottledWholeCollection` type will iterate over an entire `native-store` collection (i.e. methode, wordpress), and republish the content at a configured **Throttle** (i.e. every 15 seconds).
 
-#### FixedWindow
+### FixedWindow
 
 The `FixedWindow` type will iterate over all results within a configured time window (i.e. within the last one hour). The `FixedWindow` cycle will dynamically adjust its throttle so that it will complete the republishing of all content from the last hour, before the _next_ hour begins.
 
@@ -62,7 +62,7 @@ The FixedWindow type, however, has a configured minimum throttle, which cannot b
 
 In this case, the next time window will be adjusted to be 5 minutes longer, so that no items are missed for republishing.
 
-#### ScalingWindow
+### ScalingWindow
 
 The `ScalingWindow` type will also iterate over all the results within a configured time window (like the `FixedWindow`). However, it has both a minimum throttle, and a maximum throttle configured, neither of which can be exceeded.
 
