@@ -41,7 +41,10 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 			break
 		}
 
+		l.metadataLock.Lock()
 		l.CycleMetadata = &CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+		l.metadataLock.Unlock()
+
 		if uuidCollection.Length() == 0 {
 			l.Metadata().UpdateState(stoppedState, unhealthyState) // assume unhealthy, as the whole archive should *always* have content
 			break

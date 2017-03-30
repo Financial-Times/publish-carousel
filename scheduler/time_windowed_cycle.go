@@ -43,7 +43,11 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 		}
 
 		copiedTime := startTime // Copy so that we don't change the time for the cycle
+
+		s.metadataLock.Lock()
 		s.CycleMetadata = &CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+		s.metadataLock.Unlock()
+
 		startTime = endTime
 
 		if uuidCollection.Length() == 0 {
