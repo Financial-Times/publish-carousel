@@ -33,8 +33,10 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            go list ./... | grep -v vendor | awk -F/ '{print $4}' | xargs -I {} go test -v -cover -race -coverprofile=/tmp/coverage-results/{}.out ./{}
+            go test -v -cover -race -coverprofile=/tmp/coverage-results/coverage.out .
+            go list ./... | grep -v vendor | awk -F/ '{print $4}' | xargs -I {} go test -v -cover -race -coverprofile=/tmp/coverage-results/coverage_{}.out ./{}
             mkdir -p /tmp/test-results/
+            go test -v -race . | /go/bin/go-junit-report > /tmp/test-results/main.xml
             go list ./... | grep -v vendor | awk -F/ '{print $4}' | xargs -I {} go test -v -race ./{} | /go/bin/go-junit-report > /tmp/test-results/{}.xml
       - run:
           name: Combine Coverage Results
