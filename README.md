@@ -128,6 +128,29 @@ The Carousel, however, will **not** be automatically started during a failover s
 
 The Carousel uses the etcd key `/ft/config/publish-carousel/enable` to determine whether or not it needs to be in the Active or Passive modes on startup. If this toggle changes at any time, the Carousel will shutdown or startup as required.
 
+## Configuration
+
+On startup, the Carousel will read cycle configuration from a provided YAML file, add them to the Scheduler, attempt to restore the previous state from S3, and start them up. To configure cycles, the following fields are **required** for all cycle types:
+
+* `name`: The name of the cycle.
+* `type`: The type - can be one of `ThrottledWholeCollection`, `ScalingWindow`, `FixedWindow`.
+* `origin`: The Origin System ID to use when POST-ing to the `cms-notifier`.
+* `collection`: The `native-store` collection to retrieve content from.
+* `coolDown`: The time between iterations. N.B. this is currently required for all cycle types.
+
+The ThrottledWholeCollection type requires one additional field:
+
+* `throttle`: The interval between each republish.
+
+The ScalingWindow and FixedWindow types require the following additional fields:
+
+* `timeWindow`: The time period to republish for (i.e. one hour).
+* `minimumThrottle`: The lower bound for the computed throttle.
+
+And finally, the ScalingWindow requires one extra field:
+
+* `maximumThrottle`: The upper bound for the computed throttle.
+
 # Developers on Windows
 
 The Publish Carousel writes a metadata file to S3 on a graceful shutdown. Unfortunately, this functionality does not work on Windows using Git Bash, but does work when using the Command Prompt.
