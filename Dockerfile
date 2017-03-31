@@ -25,7 +25,7 @@ RUN apk add --update bash \
   && go get -v \
   && go build -ldflags="${LDFLAGS}" \
   && mv ./publish-carousel / \
-  && mv ./cycles.yml / \
+  && mv ./*.yml / \
   && apk del go git \
   && rm -rf $GOPATH /var/cache/apk/*
 

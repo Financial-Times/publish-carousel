@@ -40,7 +40,7 @@ At a high-level, the code has the notion of a **Scheduler**, a **Cycle**, and a 
 
 The **Scheduler** is responsible for managing all the configured cycles. It exposes functions for adding, deleting, stopping, starting and resetting individual cycles, as well as general functions for shutting down all cycles.
 
-A **Cycle** is responsible for continuously iterating over a subset of the native content in the `native-store`. Each time the cycle completes the republishing of the subset is called one **Iteration** of the cycle.
+A **Cycle** is responsible for continuously iterating over a subset of the native content in the `native-store`. One **Iteration** of the cycle is completed each time the cycle completes the republishing of that subset.
 
 ## Cycle Types
 
@@ -127,6 +127,29 @@ The Carosuel will run in the Publishing Cluster, which is an Active/Passive envi
 The Carousel, however, will **not** be automatically started during a failover scenario, and will remain passive. This is to ensure we do not overload the Cluster, which could potentially exacerbate any problems within the Publishing environment.
 
 The Carousel uses the etcd key `/ft/config/publish-carousel/enable` to determine whether or not it needs to be in the Active or Passive modes on startup. If this toggle changes at any time, the Carousel will shutdown or startup as required.
+
+## Configuration
+
+On startup, the Carousel will read cycle configuration from a provided YAML file, add them to the Scheduler, attempt to restore the previous state from S3, and start them up. To configure cycles, the following fields are **required** for all cycle types:
+
+* `name`: The name of the cycle.
+* `type`: The type - can be one of `ThrottledWholeCollection`, `ScalingWindow`, `FixedWindow`.
+* `origin`: The Origin System ID to use when POST-ing to the `cms-notifier`.
+* `collection`: The `native-store` collection to retrieve content from.
+* `coolDown`: The time between iterations. N.B. this is currently required for all cycle types.
+
+The ThrottledWholeCollection type requires one additional field:
+
+* `throttle`: The interval between each republish.
+
+The ScalingWindow and FixedWindow types require the following additional fields:
+
+* `timeWindow`: The time period to republish for (i.e. one hour).
+* `minimumThrottle`: The lower bound for the computed throttle.
+
+And finally, the ScalingWindow requires one extra field:
+
+* `maximumThrottle`: The upper bound for the computed throttle.
 
 # Developers on Windows
 
