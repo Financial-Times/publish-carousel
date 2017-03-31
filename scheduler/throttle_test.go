@@ -8,6 +8,10 @@ import (
 )
 
 func TestDynamicThrottle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("long test.")
+	}
+
 	throttle, _ := NewDynamicThrottle(1*time.Second, 1*time.Second, 1, 1)
 	start := time.Now()
 	throttle.Queue()
@@ -25,6 +29,10 @@ func TestDynamicThrottle(t *testing.T) {
 }
 
 func TestCappedThrottle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("long test.")
+	}
+
 	throttle, _ := NewCappedDynamicThrottle(time.Minute, time.Millisecond, 100*time.Millisecond, 1, 1)
 	start := time.Now()
 	throttle.Queue()
@@ -42,6 +50,10 @@ func TestCappedThrottle(t *testing.T) {
 }
 
 func TestRateInterval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("long test.")
+	}
+
 	interval := time.Minute
 	minThrottle := time.Second
 	maxThrottle := time.Second * 30

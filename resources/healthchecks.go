@@ -124,6 +124,15 @@ func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	}
 }
 
+func unhealthyClusters(sched scheduler.Scheduler) func() (string, error) {
+	return func() (string, error) {
+		if !sched.IsEnabled() {
+			return "", nil
+		}
+
+	}
+}
+
 func configHealthcheck(err error) func() (string, error) {
 	return func() (string, error) {
 		return "", err
