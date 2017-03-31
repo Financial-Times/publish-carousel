@@ -40,7 +40,7 @@ At a high-level, the code has the notion of a **Scheduler**, a **Cycle**, and a 
 
 The **Scheduler** is responsible for managing all the configured cycles. It exposes functions for adding, deleting, stopping, starting and resetting individual cycles, as well as general functions for shutting down all cycles.
 
-A **Cycle** is responsible for continuously iterating over a subset of the native content in the `native-store`. Each time the cycle completes the republishing of the subset is called one **Iteration** of the cycle.
+A **Cycle** is responsible for continuously iterating over a subset of the native content in the `native-store`. One **Iteration** of the cycle is completed each time the cycle completes the republishing of that subset.
 
 ## Cycle Types
 
