@@ -14,7 +14,7 @@ const expectedColletion = "a-collection"
 
 func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -41,7 +41,7 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -65,7 +65,7 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 func TestSchedulerResumeAfterDisable(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -129,7 +129,7 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 
 func TestSchedulerInvalidToggleValue(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{})
+	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)

@@ -98,6 +98,12 @@ func main() {
 			EnvVar: "TOGGLE_ETCD_KEY",
 			Usage:  "The ETCD key that enables or disables the carousel",
 		},
+		cli.StringFlag{
+			Name:   "default-throttle",
+			Value:  "1m",
+			EnvVar: "DEFAULT_THROTTLE",
+			Usage:  "Default throttle for whole collection cycles, if it is not specified in configuration file",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -124,7 +130,13 @@ func main() {
 			panic(err)
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw)
+		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
+
+		if err != nil {
+			log.WithError(err).Error("Invalid value for default throttle")
+		}
+
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle)
 		if err != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}

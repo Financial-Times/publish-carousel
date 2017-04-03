@@ -50,10 +50,9 @@ func (c CycleConfig) Validate() error {
 
 	switch strings.ToLower(c.Type) {
 	case "throttledwholecollection":
-		if err := checkDurations(c.Name, c.Throttle); err != nil {
+		if err := checkDurations(c.Name, c.Throttle); c.Throttle != "" && err != nil {
 			return err
 		}
-
 	case "fixedwindow":
 		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle); err != nil {
 			return err
@@ -79,8 +78,8 @@ func checkDurations(name string, durations ...string) error {
 }
 
 // LoadSchedulerFromFile loads cycles and throttles from the provided yaml config file
-func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter) (Scheduler, error) {
-	scheduler := NewScheduler(mongo, publishTask, rw)
+func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter, defaultThrottle time.Duration) (Scheduler, error) {
+	scheduler := NewScheduler(mongo, publishTask, rw, defaultThrottle)
 
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {
