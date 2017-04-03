@@ -4,7 +4,6 @@ cycles:
       origin: methode-web-pub
       collection: methode
       coolDown: 5m
-      throttle: 2s
 
   # -  name: methode-one-hour
   #    type: ScalingWindow

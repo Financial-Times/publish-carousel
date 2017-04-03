@@ -42,10 +42,11 @@ type defaultScheduler struct {
 	toggleLock         *sync.RWMutex
 	executionState     bool
 	toggle             bool
+	defaultThrottle    time.Duration
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter) Scheduler {
+func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration) Scheduler {
 	return &defaultScheduler{
 		database:           database,
 		publishTask:        publishTask,
@@ -56,6 +57,7 @@ func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter
 		toggleLock:         &sync.RWMutex{},
 		executionState:     stopped,
 		toggle:             disabled,
+		defaultThrottle:    defaultThrottle,
 	}
 }
 
@@ -66,6 +68,7 @@ func (s *defaultScheduler) Cycles() map[string]Cycle {
 }
 
 func (s *defaultScheduler) AddCycle(c Cycle) error {
+
 	if _, ok := s.cycles[c.ID()]; ok {
 		return fmt.Errorf("Conflicting ID found for cycle %v", c.ID())
 	}
@@ -214,7 +217,13 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 
 	switch strings.ToLower(config.Type) {
 	case "throttledwholecollection":
-		throttleInterval, _ := time.ParseDuration(config.Throttle)
+		var throttleInterval time.Duration
+		if config.Throttle == "" {
+			log.WithField("cycleName", config.Name).Info("Throttle configuration not found. Setting default throttle value")
+			throttleInterval = s.defaultThrottle
+		} else {
+			throttleInterval, _ = time.ParseDuration(config.Throttle)
+		}
 		t, _ := NewThrottle(throttleInterval, 1)
 		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
