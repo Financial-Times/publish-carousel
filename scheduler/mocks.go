@@ -77,6 +77,16 @@ func (m *MockScheduler) ToggleHandler(toggleValue string) {
 	m.Called(toggleValue)
 }
 
+func (m *MockScheduler) IsEnabled() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockScheduler) IsRunning() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
 type MockCycle struct {
 	mock.Mock
 }
