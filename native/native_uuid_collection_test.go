@@ -28,6 +28,11 @@ func TestComputeBatchSize(t *testing.T) {
 			err:      false,
 		},
 		{
+			expected: maxBatchSize,
+			duration: 2 * time.Second,
+			err:      false,
+		},
+		{
 			expected: 1,
 			duration: 9 * time.Minute,
 			err:      false,

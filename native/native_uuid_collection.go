@@ -13,6 +13,7 @@ import (
 )
 
 const mongoCursorTimeout = 10 * time.Minute
+const maxBatchSize = 80
 
 type UUIDCollection interface {
 	Next() (bool, string, error)
@@ -55,6 +56,10 @@ func computeBatchsize(interval time.Duration) (int, error) {
 	size := mongoCursorTimeout.Nanoseconds() / interval.Nanoseconds()
 	if size <= 1 {
 		return 1, nil
+	}
+
+	if size > maxBatchSize {
+		return maxBatchSize, nil
 	}
 
 	logrus.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
