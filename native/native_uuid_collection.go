@@ -3,6 +3,7 @@ package native
 import (
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -16,10 +17,10 @@ const mongoCursorTimeout = 10 * time.Minute
 const maxBatchSize = 80
 
 type UUIDCollection interface {
+	io.Closer
 	Next() (bool, string, error)
 	Length() int
 	Done() bool
-	Close() error
 }
 
 type NativeUUIDCollection struct {

@@ -90,7 +90,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		t.Queue()
 
 		if err := ctx.Err(); err != nil {
-			collection.Close()
 			return true, err
 		}
 

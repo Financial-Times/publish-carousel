@@ -33,37 +33,43 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 		skip = l.CycleMetadata.Completed
 	}
 
-	for {
-		uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
-		if err != nil {
-			log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
-			l.Metadata().UpdateState(stoppedState, unhealthyState)
-			break
-		}
-
-		l.metadataLock.Lock()
-		l.CycleMetadata = &CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
-		l.metadataLock.Unlock()
-
-		if uuidCollection.Length() == 0 {
-			l.Metadata().UpdateState(stoppedState, unhealthyState) // assume unhealthy, as the whole archive should *always* have content
-			break
-		}
-
-		stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
-		if stopped {
-			l.Metadata().UpdateState(stoppedState)
-			break
-		}
-
-		if err != nil {
-			log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
-			l.Metadata().UpdateState(stoppedState, unhealthyState)
-			break
-		}
-
-		skip = 0
+	b := true
+	for b {
+		skip, b = l.publishCollectionCycle(ctx, skip)
 	}
+}
+
+func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Context, skip int) (int, bool) {
+	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
+	if err != nil {
+		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
+		l.Metadata().UpdateState(stoppedState, unhealthyState)
+		return skip, false
+	}
+	defer uuidCollection.Close()
+
+	l.metadataLock.Lock()
+	l.CycleMetadata = &CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	l.metadataLock.Unlock()
+
+	if uuidCollection.Length() == 0 {
+		l.Metadata().UpdateState(stoppedState, unhealthyState) // assume unhealthy, as the whole archive should *always* have content
+		return skip, false
+	}
+
+	stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
+	if stopped {
+		l.Metadata().UpdateState(stoppedState)
+		return skip, false
+	}
+
+	if err != nil {
+		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
+		l.Metadata().UpdateState(stoppedState, unhealthyState)
+		return skip, false
+	}
+
+	return 0, true
 }
 
 func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
