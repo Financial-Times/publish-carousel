@@ -520,7 +520,7 @@ func TestHappyGTG(t *testing.T) {
 	GTG(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
 	resp := w.Result()
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "GTG should return 200")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -556,7 +556,7 @@ func TestUnappyGTG(t *testing.T) {
 	GTG(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
 	resp := w.Result()
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "GTG should return 503")
 
 	sched.AssertExpectations(t)
 	db.AssertExpectations(t)
