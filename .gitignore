@@ -27,3 +27,6 @@ _testmain.go
 
 /vendor/*
 !/vendor/vendor.json
+/default.etcd
+/cycles-test.yml
+/.project
