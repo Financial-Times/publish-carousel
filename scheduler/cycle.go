@@ -84,7 +84,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		t.Queue()
 
 		if err := ctx.Err(); err != nil {
-			collection.Close()
 			return true, err
 		}
 
@@ -140,6 +139,9 @@ func (a *abstractCycle) Stop() {
 }
 
 func (a *abstractCycle) Reset() {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
+
 	a.Stop()
 	a.CycleMetadata = &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})}
 }

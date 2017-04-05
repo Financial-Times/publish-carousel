@@ -34,45 +34,51 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 	endTime := time.Now()
 	startTime := endTime.Add(-1 * s.timeWindow)
 
-	for {
-		uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
-		if err != nil {
-			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
-			s.Metadata().UpdateState(stoppedState, unhealthyState)
-			break
-		}
-
-		copiedTime := startTime // Copy so that we don't change the time for the cycle
-
-		s.metadataLock.Lock()
-		s.CycleMetadata = &CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}, state: make(map[string]struct{})}
-		s.metadataLock.Unlock()
-
-		startTime = endTime
-
-		if uuidCollection.Length() == 0 {
-			endTime = s.performCooldown(coolDownState)
-			continue
-		}
-
-		t, cancel := throttle(uuidCollection.Length() + 1) // add one to the length to increase the wait time
-		stopped, err := s.publishCollection(ctx, uuidCollection, t)
-
-		cancel()
-		if stopped {
-			s.Metadata().UpdateState(stoppedState)
-			break
-		}
-
-		if err != nil {
-			log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
-			s.Metadata().UpdateState(stoppedState, unhealthyState)
-			break
-		}
-
-		t.Queue() // ensure we wait a reasonable amount of time before the next iteration
-		endTime = time.Now()
+	b := true
+	for b {
+		endTime, b = s.publishCollectionCycle(ctx, startTime, endTime, throttle)
 	}
+}
+
+func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, startTime time.Time, endTime time.Time, throttle func(publishes int) (Throttle, context.CancelFunc)) (time.Time, bool) {
+	uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
+	if err != nil {
+		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
+		s.Metadata().UpdateState(stoppedState, unhealthyState)
+		return endTime, false
+	}
+	defer uuidCollection.Close()
+
+	copiedTime := startTime // Copy so that we don't change the time for the cycle
+
+	s.metadataLock.Lock()
+	s.CycleMetadata = &CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	s.metadataLock.Unlock()
+
+	startTime = endTime
+
+	if uuidCollection.Length() == 0 {
+		endTime = s.performCooldown(coolDownState)
+		return endTime, true
+	}
+
+	t, cancel := throttle(uuidCollection.Length() + 1) // add one to the length to increase the wait time
+	stopped, err := s.publishCollection(ctx, uuidCollection, t)
+
+	cancel()
+	if stopped {
+		s.Metadata().UpdateState(stoppedState)
+		return endTime, false
+	}
+
+	if err != nil {
+		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
+		s.Metadata().UpdateState(stoppedState, unhealthyState)
+		return endTime, false
+	}
+
+	t.Queue() // ensure we wait a reasonable amount of time before the next iteration
+	return time.Now(), true
 }
 
 func (s *abstractTimeWindowedCycle) performCooldown(states ...string) time.Time {
