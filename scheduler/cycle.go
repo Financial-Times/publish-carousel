@@ -59,7 +59,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		Name:          name,
 		Type:          cycleType,
 		CycleMetadata: &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})},
-		pauseLock:     &sync.Mutex{},
+		metadataLock:  &sync.Mutex{},
 		db:            database,
 		DBCollection:  dbCollection,
 		Origin:        origin,
@@ -78,11 +78,11 @@ type abstractCycle struct {
 	Origin        string         `json:"origin"`
 	CoolDown      string         `json:"coolDown"`
 
-	coolDown    time.Duration
-	pauseLock   *sync.Mutex
-	cancel      context.CancelFunc
-	db          native.DB
-	publishTask tasks.Task
+	coolDown     time.Duration
+	metadataLock *sync.Mutex
+	cancel       context.CancelFunc
+	db           native.DB
+	publishTask  tasks.Task
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) (bool, error) {
@@ -90,7 +90,6 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		t.Queue()
 
 		if err := ctx.Err(); err != nil {
-			collection.Close()
 			return true, err
 		}
 
@@ -146,15 +145,24 @@ func (a *abstractCycle) Stop() {
 }
 
 func (a *abstractCycle) Reset() {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
+
 	a.Stop()
 	a.CycleMetadata = &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})}
 }
 
 func (a *abstractCycle) Metadata() *CycleMetadata {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
+
 	return a.CycleMetadata
 }
 
 func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
+
 	metadata.lock = &sync.RWMutex{}
 	metadata.state = make(map[string]struct{})
 	a.CycleMetadata = metadata
@@ -163,6 +171,7 @@ func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {
 func (c *CycleMetadata) UpdateState(states ...string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
 	c.state = make(map[string]struct{})
 
 	for _, state := range states {

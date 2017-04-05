@@ -1,0 +1,7 @@
+cycles:
+   -  name: methode-whole-archive
+      type: ThrottledWholeCollection
+      origin: methode-web-pub
+      collection: methode
+      coolDown: 5m
+      throttle: 15s
