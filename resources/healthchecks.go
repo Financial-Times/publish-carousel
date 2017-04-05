@@ -23,17 +23,17 @@ func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched 
 // GTG returns a handler for a standard GTG endpoint.
 func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...)}
 
 		for _, check := range checks {
 			_, err := check()
 			if err != nil {
-				w.WriteHeader(500)
+				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
 		}
 
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -138,18 +138,17 @@ func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
 	return func() (string, error) {
 		for _, service := range upServices {
-			if !service.GTG() {
+			if service.GTG() != nil {
 				if sched.IsRunning() {
 					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhalthy cluster service(s)")
 					sched.Shutdown()
 				}
 				return "Cluster is unhealthy", fmt.Errorf("Service %v is not good-to-go", service.Name())
-			} else {
-				if !sched.IsRunning() {
-					log.Info("Cluster health back to normal... restarting scheduler...")
-					sched.Start()
-				}
 			}
+		}
+		if !sched.IsRunning() && sched.IsEnabled() {
+			log.Info("Cluster health back to normal... restarting scheduler...")
+			sched.Start()
 		}
 		return "Cluster is healty", nil
 	}

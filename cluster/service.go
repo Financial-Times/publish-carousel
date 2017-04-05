@@ -1,15 +1,18 @@
 package cluster
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
 )
 
+const gtgtPath = "/__gtg"
+
 // Service is a generic service of an UP cluster that implements a standard FT Good-To-Go endpoint.
 type Service interface {
-	GTG() bool
+	GTG() error
 	Name() string
 }
 
@@ -19,8 +22,8 @@ type clusterService struct {
 }
 
 // NewService returns a new instance of a UpP cluster service
-func NewService(serviceName string, gtgURLString string) (Service, error) {
-	gtgURL, err := url.ParseRequestURI(gtgURLString)
+func NewService(serviceName string, urlString string) (Service, error) {
+	gtgURL, err := url.ParseRequestURI(urlString + gtgtPath)
 	if err != nil {
 		return nil, err
 	}
@@ -31,14 +34,14 @@ func (s *clusterService) Name() string {
 	return s.name
 }
 
-func (s *clusterService) GTG() bool {
-	resp, err := http.Get(s.gtgURL.RequestURI())
+func (s *clusterService) GTG() error {
+	resp, err := http.Get(s.gtgURL.String())
 	if err != nil {
 		log.WithError(err).WithField("service", s.name).Error("Error in calling the GTG enpoint of the service")
-		return false
+		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return false
+		return fmt.Errorf("gtg for %v returned a non-200 code: %v", s.Name(), resp.StatusCode)
 	}
-	return true
+	return nil
 }
