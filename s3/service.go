@@ -93,7 +93,7 @@ func (s *DefaultReadWriter) Write(id string, key string, b []byte, contentType s
 
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(getPrefixForID(id) + key),
+		Key:    aws.String(id + "/" + key),
 		Body:   bytes.NewReader(b),
 	}
 
@@ -120,7 +120,7 @@ func (s *DefaultReadWriter) GetLatestKeyForID(id string) (string, error) {
 
 	output, err := s3api.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(s.bucketName),
-		Prefix: aws.String(getPrefixForID(id)),
+		Prefix: aws.String(id + "/"),
 	})
 
 	if err != nil {
@@ -137,10 +137,6 @@ func (s *DefaultReadWriter) GetLatestKeyForID(id string) (string, error) {
 	}
 
 	return latestKey, nil
-}
-
-func getPrefixForID(id string) string {
-	return id + "/"
 }
 
 // Read reads the provided key and returns a reader etc.
