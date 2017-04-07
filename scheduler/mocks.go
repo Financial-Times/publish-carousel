@@ -1,6 +1,10 @@
 package scheduler
 
-import "github.com/stretchr/testify/mock"
+import (
+	"time"
+
+	"github.com/stretchr/testify/mock"
+)
 
 // MetadataRWMock is a mock of a MetadataReadWriter taht can be used to test
 type MockMetadataRW struct {
@@ -110,4 +114,22 @@ func (m *MockCycle) RestoreMetadata(state *CycleMetadata) {
 func (m *MockCycle) TransformToConfig() *CycleConfig {
 	args := m.Called()
 	return args.Get(0).(*CycleConfig)
+}
+
+type MockThrottle struct {
+	mock.Mock
+}
+
+func (m *MockThrottle) Queue() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockThrottle) Stop() {
+	m.Called()
+}
+
+func (m *MockThrottle) Interval() time.Duration {
+	args := m.Called()
+	return args.Get(0).(time.Duration)
 }

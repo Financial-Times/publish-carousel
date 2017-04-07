@@ -32,15 +32,15 @@ type Cycle interface {
 }
 
 type CycleMetadata struct {
-	CurrentUUID string     `json:"currentUuid"`
-	Errors      int        `json:"errors"`
-	Progress    float64    `json:"progress"`
-	State       []string   `json:"state"`
-	Completed   int        `json:"completed"`
-	Total       int        `json:"total"`
-	Iteration   int        `json:"iteration"`
-	Start       *time.Time `json:"windowStart,omitempty"`
-	End         *time.Time `json:"windowEnd,omitempty"`
+	CurrentPublishUUID string     `json:"currentPublishUuid"`
+	Errors             int        `json:"errors"`
+	Progress           float64    `json:"progress"`
+	State              []string   `json:"state"`
+	Completed          int        `json:"completed"`
+	Total              int        `json:"total"`
+	Iteration          int        `json:"iteration"`
+	Start              *time.Time `json:"windowStart,omitempty"`
+	End                *time.Time `json:"windowEnd,omitempty"`
 
 	state map[string]struct{}
 	lock  *sync.RWMutex
@@ -125,7 +125,7 @@ func (a *abstractCycle) updateState(uuid string, err error) {
 	}
 
 	a.CycleMetadata.Completed++
-	a.CycleMetadata.CurrentUUID = uuid
+	a.CycleMetadata.CurrentPublishUUID = uuid
 
 	if a.CycleMetadata.Total == 0 {
 		a.CycleMetadata.Progress = 0
