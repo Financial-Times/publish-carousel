@@ -219,7 +219,7 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 	case "throttledwholecollection":
 		var throttleInterval time.Duration
 		if config.Throttle == "" {
-			log.WithField("cycleName", config.Name).Info("Throttle configuration not found. Setting default throttle value")
+			log.WithField("cycleName", config.Name).Infof("Throttle configuration not found. Setting default throttle value (%v)", s.defaultThrottle)
 			throttleInterval = s.defaultThrottle
 		} else {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)
