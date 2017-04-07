@@ -48,7 +48,7 @@ func TestWholeCollectionCycleRun(t *testing.T) {
 	iter.AssertExpectations(t)
 }
 
-func TestWholeCollectionCycleRunMongoDBConnectionErrror(t *testing.T) {
+func TestWholeCollectionCycleRunMongoDBConnectionError(t *testing.T) {
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
 	db.On("Open").Return(mockTx, errors.New("error in DB connection")).After(1 * time.Second)

@@ -11,9 +11,9 @@ type MockMetadataRW struct {
 	mock.Mock
 }
 
-func (m *MockMetadataRW) LoadMetadata(id string) (*CycleMetadata, error) {
+func (m *MockMetadataRW) LoadMetadata(id string) (CycleMetadata, error) {
 	args := m.Called(id)
-	return args.Get(0).(*CycleMetadata), args.Error(1)
+	return args.Get(0).(CycleMetadata), args.Error(1)
 }
 
 func (m *MockMetadataRW) WriteMetadata(id string, state Cycle) error {
@@ -102,12 +102,12 @@ func (m *MockCycle) Reset() {
 	m.Called()
 }
 
-func (m *MockCycle) Metadata() *CycleMetadata {
+func (m *MockCycle) Metadata() CycleMetadata {
 	args := m.Called()
-	return args.Get(0).(*CycleMetadata)
+	return args.Get(0).(CycleMetadata)
 }
 
-func (m *MockCycle) RestoreMetadata(state *CycleMetadata) {
+func (m *MockCycle) SetMetadata(state CycleMetadata) {
 	m.Called(state)
 }
 

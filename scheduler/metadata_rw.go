@@ -13,7 +13,7 @@ import (
 const defaultContentType = "application/json"
 
 type MetadataReadWriter interface {
-	LoadMetadata(id string) (*CycleMetadata, error)
+	LoadMetadata(id string) (CycleMetadata, error)
 	WriteMetadata(id string, state Cycle) error
 }
 
@@ -22,35 +22,35 @@ type s3MetadataReadWriter struct {
 }
 
 type s3Metadata struct {
-	Config *CycleConfig `json:"config"`
-	Metadata *CycleMetadata `json:"metadata"`
+	Config   *CycleConfig  `json:"config"`
+	Metadata CycleMetadata `json:"metadata"`
 }
 
 func NewS3MetadataReadWriter(rw s3.ReadWriter) MetadataReadWriter {
 	return &s3MetadataReadWriter{s3rw: rw}
 }
 
-func (s *s3MetadataReadWriter) LoadMetadata(id string) (*CycleMetadata, error) {
+func (s *s3MetadataReadWriter) LoadMetadata(id string) (CycleMetadata, error) {
 	key, err := s.s3rw.GetLatestKeyForID(id)
 	if err != nil {
-		return nil, err
+		return CycleMetadata{}, err
 	}
 
 	if strings.TrimSpace(key) == "" {
-		return nil, errors.New(`No key found for id "` + id + `"`)
+		return CycleMetadata{}, errors.New(`No key found for id "` + id + `"`)
 	}
 
 	found, body, contentType, err := s.s3rw.Read(key)
 	if err != nil {
-		return nil, err
+		return CycleMetadata{}, err
 	}
 
 	if !found {
-		return nil, fmt.Errorf(`No state found for "%v"`, id)
+		return CycleMetadata{}, fmt.Errorf(`No state found for "%v"`, id)
 	}
 
 	if contentType == nil || strings.TrimSpace(*contentType) != "application/json" {
-		return nil, fmt.Errorf(`Failed to load state for "%v". Content was in an unexpected Content-Type "%v"`, id, contentType)
+		return CycleMetadata{}, fmt.Errorf(`Failed to load state for "%v". Content was in an unexpected Content-Type "%v"`, id, contentType)
 	}
 
 	fromS3 := &s3Metadata{}

@@ -44,16 +44,15 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 	uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
 	if err != nil {
 		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
-		s.Metadata().UpdateState(stoppedState, unhealthyState)
+		s.UpdateState(stoppedState, unhealthyState)
 		return endTime, false
 	}
 	defer uuidCollection.Close()
 
 	copiedTime := startTime // Copy so that we don't change the time for the cycle
 
-	s.metadataLock.Lock()
-	s.CycleMetadata = &CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}, state: make(map[string]struct{})}
-	s.metadataLock.Unlock()
+	metadata := CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	s.SetMetadata(metadata)
 
 	startTime = endTime
 
@@ -67,13 +66,13 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 
 	cancel()
 	if stopped {
-		s.Metadata().UpdateState(stoppedState)
+		s.UpdateState(stoppedState)
 		return endTime, false
 	}
 
 	if err != nil {
 		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
-		s.Metadata().UpdateState(stoppedState, unhealthyState)
+		s.UpdateState(stoppedState, unhealthyState)
 		return endTime, false
 	}
 
@@ -82,7 +81,7 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 }
 
 func (s *abstractTimeWindowedCycle) performCooldown(states ...string) time.Time {
-	s.Metadata().UpdateState(states...)
+	s.UpdateState(states...)
 	time.Sleep(s.coolDown)
 	return time.Now()
 }

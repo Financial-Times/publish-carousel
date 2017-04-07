@@ -23,15 +23,13 @@ func (l *ThrottledWholeCollectionCycle) Start() {
 	log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).Info("Starting throttled whole collection cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
-	l.Metadata().UpdateState(startingState)
+	l.UpdateState(startingState)
 	go l.start(ctx)
 }
 
 func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
-	skip := 0
-	if l.CycleMetadata != nil {
-		skip = l.CycleMetadata.Completed
-	}
+
+	skip := l.PublishedItems()
 
 	b := true
 	for b {
@@ -43,29 +41,28 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
 	if err != nil {
 		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
-		l.Metadata().UpdateState(stoppedState, unhealthyState)
+		l.UpdateState(stoppedState, unhealthyState)
 		return skip, false
 	}
 	defer uuidCollection.Close()
 
-	l.metadataLock.Lock()
-	l.CycleMetadata = &CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
-	l.metadataLock.Unlock()
+	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	l.SetMetadata(metadata)
 
 	if uuidCollection.Length() == 0 {
-		l.Metadata().UpdateState(stoppedState, unhealthyState) // assume unhealthy, as the whole archive should *always* have content
+		l.UpdateState(stoppedState, unhealthyState) // assume unhealthy, as the whole archive should *always* have content
 		return skip, false
 	}
 
 	stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
 	if stopped {
-		l.Metadata().UpdateState(stoppedState)
+		l.UpdateState(stoppedState)
 		return skip, false
 	}
 
 	if err != nil {
 		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
-		l.Metadata().UpdateState(stoppedState, unhealthyState)
+		l.UpdateState(stoppedState, unhealthyState)
 		return skip, false
 	}
 
