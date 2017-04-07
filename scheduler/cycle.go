@@ -29,6 +29,7 @@ type Cycle interface {
 	Metadata() CycleMetadata
 	SetMetadata(state CycleMetadata)
 	TransformToConfig() *CycleConfig
+	State() []string
 }
 
 type CycleMetadata struct {
@@ -43,7 +44,6 @@ type CycleMetadata struct {
 	End                *time.Time `json:"windowEnd,omitempty"`
 
 	state map[string]struct{}
-	lock  *sync.RWMutex
 }
 
 func newCycleID(name string, dbcollection string) string {
@@ -58,7 +58,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
 		Type:          cycleType,
-		CycleMetadata: CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})},
+		CycleMetadata: CycleMetadata{state: make(map[string]struct{})},
 		metadataLock:  &sync.RWMutex{},
 		db:            database,
 		DBCollection:  dbCollection,
@@ -146,7 +146,7 @@ func (a *abstractCycle) Stop() {
 
 func (a *abstractCycle) Reset() {
 	a.Stop()
-	metadata := CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	metadata := CycleMetadata{state: make(map[string]struct{})}
 	a.SetMetadata(metadata)
 }
 
@@ -161,9 +161,6 @@ func (a *abstractCycle) SetMetadata(metadata CycleMetadata) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
-	if metadata.lock == nil {
-		metadata.lock = &sync.RWMutex{}
-	}
 	if metadata.state == nil {
 		metadata.state = make(map[string]struct{})
 	}
@@ -194,4 +191,10 @@ func (a *abstractCycle) PublishedItems() int {
 	a.metadataLock.RLock()
 	defer a.metadataLock.RUnlock()
 	return a.CycleMetadata.Completed
+}
+
+func (a *abstractCycle) State() []string {
+	a.metadataLock.RLock()
+	defer a.metadataLock.RUnlock()
+	return a.CycleMetadata.State
 }

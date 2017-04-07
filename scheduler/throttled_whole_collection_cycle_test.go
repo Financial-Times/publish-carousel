@@ -29,17 +29,17 @@ func TestWholeCollectionCycleRun(t *testing.T) {
 	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Start()
 
-	assert.Len(t, c.Metadata().State, 1, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, startingState, "Cycle should be in running state")
+	assert.Len(t, c.State(), 1, "The cycle should have one state")
+	assert.Contains(t, c.State(), startingState, "Cycle should be in running state")
 
 	time.Sleep(2 * time.Second)
-	assert.Len(t, c.Metadata().State, 1, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, runningState, "Cycle should be in running state")
+	assert.Len(t, c.State(), 1, "The cycle should have one state")
+	assert.Contains(t, c.State(), runningState, "Cycle should be in running state")
 
 	c.Stop()
 	time.Sleep(1 * time.Second)
 
-	assert.Contains(t, c.Metadata().State, stoppedState, "Cycle should be in stopped state")
+	assert.Contains(t, c.State(), stoppedState, "Cycle should be in stopped state")
 
 	db.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
@@ -60,13 +60,13 @@ func TestWholeCollectionCycleRunMongoDBConnectionError(t *testing.T) {
 	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Start()
 
-	assert.Len(t, c.Metadata().State, 1, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, startingState, "Cycle should be in running state")
+	assert.Len(t, c.State(), 1, "The cycle should have one state")
+	assert.Contains(t, c.State(), startingState, "Cycle should be in running state")
 
 	time.Sleep(2 * time.Second)
-	assert.Len(t, c.Metadata().State, 2, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, stoppedState, "Cycle should be in stopped state")
-	assert.Contains(t, c.Metadata().State, unhealthyState, "Cycle should be in unhealthy state")
+	assert.Len(t, c.State(), 2, "The cycle should have one state")
+	assert.Contains(t, c.State(), stoppedState, "Cycle should be in stopped state")
+	assert.Contains(t, c.State(), unhealthyState, "Cycle should be in unhealthy state")
 
 	db.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
@@ -89,13 +89,13 @@ func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
 	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Start()
 
-	assert.Len(t, c.Metadata().State, 1, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, startingState, "Cycle should be in running state")
+	assert.Len(t, c.State(), 1, "The cycle should have one state")
+	assert.Contains(t, c.State(), startingState, "Cycle should be in running state")
 
 	time.Sleep(2 * time.Second)
-	assert.Len(t, c.Metadata().State, 2, "The cycle should have one state")
-	assert.Contains(t, c.Metadata().State, stoppedState, "Cycle should be in stopped state")
-	assert.Contains(t, c.Metadata().State, unhealthyState, "Cycle should be in unhealthy state")
+	assert.Len(t, c.State(), 2, "The cycle should have one state")
+	assert.Contains(t, c.State(), stoppedState, "Cycle should be in stopped state")
+	assert.Contains(t, c.State(), unhealthyState, "Cycle should be in unhealthy state")
 
 	db.AssertExpectations(t)
 	mockTx.AssertExpectations(t)

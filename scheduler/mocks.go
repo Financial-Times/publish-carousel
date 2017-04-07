@@ -116,6 +116,11 @@ func (m *MockCycle) TransformToConfig() *CycleConfig {
 	return args.Get(0).(*CycleConfig)
 }
 
+func (m *MockCycle) State() []string {
+	args := m.Called()
+	return args.Get(0).([]string)
+}
+
 type MockThrottle struct {
 	mock.Mock
 }
