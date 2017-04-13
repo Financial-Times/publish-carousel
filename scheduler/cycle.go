@@ -54,7 +54,7 @@ func newCycleID(name string, dbcollection string) string {
 }
 
 func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
-	return &abstractCycle{
+	cycle := &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
 		Type:          cycleType,
@@ -67,6 +67,9 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		coolDown:      coolDown,
 		publishTask:   task,
 	}
+	cycle.UpdateState(stoppedState)
+
+	return cycle
 }
 
 type abstractCycle struct {
