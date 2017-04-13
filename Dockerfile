@@ -6,7 +6,7 @@ RUN apk add --update bash \
   && ls -lta /source/ \
   && apk --update add git go libc-dev ca-certificates \
   && cd /source/ \
-  && BUILDINFO_PACKAGE="github.com/Financial-Times/service-status-go/buildinfo." \
+  && BUILDINFO_PACKAGE="github.com/Financial-Times/publish-carousel/vendor/github.com/Financial-Times/service-status-go/buildinfo." \
   && VERSION="version=$(git describe --tag --always 2> /dev/null)" \
   && DATETIME="dateTime=$(date -u +%Y%m%d%H%M%S)" \
   && REPOSITORY="repository=$(git config --get remote.origin.url)" \
