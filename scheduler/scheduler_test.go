@@ -13,6 +13,11 @@ const cycleConfigFile = "test/cycle_test.yml"
 const expectedColletion = "a-collection"
 
 func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
 	db := new(native.MockDB)
 	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
@@ -39,6 +44,10 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 }
 
 func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
 
 	db := new(native.MockDB)
 	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)

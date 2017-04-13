@@ -12,6 +12,11 @@ import (
 )
 
 func TestWholeCollectionCycleRun(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
 	iter := new(native.MockDBIter)
@@ -49,6 +54,11 @@ func TestWholeCollectionCycleRun(t *testing.T) {
 }
 
 func TestWholeCollectionCycleRunMongoDBConnectionError(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
 	db.On("Open").Return(mockTx, errors.New("error in DB connection")).After(1 * time.Second)
@@ -75,6 +85,11 @@ func TestWholeCollectionCycleRunMongoDBConnectionError(t *testing.T) {
 }
 
 func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
 	iter := new(native.MockDBIter)

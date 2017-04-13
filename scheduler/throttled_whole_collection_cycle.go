@@ -27,7 +27,6 @@ func (l *ThrottledWholeCollectionCycle) Start() {
 }
 
 func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
-
 	skip := l.PublishedItems()
 
 	b := true
