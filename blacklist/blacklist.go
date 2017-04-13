@@ -70,9 +70,10 @@ func (b *Builder) Build() (Blacklist, error) {
 
 func fileBasedBlacklist(file string) (blacklistFilter, error) {
 	f, err := os.Open(file)
-	if f != nil {
-		defer f.Close()
+	if err != nil {
+		return nil, err
 	}
+	defer f.Close()
 
 	if err != nil {
 		return nil, err
@@ -83,11 +84,13 @@ func fileBasedBlacklist(file string) (blacklistFilter, error) {
 		if err != nil {
 			return false, err
 		}
-
 		defer f.Close()
+
+		uuidAsBytes := []byte(uuid)
+
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			if bytes.Contains(scanner.Bytes(), []byte(uuid)) {
+			if bytes.Contains(scanner.Bytes(), uuidAsBytes) {
 				return false, nil
 			}
 		}
