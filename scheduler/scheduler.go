@@ -120,7 +120,7 @@ func (s *defaultScheduler) RestorePreviousState() {
 			}
 
 			log.WithField("id", cycle.ID()).WithField("iteration", state.Iteration).WithField("completed", state.Completed).Info("Restoring state for cycle.")
-			cycle.RestoreMetadata(state)
+			cycle.SetMetadata(state)
 		}
 	}
 }
