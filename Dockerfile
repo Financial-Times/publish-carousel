@@ -26,6 +26,7 @@ RUN apk add --update bash \
   && go build -ldflags="${LDFLAGS}" \
   && mv ./publish-carousel / \
   && mv ./*.yml / \
+  && mv ./carousel_blacklist.txt / \
   && apk del go git \
   && rm -rf $GOPATH /var/cache/apk/*
 
