@@ -14,13 +14,11 @@ const coolDownState = "cooldown"
 
 type State struct {
 	states []string
-
-	stateSet map[string]struct{}
-	lock     *sync.RWMutex
+	lock   *sync.RWMutex
 }
 
 func NewState() *State {
-	return &State{lock: &sync.RWMutex{}, stateSet: make(map[string]struct{})}
+	return &State{lock: &sync.RWMutex{}}
 }
 
 func (s *State) MarshalJSON() ([]byte, error) {
@@ -45,14 +43,14 @@ func (s *State) Update(states ...string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.stateSet = make(map[string]struct{})
+	stateSet := make(map[string]struct{})
 
 	for _, state := range states {
-		s.stateSet[state] = struct{}{}
+		stateSet[state] = struct{}{}
 	}
 
 	var arr []string
-	for k := range s.stateSet {
+	for k := range stateSet {
 		arr = append(arr, k)
 	}
 

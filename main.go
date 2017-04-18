@@ -73,7 +73,7 @@ func main() {
 			Name:   "lagcheck-url",
 			Value:  "http://localhost:8080/__kafka-lagcheck",
 			EnvVar: "LAGCHECK_URL",
-			Usage:  "The URL of the queue lagckeck service to verify the health of the cluster.",
+			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "aws-region",
@@ -197,18 +197,18 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError)).Methods("GET")
+	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
+	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
 
-	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
-	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
+
+	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
+	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 
 	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
 	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")

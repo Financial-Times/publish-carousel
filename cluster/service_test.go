@@ -5,13 +5,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/stretchr/testify/assert"
 )
 
 func newMockHTTPService(t *testing.T, status int) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(status)
-		assert.Contains(t, req.URL.Path, gtgtPath, "Request URL should contain GTG path")
+		assert.Contains(t, req.URL.Path, httphandlers.GTGPath, "Request URL should contain GTG path")
 	}))
 }
 
@@ -41,7 +42,7 @@ func TestUnhappyGTG(t *testing.T) {
 
 	s, err := NewService("pam", mockService.URL)
 	assert.NoError(t, err, "It should not return an error")
-	assert.EqualError(t, s.GTG(), "gtg for pam returned a non-200 code: 503", "The service should not be good to go")
+	assert.EqualError(t, s.GTG(), "GTG for pam returned a non-200 code: 503", "The service should not be good to go")
 }
 
 func TestGTGConnectionError(t *testing.T) {

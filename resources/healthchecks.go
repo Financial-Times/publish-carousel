@@ -80,9 +80,9 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			Checker:          configHealthcheck(configError),
 		},
 		{
-			Name:             "UnhealtyCluster",
+			Name:             "UnhealthyCluster",
 			BusinessImpact:   "No Business Impact.",
-			TechnicalSummary: `The cluster is unhealty, then carousel scheduler is going to stop.`,
+			TechnicalSummary: `If the cluster is unhealthy, the Carousel scheduler will shutdown until the system has stabilised.`,
 			Severity:         1,
 			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
 			Checker:          unhealthyClusters(sched, upServices...),
@@ -121,8 +121,7 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 		}
 
 		if len(unhealthyIDs) > 0 {
-			j, _ := json.Marshal(unhealthyIDs)
-			return "", errors.New("The following cycles are unhealthy! " + string(j))
+			return "", errors.New("The following cycles are unhealthy! " + toJSON(unhealthyIDs))
 		}
 
 		return "", nil
@@ -135,22 +134,35 @@ func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	}
 }
 
+func toJSON(data interface{}) string {
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
 	return func() (string, error) {
+		var unhealthyServices []string
+
 		for _, service := range upServices {
 			if service.GTG() != nil {
 				if sched.IsRunning() {
-					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhalthy cluster service(s)")
+					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
 					sched.Shutdown()
 				}
-				return "Cluster is unhealthy", fmt.Errorf("Service %v is not good-to-go", service.Name())
+				unhealthyServices = append(unhealthyServices, service.Name())
 			}
 		}
+
+		if len(unhealthyServices) > 0 {
+			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices))
+		}
+
 		if !sched.IsRunning() && sched.IsEnabled() {
-			log.Info("Cluster health back to normal... restarting scheduler...")
+			log.Info("Cluster health back to normal; restarting scheduler.")
 			sched.Start()
 		}
-		return "Cluster is healty", nil
+
+		return "Cluster is healthy", nil
 	}
 }
 

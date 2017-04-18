@@ -19,9 +19,9 @@ func TestHappyHealthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -54,13 +54,13 @@ func TestHappyHealthcheck(t *testing.T) {
 	Health(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck should return 200")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -77,9 +77,9 @@ func TestUnhappyMongoDBHealthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -111,12 +111,12 @@ func TestUnhappyMongoDBHealthcheck(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":false`, "Database should not be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":false`, "Database should not be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -132,9 +132,9 @@ func TestUnhappyS3Healthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -168,12 +168,12 @@ func TestUnhappyS3Healthcheck(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":false`, "S3 should not be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":false`, "S3 should not be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -190,9 +190,9 @@ func TestUnhappyCMSNotifierHealthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -226,12 +226,12 @@ func TestUnhappyCMSNotifierHealthcheck(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":false`, "CMS notifier should not be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":false`, "CMS notifier should not be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -248,10 +248,10 @@ func TestUnhappyCyclesHealthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"unhealthy"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"unhealthy"}})
 	c1.On("ID").Return("c1")
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -285,12 +285,12 @@ func TestUnhappyCyclesHealthcheck(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":false`, "Cycles should not be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":false`, "Cycles should not be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -307,9 +307,9 @@ func TestUnhappyCycleConfigHealthcheck(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -343,12 +343,12 @@ func TestUnhappyCycleConfigHealthcheck(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":false`, "Cycles configuration should not be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":false`, "Cycles configuration should not be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -365,9 +365,9 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -403,12 +403,12 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":false`, "Cluster should not be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":false`, "Cluster should not be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -421,13 +421,14 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	upService2.AssertExpectations(t)
 }
 
-func TestSchedulerRestartWhenClusterReturnHealty(t *testing.T) {
+func TestSchedulerRestartWhenClusterReturnHealthy(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,
@@ -441,6 +442,7 @@ func TestSchedulerRestartWhenClusterReturnHealty(t *testing.T) {
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
+
 	upService2 := new(cluster.MockService)
 	upService2.On("GTG").Return(nil)
 
@@ -463,12 +465,12 @@ func TestSchedulerRestartWhenClusterReturnHealty(t *testing.T) {
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Heathcheck should return 200")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be heatlty")
-	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be heatlty")
-	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be heatlty")
-	assert.Contains(t, string(body), `"name":"UnhealtyCluster","ok":true`, "Cluster should not be heatlty")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -485,9 +487,9 @@ func TestHappyGTG(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	c1 := new(scheduler.MockCycle)
-	c1.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 	c2 := new(scheduler.MockCycle)
-	c2.On("Metadata").Return(&scheduler.CycleMetadata{State: []string{"running"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
 
 	mockCycles := map[string]scheduler.Cycle{
 		"c1": c1,

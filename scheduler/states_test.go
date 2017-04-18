@@ -18,9 +18,8 @@ func TestStatesMarshalJSON(t *testing.T) {
 
 func TestStatesUnmarshalJSON(t *testing.T) {
 	s := State{lock: &sync.RWMutex{}}
-	err := json.Unmarshal([]byte(`["hey","you"]`), &s)
+	err := json.Unmarshal([]byte(`["hey","hey","you"]`), &s)
 
 	assert.NoError(t, err)
 	assert.Equal(t, s.states, []string{"hey", "you"})
-	assert.Equal(t, s.stateSet, map[string]struct{}{"hey": struct{}{}, "you": struct{}{}})
 }
