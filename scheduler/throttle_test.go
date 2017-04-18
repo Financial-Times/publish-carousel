@@ -9,7 +9,8 @@ import (
 
 func TestDynamicThrottle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("long test.")
+		t.Skip("Skipping - this test can take several seconds.")
+		return
 	}
 
 	throttle, _ := NewDynamicThrottle(1*time.Second, 1*time.Second, 1, 1)
@@ -30,7 +31,8 @@ func TestDynamicThrottle(t *testing.T) {
 
 func TestCappedThrottle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("long test.")
+		t.Skip("Skipping - this test can take several seconds.")
+		return
 	}
 
 	throttle, _ := NewCappedDynamicThrottle(time.Minute, time.Millisecond, 100*time.Millisecond, 1, 1)

@@ -13,8 +13,13 @@ const cycleConfigFile = "test/cycle_test.yml"
 const expectedColletion = "a-collection"
 
 func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -39,9 +44,13 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 }
 
 func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -65,7 +74,7 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 func TestSchedulerResumeAfterDisable(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -129,7 +138,7 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 
 func TestSchedulerInvalidToggleValue(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(db, &tasks.PublishTaskMock{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)

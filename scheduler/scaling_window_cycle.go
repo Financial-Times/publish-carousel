@@ -39,7 +39,7 @@ func (s *ScalingWindowCycle) Start() {
 	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.Metadata().UpdateState(startingState)
+	s.UpdateState(startingState)
 
 	throttle := func(publishes int) (Throttle, context.CancelFunc) {
 		return NewCappedDynamicThrottle(s.timeWindow, s.minimumThrottle, s.maximumThrottle, publishes, 1)

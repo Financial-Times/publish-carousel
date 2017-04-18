@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	mgo "gopkg.in/mgo.v2"
-
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -63,7 +61,7 @@ func TestNewNativeUUIDCollection(t *testing.T) {
 	mockTx := new(MockTX)
 
 	testCollection := "testing-123"
-	iter := &mgo.Iter{}
+	iter := new(MockDBIter)
 
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, nil)
@@ -96,7 +94,7 @@ func TestNewNativeUUIDCollectionFindFails(t *testing.T) {
 	mockTx := new(MockTX)
 
 	testCollection := "testing-123"
-	iter := &mgo.Iter{}
+	iter := new(MockDBIter)
 
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, errors.New("fail"))
@@ -113,7 +111,7 @@ func TestNewNativeUUIDCollectionForTimeWindow(t *testing.T) {
 	mockTx := new(MockTX)
 
 	testCollection := "testing-123"
-	iter := &mgo.Iter{}
+	iter := new(MockDBIter)
 
 	end := time.Now()
 	start := end.Add(time.Minute * -1)
@@ -155,7 +153,7 @@ func TestNewNativeUUIDCollectionForTimeWindowFindFails(t *testing.T) {
 	end := time.Now()
 	start := end.Add(time.Minute * -1)
 
-	iter := &mgo.Iter{}
+	iter := new(MockDBIter)
 
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end, 9).Return(iter, 11234, errors.New("fail"))
@@ -180,8 +178,8 @@ func TestNativeUUIDCollection(t *testing.T) {
 
 	found := false
 	for !uuidCollection.Done() {
-		_, result, err := uuidCollection.Next()
-		assert.NoError(t, err)
+		_, result, errNext := uuidCollection.Next()
+		assert.NoError(t, errNext)
 
 		if result == testUUID {
 			found = true

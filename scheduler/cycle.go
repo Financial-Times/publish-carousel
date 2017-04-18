@@ -20,24 +20,24 @@ type Cycle interface {
 	Start()
 	Stop()
 	Reset()
-	Metadata() *CycleMetadata
-	RestoreMetadata(state *CycleMetadata)
+	Metadata() CycleMetadata
+	SetMetadata(state CycleMetadata)
 	TransformToConfig() *CycleConfig
+	State() []string
 }
 
 type CycleMetadata struct {
-	CurrentUUID string     `json:"currentUuid"`
-	Errors      int        `json:"errors"`
-	Progress    float64    `json:"progress"`
-	State       []string   `json:"state"`
-	Completed   int        `json:"completed"`
-	Total       int        `json:"total"`
-	Iteration   int        `json:"iteration"`
-	Start       *time.Time `json:"windowStart,omitempty"`
-	End         *time.Time `json:"windowEnd,omitempty"`
+	CurrentPublishUUID string     `json:"currentPublishUuid"`
+	Errors             int        `json:"errors"`
+	Progress           float64    `json:"progress"`
+	State              []string   `json:"state"`
+	Completed          int        `json:"completed"`
+	Total              int        `json:"total"`
+	Iteration          int        `json:"iteration"`
+	Start              *time.Time `json:"windowStart,omitempty"`
+	End                *time.Time `json:"windowEnd,omitempty"`
 
 	state map[string]struct{}
-	lock  *sync.RWMutex
 }
 
 func newCycleID(name string, dbcollection string) string {
@@ -48,12 +48,12 @@ func newCycleID(name string, dbcollection string) string {
 }
 
 func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
-	return &abstractCycle{
+	cycle := &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
 		Type:          cycleType,
-		CycleMetadata: &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})},
-		metadataLock:  &sync.Mutex{},
+		CycleMetadata: CycleMetadata{state: make(map[string]struct{})},
+		metadataLock:  &sync.RWMutex{},
 		db:            database,
 		DBCollection:  dbCollection,
 		Origin:        origin,
@@ -61,19 +61,22 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		coolDown:      coolDown,
 		publishTask:   task,
 	}
+	cycle.UpdateState(stoppedState)
+
+	return cycle
 }
 
 type abstractCycle struct {
-	CycleID       string         `json:"id"`
-	Name          string         `json:"name"`
-	Type          string         `json:"type"`
-	CycleMetadata *CycleMetadata `json:"metadata"`
-	DBCollection  string         `json:"collection"`
-	Origin        string         `json:"origin"`
-	CoolDown      string         `json:"coolDown"`
+	CycleID       string        `json:"id"`
+	Name          string        `json:"name"`
+	Type          string        `json:"type"`
+	CycleMetadata CycleMetadata `json:"metadata"`
+	DBCollection  string        `json:"collection"`
+	Origin        string        `json:"origin"`
+	CoolDown      string        `json:"coolDown"`
 
 	coolDown     time.Duration
-	metadataLock *sync.Mutex
+	metadataLock *sync.RWMutex
 	cancel       context.CancelFunc
 	db           native.DB
 	publishTask  tasks.Task
@@ -90,13 +93,13 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		finished, uuid, err := collection.Next()
 		if finished {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
-			a.updateState("", err)
+			a.updateProgress("", err)
 			return false, err
 		}
 
 		if strings.TrimSpace(uuid) == "" {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
-			a.updateState(uuid, errors.New("Empty uuid"))
+			a.updateProgress(uuid, errors.New("Empty uuid"))
 			continue
 		}
 
@@ -106,20 +109,20 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 		}
 
-		a.updateState(uuid, err)
+		a.updateProgress(uuid, err)
 	}
 }
 
-func (a *abstractCycle) updateState(uuid string, err error) {
-	a.CycleMetadata.lock.Lock()
-	defer a.CycleMetadata.lock.Unlock()
+func (a *abstractCycle) updateProgress(uuid string, err error) {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
 
 	if err != nil {
 		a.CycleMetadata.Errors++
 	}
 
 	a.CycleMetadata.Completed++
-	a.CycleMetadata.CurrentUUID = uuid
+	a.CycleMetadata.CurrentPublishUUID = uuid
 
 	if a.CycleMetadata.Total == 0 {
 		a.CycleMetadata.Progress = 0
@@ -135,48 +138,60 @@ func (a *abstractCycle) ID() string {
 func (a *abstractCycle) Stop() {
 	a.cancel()
 	log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Cycle stopped.")
-	a.Metadata().UpdateState(stoppedState)
+	a.UpdateState(stoppedState)
 }
 
 func (a *abstractCycle) Reset() {
-	a.metadataLock.Lock()
-	defer a.metadataLock.Unlock()
-
 	a.Stop()
-	a.CycleMetadata = &CycleMetadata{lock: &sync.RWMutex{}, state: make(map[string]struct{})}
+	metadata := CycleMetadata{state: make(map[string]struct{})}
+	a.SetMetadata(metadata)
 }
 
-func (a *abstractCycle) Metadata() *CycleMetadata {
+func (a *abstractCycle) Metadata() CycleMetadata {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
 	return a.CycleMetadata
 }
 
-func (a *abstractCycle) RestoreMetadata(metadata *CycleMetadata) {
+func (a *abstractCycle) SetMetadata(metadata CycleMetadata) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
-	metadata.lock = &sync.RWMutex{}
-	metadata.state = make(map[string]struct{})
+	if metadata.state == nil {
+		metadata.state = make(map[string]struct{})
+	}
+
 	a.CycleMetadata = metadata
 }
 
-func (c *CycleMetadata) UpdateState(states ...string) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+func (a *abstractCycle) UpdateState(states ...string) {
+	a.metadataLock.Lock()
+	defer a.metadataLock.Unlock()
 
-	c.state = make(map[string]struct{})
+	a.CycleMetadata.state = make(map[string]struct{})
 
 	for _, state := range states {
-		c.state[state] = struct{}{}
+		a.CycleMetadata.state[state] = struct{}{}
 	}
 
 	var arr []string
-	for k := range c.state {
+	for k := range a.CycleMetadata.state {
 		arr = append(arr, k)
 	}
 
 	sort.Strings(arr)
-	c.State = arr
+	a.CycleMetadata.State = arr
+}
+
+func (a *abstractCycle) PublishedItems() int {
+	a.metadataLock.RLock()
+	defer a.metadataLock.RUnlock()
+	return a.CycleMetadata.Completed
+}
+
+func (a *abstractCycle) State() []string {
+	a.metadataLock.RLock()
+	defer a.metadataLock.RUnlock()
+	return a.CycleMetadata.State
 }

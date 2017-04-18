@@ -9,7 +9,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
 
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -25,7 +24,7 @@ type UUIDCollection interface {
 
 type NativeUUIDCollection struct {
 	collection string
-	iter       *mgo.Iter
+	iter       DBIter
 	length     int
 }
 
