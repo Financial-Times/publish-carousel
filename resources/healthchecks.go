@@ -87,14 +87,24 @@ func pingMongo(db native.DB) func() (string, error) {
 		}
 
 		defer tx.Close()
+		err = tx.Ping()
 
-		return "", tx.Ping()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
 func pingS3(svc s3.ReadWriter) func() (string, error) {
 	return func() (string, error) {
-		return "", svc.Ping()
+		err := svc.Ping()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
@@ -114,18 +124,27 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 			return "", errors.New("The following cycles are unhealthy! " + string(j))
 		}
 
-		return "", nil
+		return "No unhealthy cycles.", nil
 	}
 }
 
 func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	return func() (string, error) {
-		return "", notifier.GTG()
+		err := notifier.GTG()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
 func configHealthcheck(err error) func() (string, error) {
 	return func() (string, error) {
-		return "", err
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
