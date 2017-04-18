@@ -535,7 +535,7 @@ func TestHappyGTG(t *testing.T) {
 	upService2.AssertExpectations(t)
 }
 
-func TestUnappyGTG(t *testing.T) {
+func TestUnhappyGTG(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 
 	upService1 := new(cluster.MockService)
