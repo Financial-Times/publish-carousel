@@ -12,7 +12,7 @@ import (
 
 type ThrottledWholeCollectionCycle struct {
 	*abstractCycle
-	throttle Throttle
+	Throttle Throttle `json:"throttle"`
 }
 
 func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
@@ -40,7 +40,7 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 }
 
 func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Context, skip int) (int, bool) {
-	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
+	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.Throttle.Interval())
 	if err != nil {
 		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
 		l.Metadata().UpdateState(stoppedState, unhealthyState)
@@ -57,7 +57,7 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 		return skip, false
 	}
 
-	stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
+	stopped, err := l.publishCollection(ctx, uuidCollection, l.Throttle)
 	if stopped {
 		l.Metadata().UpdateState(stoppedState)
 		return skip, false
@@ -73,5 +73,13 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 }
 
 func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection}
+	return &CycleConfig{
+		Name:       s.Name,
+		Type:       s.Type,
+		Origin:     s.Origin,
+		Collection: s.DBCollection,
+		CoolDown:   s.CoolDown,
+		Throttle:   s.Throttle.Interval().String(),
+		/* TimeWindow, MinimumThrottle, MaximumThrottle omitted	*/
+	}
 }

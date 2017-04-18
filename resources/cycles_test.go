@@ -2,12 +2,17 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestGetCycles(t *testing.T) {
@@ -170,4 +175,59 @@ func TestStopCycleNotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	sched.AssertExpectations(t)
+}
+
+func TestGetCycleThrottle(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+	cycles := make(map[string]scheduler.Cycle)
+
+	throttle, _ := scheduler.NewThrottle(30*time.Second, 1)
+	cycle := scheduler.ThrottledWholeCollectionCycle{Throttle: throttle}
+	cycles["123"] = &cycle
+
+	sched.On("Cycles").Return(cycles)
+
+	req := httptest.NewRequest("GET", "/cycles/123/throttle", nil)
+	w := setupRouter(sched, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, `{"interval":"30s"}`, w.Body.String())
+	sched.AssertExpectations(t)
+}
+
+func TestCreateCycle(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+
+	name := "test-cycle"
+
+	entity := fmt.Sprintf(`{"name": "%s","type": "ThrottledWholeCollection","origin": "methode-web-pub","collection": "methode","coolDown": "5m0s"}`,
+		name)
+
+	expected := scheduler.CycleConfig{
+		Name:       name,
+		Type:       "ThrottledWholeCollection",
+		Origin:     "methode-web-pub",
+		Collection: "methode",
+		CoolDown:   "5m0s",
+		//	Throttle
+		//	TimeWindow
+		//	MinimumThrottle
+		//	MaximumThrottle
+	}
+
+	minThrottle := time.Millisecond * 2500
+	maxThrottle := time.Millisecond * 500
+	cycle := scheduler.NewScalingWindowCycle(name, nil, "test-collection", "methode", time.Second, time.Minute, minThrottle, maxThrottle, nil)
+	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
+		return reflect.DeepEqual(expected, actual)
+	})).Return(cycle, nil)
+	sched.On("AddCycle", cycle).Return(nil)
+
+	r := httptest.NewRequest("POST", "/cycles", strings.NewReader(entity))
+	w := setupRouter(sched, r)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	sched.AssertExpectations(t)
+
+	assert.Regexp(t, "/cycles/[0-9a-f]{16}$", w.Header().Get("Location"), "Location header")
 }

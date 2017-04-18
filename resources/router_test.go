@@ -16,6 +16,9 @@ func setupRouter(sched scheduler.Scheduler, req *http.Request) *httptest.Respons
 	r.HandleFunc("/cycles/{id}", GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", DeleteCycle(sched)).Methods("DELETE")
 
+	r.HandleFunc("/cycles/{id}/throttle", GetCycleThrottle(sched)).Methods("GET")
+	r.HandleFunc("/cycles/{id}/throttle", SetCycleThrottle(sched)).Methods("POST")
+
 	r.HandleFunc("/cycles/{id}/resume", ResumeCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/stop", StopCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/reset", ResetCycle(sched)).Methods("POST")

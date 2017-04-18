@@ -173,6 +173,9 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
 
+	r.HandleFunc("/cycles/{id}/throttle", resources.GetCycleThrottle(sched)).Methods("GET")
+	r.HandleFunc("/cycles/{id}/throttle", resources.SetCycleThrottle(sched)).Methods("PUT")
+
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
 	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")

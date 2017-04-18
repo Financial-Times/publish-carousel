@@ -1,6 +1,9 @@
 package scheduler
 
 import (
+	"bytes"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,4 +57,32 @@ func TestRateInterval(t *testing.T) {
 
 	actual = determineRateInterval(interval, minThrottle, maxThrottle, 1)
 	assert.Equal(t, time.Second*30, actual)
+}
+
+func TestMarshaler(t *testing.T) {
+	throttle, _ := NewThrottle(30*time.Second, 1)
+
+	buf := bytes.NewBuffer(make([]byte, 0, 1024))
+	err := json.NewEncoder(buf).Encode(throttle)
+	assert.NoError(t, err, "marshalling should have occurred without error")
+	assert.Equal(t, `{"interval":"30s"}`, strings.Trim(string(buf.Bytes()), "\r\n"), "marshalled JSON")
+}
+
+func TestUnmarshaler(t *testing.T) {
+	throttle := DefaultThrottle{}
+	err := json.NewDecoder(strings.NewReader(`{"interval":"20s"}`)).Decode(&throttle)
+	assert.NoError(t, err, "unmarshalling should have occurred without error")
+	assert.Equal(t, 20*time.Second, throttle.Interval(), "unmarshalled interval")
+}
+
+func TestUnmarshalerErrorUnmatchedJSON(t *testing.T) {
+	throttle := DefaultThrottle{}
+	err := json.NewDecoder(strings.NewReader(`{"foo":"bar"}`)).Decode(&throttle)
+	assert.Error(t, err, "unmarshalling should have failed")
+}
+
+func TestUnmarshalerErrorInvalidDuration(t *testing.T) {
+	throttle := DefaultThrottle{}
+	err := json.NewDecoder(strings.NewReader(`{"interval":"foo"}`)).Decode(&throttle)
+	assert.Error(t, err, "unmarshalling should have failed")
 }
