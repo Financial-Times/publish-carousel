@@ -62,6 +62,43 @@ func TestGetCyclesForIDCycleNotFound(t *testing.T) {
 	sched.AssertExpectations(t)
 }
 
+func TestCreateCycle(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+
+	name := "test-cycle"
+
+	entity := fmt.Sprintf(`{"name": "%s","type": "ThrottledWholeCollection","origin": "methode-web-pub","collection": "methode","coolDown": "5m0s"}`,
+		name)
+
+	expected := scheduler.CycleConfig{
+		Name:       name,
+		Type:       "ThrottledWholeCollection",
+		Origin:     "methode-web-pub",
+		Collection: "methode",
+		CoolDown:   "5m0s",
+		//	Throttle
+		//	TimeWindow
+		//	MinimumThrottle
+		//	MaximumThrottle
+	}
+
+	minThrottle := time.Millisecond * 2500
+	maxThrottle := time.Millisecond * 500
+	cycle := scheduler.NewScalingWindowCycle(name, nil, "test-collection", "methode", time.Second, time.Minute, minThrottle, maxThrottle, nil)
+	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
+		return reflect.DeepEqual(expected, actual)
+	})).Return(cycle, nil)
+	sched.On("AddCycle", cycle).Return(nil)
+
+	r := httptest.NewRequest("POST", "/cycles", strings.NewReader(entity))
+	w := setupRouter(sched, r)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	sched.AssertExpectations(t)
+
+	assert.Regexp(t, "/cycles/[0-9a-f]{16}$", w.Header().Get("Location"), "Location header")
+}
+
 func TestDeleteCycle(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
 	sched.On("DeleteCycle", "hello").Return(nil)
@@ -195,39 +232,61 @@ func TestGetCycleThrottle(t *testing.T) {
 	sched.AssertExpectations(t)
 }
 
-func TestCreateCycle(t *testing.T) {
-	sched := new(scheduler.MockScheduler)
-
+func TestSetCycleThrottle(t *testing.T) {
 	name := "test-cycle"
+	origin := "methode-web-pub"
+	collection := "test-collection"
+	oldThrottle, _ := scheduler.NewThrottle(30*time.Second, 1)
+	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, nil, collection, origin, time.Minute, oldThrottle, nil)
+	cycleID := oldCycle.ID()
 
-	entity := fmt.Sprintf(`{"name": "%s","type": "ThrottledWholeCollection","origin": "methode-web-pub","collection": "methode","coolDown": "5m0s"}`,
-		name)
+	metadata := &scheduler.CycleMetadata{
+		CurrentUUID: "00000000-0000-0000-0000-000000000000",
+		Errors:      1,
+		Progress:    0.5,
+		State:       []string{"running", "healthy"},
+		Completed:   2,
+		Total:       3,
+		Iteration:   4,
+		Start:       nil,
+		End:         nil,
+	}
+	oldCycle.RestoreMetadata(metadata)
+
+	throttleEntity := `{"interval": "10s"}`
+	newThrottle, _ := scheduler.NewThrottle(10*time.Second, 1)
+
+	sched := new(scheduler.MockScheduler)
+	cycles := make(map[string]scheduler.Cycle)
+
+	cycles[cycleID] = oldCycle
+
+	sched.On("Cycles").Return(cycles)
+	sched.On("DeleteCycle", cycleID).Return(nil)
 
 	expected := scheduler.CycleConfig{
 		Name:       name,
 		Type:       "ThrottledWholeCollection",
-		Origin:     "methode-web-pub",
-		Collection: "methode",
-		CoolDown:   "5m0s",
-		//	Throttle
+		Origin:     origin,
+		Collection: collection,
+		CoolDown:   "1m0s",
+		Throttle:   "10s",
 		//	TimeWindow
 		//	MinimumThrottle
 		//	MaximumThrottle
 	}
 
-	minThrottle := time.Millisecond * 2500
-	maxThrottle := time.Millisecond * 500
-	cycle := scheduler.NewScalingWindowCycle(name, nil, "test-collection", "methode", time.Second, time.Minute, minThrottle, maxThrottle, nil)
+	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, nil, collection, origin, time.Minute, newThrottle, nil)
 	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
 		return reflect.DeepEqual(expected, actual)
-	})).Return(cycle, nil)
-	sched.On("AddCycle", cycle).Return(nil)
+	})).Return(newCycle, nil)
+	sched.On("AddCycle", newCycle).Return(nil)
 
-	r := httptest.NewRequest("POST", "/cycles", strings.NewReader(entity))
-	w := setupRouter(sched, r)
+	req := httptest.NewRequest("PUT", fmt.Sprintf("/cycles/%s/throttle", cycleID), strings.NewReader(throttleEntity))
+	w := setupRouter(sched, req)
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Equal(t, http.StatusSeeOther, w.Code)
 	sched.AssertExpectations(t)
-
-	assert.Regexp(t, "/cycles/[0-9a-f]{16}$", w.Header().Get("Location"), "Location header")
+	assert.Regexp(t, fmt.Sprintf("/cycles/%s$", cycleID), w.Header().Get("Location"), "Location header")
+	assert.Equal(t, newCycle.Metadata(), metadata)
 }

@@ -73,11 +73,14 @@ func CreateCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 			return
 		}
 
-		cycle, err := createCycle(sched, &cycleConfig, w)
-		if err == nil {
-			w.WriteHeader(http.StatusCreated)
-			w.Header().Set("Location", cycleURL(cycle))
+		cycle, err := createCycle(sched, &cycleConfig, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Location", cycleURL(cycle))
 	}
 }
 
@@ -206,15 +209,20 @@ func SetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 			return
 		}
 
+		metadata := cycle.Metadata()
+
 		sched.DeleteCycle(cycleID)
 
 		config := throttledCycle.TransformToConfig()
 		config.Throttle = newThrottle.Interval().String()
 
-		newCycle, err := createCycle(sched, config, w)
-		if err == nil {
-			http.Redirect(w, r, cycleURL(newCycle), http.StatusSeeOther)
+		newCycle, err := createCycle(sched, config, metadata)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
+		http.Redirect(w, r, cycleURL(newCycle), http.StatusSeeOther)
 	}
 }
 
@@ -234,18 +242,21 @@ func findCycle(sched scheduler.Scheduler, w http.ResponseWriter, r *http.Request
 	return cycle, nil
 }
 
-func createCycle(sched scheduler.Scheduler, cycleConfig *scheduler.CycleConfig, w http.ResponseWriter) (scheduler.Cycle, error) {
+func createCycle(sched scheduler.Scheduler, cycleConfig *scheduler.CycleConfig, metadata *scheduler.CycleMetadata) (scheduler.Cycle, error) {
 	cycle, err := sched.NewCycle(*cycleConfig)
 	if err != nil {
 		log.WithError(err).WithField("cycle", cycleConfig.Name).Warn("Failed to create new cycle.")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
 	}
 	log.Infof("new cycle = %v", cycle)
+
+	if metadata != nil {
+		cycle.RestoreMetadata(metadata)
+	}
+
 	err = sched.AddCycle(cycle)
 	if err != nil {
 		log.WithError(err).WithField("cycle", cycleConfig.Name).Warn("Failed to add the cycle to the scheduler")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
 	}
 
