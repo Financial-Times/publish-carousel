@@ -43,7 +43,7 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 	req.Header.Add("X-Native-Hash", hash)
 	req.Header.Add("X-Origin-System-Id", origin)
 
-	log.WithField("transaction_id", tid).WithField("nativeHash", hash).Info("Calling CMS notifier...")
+	log.WithField("transaction_id", tid).WithField("nativeHash", hash).Info("Calling CMS notifier.")
 
 	if err != nil {
 		return err
