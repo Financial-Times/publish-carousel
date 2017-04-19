@@ -16,7 +16,7 @@ func (b *Builder) FilterImages() *Builder {
 func imageFilter() blacklistFilter {
 	return func(uuid string, content *native.Content) (bool, error) {
 		if content.Body == nil {
-			return false, errors.New("No body found!")
+			return false, errors.New("no body found")
 		}
 
 		contentType, ok := content.Body["type"]

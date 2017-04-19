@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/Financial-Times/publish-carousel/native"
 )
@@ -22,8 +23,8 @@ type blacklistFilter func(uuid string, content *native.Content) (bool, error)
 
 // Builder builds a new blacklist with the required filters
 type Builder struct {
-	chain []blacklistFilter
-	errs  []error
+	chain   []blacklistFilter
+	errMsgs []string
 }
 
 // NewBuilder Create a new blacklist builder
@@ -39,7 +40,7 @@ func (c *chainedBlacklist) ValidForPublish(uuid string, content *native.Content)
 func (b *Builder) FileBasedBlacklist(file string) *Builder {
 	filter, err := fileBasedBlacklist(file)
 	if err != nil {
-		b.errs = append(b.errs, err)
+		b.errMsgs = append(b.errMsgs, err.Error())
 		return b
 	}
 
@@ -49,11 +50,8 @@ func (b *Builder) FileBasedBlacklist(file string) *Builder {
 
 // Build returns the Blacklist instance for use
 func (b *Builder) Build() (Blacklist, error) {
-	if len(b.errs) > 0 {
-		msg := ""
-		for _, err := range b.errs {
-			msg = `"` + err.Error() + `", `
-		}
+	if len(b.errMsgs) > 0 {
+		msg := `"` + strings.Join(b.errMsgs, `", "`) + `"`
 		return nil, errors.New(msg)
 	}
 
@@ -72,9 +70,10 @@ func (b *Builder) Build() (Blacklist, error) {
 
 func fileBasedBlacklist(file string) (blacklistFilter, error) {
 	f, err := os.Open(file)
-	if f != nil {
-		defer f.Close()
+	if err != nil {
+		return nil, err
 	}
+	defer f.Close()
 
 	if err != nil {
 		return nil, err
@@ -85,11 +84,13 @@ func fileBasedBlacklist(file string) (blacklistFilter, error) {
 		if err != nil {
 			return false, err
 		}
-
 		defer f.Close()
+
+		uuidAsBytes := []byte(uuid)
+
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			if bytes.Contains(scanner.Bytes(), []byte(uuid)) {
+			if bytes.Contains(scanner.Bytes(), uuidAsBytes) {
 				return false, nil
 			}
 		}
