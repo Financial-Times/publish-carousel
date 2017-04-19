@@ -159,5 +159,3 @@ func StopCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusOK)
 	}
 }
-
-// UPDATE PUT on /cycles/<id>
