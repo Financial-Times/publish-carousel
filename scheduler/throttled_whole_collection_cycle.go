@@ -44,7 +44,7 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 	}
 	defer uuidCollection.Close()
 
-	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), state: make(map[string]struct{})}
+	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length()}
 	l.SetMetadata(metadata)
 
 	if uuidCollection.Length() == 0 {

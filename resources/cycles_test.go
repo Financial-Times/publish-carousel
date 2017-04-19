@@ -240,18 +240,18 @@ func TestSetCycleThrottle(t *testing.T) {
 	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, nil, collection, origin, time.Minute, oldThrottle, nil)
 	cycleID := oldCycle.ID()
 
-	metadata := &scheduler.CycleMetadata{
-		CurrentUUID: "00000000-0000-0000-0000-000000000000",
-		Errors:      1,
-		Progress:    0.5,
-		State:       []string{"running", "healthy"},
-		Completed:   2,
-		Total:       3,
-		Iteration:   4,
-		Start:       nil,
-		End:         nil,
+	metadata := scheduler.CycleMetadata{
+		CurrentPublishUUID: "00000000-0000-0000-0000-000000000000",
+		Errors:             1,
+		Progress:           0.5,
+		State:              []string{"running", "healthy"},
+		Completed:          2,
+		Total:              3,
+		Iteration:          4,
+		Start:              nil,
+		End:                nil,
 	}
-	oldCycle.RestoreMetadata(metadata)
+	oldCycle.SetMetadata(metadata)
 
 	throttleEntity := `{"interval": "10s"}`
 	newThrottle, _ := scheduler.NewThrottle(10*time.Second, 1)

@@ -42,8 +42,6 @@ type CycleMetadata struct {
 	Iteration          int        `json:"iteration"`
 	Start              *time.Time `json:"windowStart,omitempty"`
 	End                *time.Time `json:"windowEnd,omitempty"`
-
-	state map[string]struct{}
 }
 
 func newCycleID(name string, dbcollection string) string {
@@ -58,7 +56,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
 		Type:          cycleType,
-		CycleMetadata: CycleMetadata{state: make(map[string]struct{})},
+		CycleMetadata: CycleMetadata{},
 		metadataLock:  &sync.RWMutex{},
 		db:            database,
 		DBCollection:  dbCollection,
@@ -149,7 +147,7 @@ func (a *abstractCycle) Stop() {
 
 func (a *abstractCycle) Reset() {
 	a.Stop()
-	metadata := CycleMetadata{state: make(map[string]struct{})}
+	metadata := CycleMetadata{}
 	a.SetMetadata(metadata)
 }
 
@@ -164,10 +162,6 @@ func (a *abstractCycle) SetMetadata(metadata CycleMetadata) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
-	if metadata.state == nil {
-		metadata.state = make(map[string]struct{})
-	}
-
 	a.CycleMetadata = metadata
 }
 
@@ -175,19 +169,8 @@ func (a *abstractCycle) UpdateState(states ...string) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
-	a.CycleMetadata.state = make(map[string]struct{})
-
-	for _, state := range states {
-		a.CycleMetadata.state[state] = struct{}{}
-	}
-
-	var arr []string
-	for k := range a.CycleMetadata.state {
-		arr = append(arr, k)
-	}
-
-	sort.Strings(arr)
-	a.CycleMetadata.State = arr
+	sort.Strings(states)
+	a.CycleMetadata.State = states
 }
 
 func (a *abstractCycle) PublishedItems() int {

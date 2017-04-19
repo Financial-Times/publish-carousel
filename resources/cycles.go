@@ -216,7 +216,7 @@ func SetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 		config := throttledCycle.TransformToConfig()
 		config.Throttle = newThrottle.Interval().String()
 
-		newCycle, err := createCycle(sched, config, metadata)
+		newCycle, err := createCycle(sched, config, &metadata)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -251,7 +251,7 @@ func createCycle(sched scheduler.Scheduler, cycleConfig *scheduler.CycleConfig, 
 	log.Infof("new cycle = %v", cycle)
 
 	if metadata != nil {
-		cycle.RestoreMetadata(metadata)
+		cycle.SetMetadata(*metadata)
 	}
 
 	err = sched.AddCycle(cycle)
