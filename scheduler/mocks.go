@@ -1,15 +1,19 @@
 package scheduler
 
-import "github.com/stretchr/testify/mock"
+import (
+	"time"
+
+	"github.com/stretchr/testify/mock"
+)
 
 // MetadataRWMock is a mock of a MetadataReadWriter taht can be used to test
 type MockMetadataRW struct {
 	mock.Mock
 }
 
-func (m *MockMetadataRW) LoadMetadata(id string) (*CycleMetadata, error) {
+func (m *MockMetadataRW) LoadMetadata(id string) (CycleMetadata, error) {
 	args := m.Called(id)
-	return args.Get(0).(*CycleMetadata), args.Error(1)
+	return args.Get(0).(CycleMetadata), args.Error(1)
 }
 
 func (m *MockMetadataRW) WriteMetadata(id string, state Cycle) error {
@@ -98,16 +102,39 @@ func (m *MockCycle) Reset() {
 	m.Called()
 }
 
-func (m *MockCycle) Metadata() *CycleMetadata {
+func (m *MockCycle) Metadata() CycleMetadata {
 	args := m.Called()
-	return args.Get(0).(*CycleMetadata)
+	return args.Get(0).(CycleMetadata)
 }
 
-func (m *MockCycle) RestoreMetadata(state *CycleMetadata) {
+func (m *MockCycle) SetMetadata(state CycleMetadata) {
 	m.Called(state)
 }
 
 func (m *MockCycle) TransformToConfig() *CycleConfig {
 	args := m.Called()
 	return args.Get(0).(*CycleConfig)
+}
+
+func (m *MockCycle) State() []string {
+	args := m.Called()
+	return args.Get(0).([]string)
+}
+
+type MockThrottle struct {
+	mock.Mock
+}
+
+func (m *MockThrottle) Queue() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockThrottle) Stop() {
+	m.Called()
+}
+
+func (m *MockThrottle) Interval() time.Duration {
+	args := m.Called()
+	return args.Get(0).(time.Duration)
 }

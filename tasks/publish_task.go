@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	tid "github.com/Financial-Times/transactionid-utils-go"
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 type Task interface {
@@ -19,10 +20,12 @@ type Task interface {
 type nativeContentTask struct {
 	nativeReader native.Reader
 	cmsNotifier  cms.Notifier
+	blacklist    blacklist.Blacklist
 }
 
-func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier) Task {
-	return &nativeContentTask{reader, notifier}
+// NewNativeContentPublishTask publishes the native content from mongo to the cms notifier, if the uuid has not been blacklisted.
+func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier, blist blacklist.Blacklist) Task {
+	return &nativeContentTask{nativeReader: reader, cmsNotifier: notifier, blacklist: blist}
 }
 
 const publishReferenceAttr = "publishReference"
@@ -30,13 +33,24 @@ const publishReferenceAttr = "publishReference"
 func (t *nativeContentTask) Publish(origin string, collection string, uuid string) error {
 	content, hash, err := t.nativeReader.Get(collection, uuid)
 	if err != nil {
-		logrus.WithField("uuid", uuid).WithError(err).Warn("Failed to read from native reader")
+		log.WithField("uuid", uuid).WithError(err).Warn("Failed to read from native reader")
 		return err
 	}
 
 	if content.Body == nil {
-		logrus.WithField("uuid", uuid).Warn("No Content found for uuid. Skipping.")
+		log.WithField("uuid", uuid).Warn("No Content found for uuid. Skipping.")
 		return fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
+	}
+
+	valid, err := t.blacklist.ValidForPublish(uuid, content)
+	if err != nil {
+		log.WithField("uuid", uuid).WithField("collection", collection).WithError(err).Warn("Blacklist check failed.")
+		return err
+	}
+
+	if !valid {
+		log.WithField("uuid", uuid).WithField("collection", collection).Info("This UUID has been blacklisted. Skipping republish.")
+		return nil
 	}
 
 	tid, ok := content.Body[publishReferenceAttr].(string)
@@ -50,7 +64,7 @@ func (t *nativeContentTask) Publish(origin string, collection string, uuid strin
 
 	err = t.cmsNotifier.Notify(origin, tid, content, hash)
 	if err != nil {
-		logrus.WithField("uuid", uuid).WithError(err).Warn("Failed to post to cms notifier")
+		log.WithField("uuid", uuid).WithError(err).Warn("Failed to post to cms notifier")
 		return err
 	}
 
