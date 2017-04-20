@@ -174,6 +174,8 @@ func shutdown(sched scheduler.Scheduler) {
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error) {
 	r := mux.NewRouter()
+	methodNotAllowed := resources.MethodNotAllowed()
+
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
@@ -182,29 +184,29 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles", resources.MethodNotAllowed()).Methods("PUT", "DELETE")
+	r.HandleFunc("/cycles", methodNotAllowed).Methods("PUT", "DELETE")
 
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", resources.MethodNotAllowed()).Methods("PUT", "POST")
+	r.HandleFunc("/cycles/{id}", methodNotAllowed).Methods("PUT", "POST")
 
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
 
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/resume", resources.MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc("/cycles/{id}/resume", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/stop", resources.MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc("/cycles/{id}/stop", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/reset", resources.MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc("/cycles/{id}/reset", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/start", resources.MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc("/scheduler/start", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/shutdown", resources.MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc("/scheduler/shutdown", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	box := ui.UI()
 	dist := http.FileServer(box.HTTPBox())
