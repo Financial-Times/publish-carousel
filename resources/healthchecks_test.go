@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	fthealth "github.com/Financial-Times/go-fthealth"
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
