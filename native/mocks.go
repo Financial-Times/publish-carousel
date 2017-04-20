@@ -51,9 +51,9 @@ type MockReader struct {
 	mock.Mock
 }
 
-func (m *MockReader) Get(collection string, uuid string) (*Content, string, error) {
+func (m *MockReader) Get(collection string, uuid string) (*Content, error) {
 	args := m.Called(collection, uuid)
-	return args.Get(0).(*Content), args.String(1), args.Error(2)
+	return args.Get(0).(*Content), args.Error(1)
 }
 
 type MockDBIter struct {

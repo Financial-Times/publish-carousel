@@ -28,6 +28,7 @@ type Cycle interface {
 
 type CycleMetadata struct {
 	CurrentPublishUUID string     `json:"currentPublishUuid"`
+	CurrentPublishRef  string     `json:"currentPublishReference"`
 	Errors             int        `json:"errors"`
 	Progress           float64    `json:"progress"`
 	State              []string   `json:"state"`
@@ -93,27 +94,29 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 		finished, uuid, err := collection.Next()
 		if finished {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
-			a.updateProgress("", err)
+			a.updateProgress("", "", err)
 			return false, err
 		}
 
 		if strings.TrimSpace(uuid) == "" {
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
-			a.updateProgress(uuid, errors.New("Empty uuid"))
+			a.updateProgress(uuid, "", errors.New("Empty uuid"))
 			continue
 		}
 
 		log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
-		err = a.publishTask.Publish(a.Origin, a.DBCollection, uuid)
-		if err != nil {
-			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
+		content, txId, err := a.publishTask.Prepare(a.DBCollection, uuid)
+		a.updateProgress(uuid, txId, err)
+		if err == nil {
+			err = a.publishTask.Execute(uuid, content, a.Origin, txId)
+			if err != nil {
+				log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
+			}
 		}
-
-		a.updateProgress(uuid, err)
 	}
 }
 
-func (a *abstractCycle) updateProgress(uuid string, err error) {
+func (a *abstractCycle) updateProgress(uuid string, txId string, err error) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
@@ -123,6 +126,7 @@ func (a *abstractCycle) updateProgress(uuid string, err error) {
 
 	a.CycleMetadata.Completed++
 	a.CycleMetadata.CurrentPublishUUID = uuid
+	a.CycleMetadata.CurrentPublishRef = txId
 
 	if a.CycleMetadata.Total == 0 {
 		a.CycleMetadata.Progress = 0

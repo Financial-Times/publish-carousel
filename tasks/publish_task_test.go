@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 var carouselTidRegex = regexp.MustCompile(`^tid_[\S]+_carousel_[\d]{10}$`)
@@ -27,6 +29,23 @@ var carouselGentxTidMatcher = mock.MatchedBy(func(tid string) bool {
 	return carouselGentxTidRegex.Match([]byte(tid))
 })
 
+func mockContent(publishRef string) (*native.Content, string) {
+	body := make(map[string]interface{})
+	if publishRef != "" {
+		body[publishReferenceAttr] = publishRef
+	}
+
+	content := &native.Content{
+		Body:        body,
+		ContentType: "application/json",
+	}
+
+	data, _ := json.Marshal(body)
+	hash, _ := native.Hash(data)
+
+	return content, hash
+}
+
 func TestPublishWithTID(t *testing.T) {
 	notifier := new(cms.MockNotifier)
 	reader := new(native.MockReader)
@@ -36,21 +55,18 @@ func TestPublishWithTID(t *testing.T) {
 	testUUID := "i am a uuid"
 	origin := "fake-origin"
 
-	body := make(map[string]interface{})
-	body[publishReferenceAttr] = "tid_1234"
+	content, hash := mockContent("tid_1234")
 
-	content := &native.Content{
-		Body:        body,
-		ContentType: "application/json",
-	}
-
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselTidMatcher, content, "hash").Return(nil)
+	reader.On("Get", testCollection, testUUID).Return(content, nil)
+	notifier.On("Notify", origin, carouselTidMatcher, content, hash).Return(nil)
 	blist.On("ValidForPublish", testUUID, content).Return(true, nil)
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
+	content, txId, err := task.Prepare(testCollection, testUUID)
+	require.NoError(t, err)
+
+	err = task.Execute(testUUID, content, origin, txId)
 	assert.NoError(t, err)
 
 	reader.AssertExpectations(t)
@@ -67,25 +83,42 @@ func TestPublishWithGeneratedTID(t *testing.T) {
 	testUUID := "i am a uuid"
 	origin := "fake-origin"
 
-	body := make(map[string]interface{})
+	content, hash := mockContent("")
 
-	content := &native.Content{
-		Body:        body,
-		ContentType: "application/json",
-	}
-
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselGentxTidMatcher, content, "hash").Return(nil)
+	reader.On("Get", testCollection, testUUID).Return(content, nil)
+	notifier.On("Notify", origin, carouselGentxTidMatcher, content, hash).Return(nil)
 	blist.On("ValidForPublish", testUUID, content).Return(true, nil)
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
+	content, txId, err := task.Prepare(testCollection, testUUID)
+	require.NoError(t, err)
+
+	err = task.Execute(testUUID, content, origin, txId)
 	assert.NoError(t, err)
 
 	reader.AssertExpectations(t)
 	notifier.AssertExpectations(t)
 	blist.AssertExpectations(t)
+}
+
+func TestPublishJSONMarshalFails(t *testing.T) {
+	notifier := new(cms.MockNotifier)
+	reader := new(native.MockReader)
+	blist := new(blacklist.MockBlacklist)
+
+	testUUID := "fake-uuid"
+	origin := "fake-origin"
+	txId := "tid_1234"
+
+	testBody := make(map[string]interface{})
+	testBody["errrr"] = func() {}
+	content := native.Content{Body: testBody, ContentType: "application/vnd.expect-this"}
+
+	task := NewNativeContentPublishTask(reader, notifier, blist)
+
+	err := task.Execute(testUUID, &content, origin, txId)
+	assert.Error(t, err)
 }
 
 func TestFailedReader(t *testing.T) {
@@ -95,15 +128,14 @@ func TestFailedReader(t *testing.T) {
 
 	testCollection := "testing123"
 	testUUID := "i am a uuid"
-	origin := "fake-origin"
 
 	content := &native.Content{}
 
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", errors.New("fail"))
+	reader.On("Get", testCollection, testUUID).Return(content, errors.New("fail"))
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
+	_, _, err := task.Prepare(testCollection, testUUID)
 	assert.Error(t, err)
 
 	reader.AssertExpectations(t)
@@ -118,14 +150,13 @@ func TestEmptyContent(t *testing.T) {
 
 	testCollection := "testing123"
 	testUUID := "i am a uuid"
-	origin := "fake-origin"
 
 	content := &native.Content{}
 
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
+	reader.On("Get", testCollection, testUUID).Return(content, nil)
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
-	err := task.Publish(origin, testCollection, testUUID)
+	_, _, err := task.Prepare(testCollection, testUUID)
 	assert.Error(t, err)
 
 	reader.AssertExpectations(t)
@@ -142,21 +173,18 @@ func TestFailedNotify(t *testing.T) {
 	testUUID := "i am a uuid"
 	origin := "fake-origin"
 
-	body := make(map[string]interface{})
-	body[publishReferenceAttr] = "tid_1234"
+	content, hash := mockContent("tid_1234")
 
-	content := &native.Content{
-		Body:        body,
-		ContentType: "application/json",
-	}
-
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	notifier.On("Notify", origin, carouselTidMatcher, content, "hash").Return(errors.New("fail"))
+	reader.On("Get", testCollection, testUUID).Return(content, nil)
+	notifier.On("Notify", origin, carouselTidMatcher, content, hash).Return(errors.New("fail"))
 	blist.On("ValidForPublish", testUUID, content).Return(true, nil)
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
+	content, txId, err := task.Prepare(testCollection, testUUID)
+	assert.NoError(t, err)
+
+	err = task.Execute(testUUID, content, origin, txId)
 	assert.Error(t, err)
 
 	reader.AssertExpectations(t)
@@ -171,23 +199,22 @@ func TestBlacklistedUUID(t *testing.T) {
 
 	testCollection := "testing123"
 	testUUID := "i am a uuid"
-	origin := "fake-origin"
 
 	body := make(map[string]interface{})
 	body[publishReferenceAttr] = "tid_1234"
 
-	content := &native.Content{
+	testContent := &native.Content{
 		Body:        body,
 		ContentType: "application/json",
 	}
 
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
-	blist.On("ValidForPublish", testUUID, content).Return(false, nil)
+	reader.On("Get", testCollection, testUUID).Return(testContent, nil)
+	blist.On("ValidForPublish", testUUID, testContent).Return(false, nil)
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
-	assert.NoError(t, err)
+	_, _, err := task.Prepare(testCollection, testUUID)
+	require.Error(t, err)
 
 	reader.AssertExpectations(t)
 	notifier.AssertExpectations(t)
@@ -201,7 +228,6 @@ func TestBlacklistFails(t *testing.T) {
 
 	testCollection := "testing123"
 	testUUID := "i am a uuid"
-	origin := "fake-origin"
 
 	body := make(map[string]interface{})
 	body[publishReferenceAttr] = "tid_1234"
@@ -211,12 +237,12 @@ func TestBlacklistFails(t *testing.T) {
 		ContentType: "application/json",
 	}
 
-	reader.On("Get", testCollection, testUUID).Return(content, "hash", nil)
+	reader.On("Get", testCollection, testUUID).Return(content, nil)
 	blist.On("ValidForPublish", testUUID, content).Return(false, errors.New("oh dear"))
 
 	task := NewNativeContentPublishTask(reader, notifier, blist)
 
-	err := task.Publish(origin, testCollection, testUUID)
+	_, _, err := task.Prepare(testCollection, testUUID)
 	assert.Error(t, err)
 
 	reader.AssertExpectations(t)
