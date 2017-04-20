@@ -15,12 +15,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const startingState = "starting"
-const runningState = "running"
-const stoppedState = "stopped"
-const unhealthyState = "unhealthy"
-const coolDownState = "cooldown"
-
 type Cycle interface {
 	ID() string
 	Start()

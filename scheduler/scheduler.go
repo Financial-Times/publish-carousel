@@ -15,7 +15,6 @@ import (
 
 const running = true
 const stopped = false
-const enabled = true
 const disabled = false
 
 // Scheduler is the main component of the publish carousel,
@@ -30,6 +29,8 @@ type Scheduler interface {
 	Start() error
 	Shutdown() error
 	ToggleHandler(toggleValue string)
+	IsRunning() bool
+	IsEnabled() bool
 }
 
 type defaultScheduler struct {
@@ -77,7 +78,7 @@ func (s *defaultScheduler) AddCycle(c Cycle) error {
 	defer s.cycleLock.Unlock()
 	s.cycles[c.ID()] = c
 
-	if s.isEnabled() && s.isRunning() {
+	if s.IsEnabled() && s.IsRunning() {
 		c.Start()
 	}
 	return nil
@@ -129,11 +130,11 @@ func (s *defaultScheduler) Start() error {
 	s.cycleLock.RLock()
 	defer s.cycleLock.RUnlock()
 
-	if !s.isEnabled() {
+	if !s.IsEnabled() {
 		return errors.New("Scheduler is not enabled")
 	}
 
-	if s.isRunning() {
+	if s.IsRunning() {
 		return errors.New("Scheduler is already running")
 	}
 
@@ -151,7 +152,7 @@ func (s *defaultScheduler) Shutdown() error {
 	defer s.cycleLock.RUnlock()
 	log.Info("Scheduler shutdown initiated.")
 
-	if !s.isRunning() {
+	if !s.IsRunning() {
 		return errors.New("Scheduler has already been shut down")
 	}
 
@@ -169,7 +170,7 @@ func (s *defaultScheduler) ToggleHandler(toggleValue string) {
 		log.WithError(err).Error("Invalid toggle value for carousel scheduler")
 	}
 
-	if toggleState == disabled && s.isEnabled() && s.isRunning() {
+	if toggleState == disabled && s.IsEnabled() && s.IsRunning() {
 		log.Info("Disabling carousel scheduler...")
 		err := s.Shutdown()
 		if err != nil {
@@ -182,7 +183,7 @@ func (s *defaultScheduler) ToggleHandler(toggleValue string) {
 	s.setToggleState(toggleState)
 }
 
-func (s *defaultScheduler) isEnabled() bool {
+func (s *defaultScheduler) IsEnabled() bool {
 	s.toggleLock.RLock()
 	defer s.toggleLock.RUnlock()
 	return s.toggle
@@ -194,7 +195,7 @@ func (s *defaultScheduler) setToggleState(state bool) {
 	s.toggle = state
 }
 
-func (s *defaultScheduler) isRunning() bool {
+func (s *defaultScheduler) IsRunning() bool {
 	s.executionStateLock.RLock()
 	defer s.executionStateLock.RUnlock()
 	return s.executionState

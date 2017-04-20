@@ -3,38 +3,41 @@ package resources
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/scheduler"
+	log "github.com/Sirupsen/logrus"
 )
 
 // Health returns a handler for the standard FT healthchecks
-func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) func(w http.ResponseWriter, r *http.Request) {
-	return fthealth.Handler("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError)...)
+func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
+	return fthealth.Handler("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)...)
 }
 
 // GTG returns a handler for a standard GTG endpoint.
-func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) func(w http.ResponseWriter, r *http.Request) {
+func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...)}
 
 		for _, check := range checks {
 			_, err := check()
 			if err != nil {
-				w.WriteHeader(500)
+				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
 		}
 
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error) []fthealth.Check {
+func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) []fthealth.Check {
 	return []fthealth.Check{
 		{
 			Name:             "CheckConnectivityToNativeDatabase",
@@ -75,6 +78,14 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			Severity:         1,
 			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
 			Checker:          configHealthcheck(configError),
+		},
+		{
+			Name:             "UnhealthyCluster",
+			BusinessImpact:   "No Business Impact.",
+			TechnicalSummary: `If the cluster is unhealthy, the Carousel scheduler will shutdown until the system has stabilised.`,
+			Severity:         1,
+			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			Checker:          unhealthyClusters(sched, upServices...),
 		},
 	}
 }
@@ -120,8 +131,7 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 		}
 
 		if len(unhealthyIDs) > 0 {
-			j, _ := json.Marshal(unhealthyIDs)
-			return "", errors.New("The following cycles are unhealthy! " + string(j))
+			return "", errors.New("The following cycles are unhealthy! " + toJSON(unhealthyIDs))
 		}
 
 		return "No unhealthy cycles.", nil
@@ -136,6 +146,38 @@ func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 		}
 
 		return "OK", nil
+	}
+}
+
+func toJSON(data interface{}) string {
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
+func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
+	return func() (string, error) {
+		var unhealthyServices []string
+
+		for _, service := range upServices {
+			if service.GTG() != nil {
+				if sched.IsRunning() {
+					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
+					sched.Shutdown()
+				}
+				unhealthyServices = append(unhealthyServices, service.Name())
+			}
+		}
+
+		if len(unhealthyServices) > 0 {
+			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices))
+		}
+
+		if !sched.IsRunning() && sched.IsEnabled() {
+			log.Info("Cluster health back to normal; restarting scheduler.")
+			sched.Start()
+		}
+
+		return "Cluster is healthy", nil
 	}
 }
 

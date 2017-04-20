@@ -9,6 +9,8 @@ import (
 	"time"
 
 	ui "github.com/Financial-Times/publish-carousel-ui"
+	"github.com/Financial-Times/publish-carousel/blacklist"
+	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/Financial-Times/publish-carousel/native"
@@ -38,9 +40,16 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "cycles",
-			Value: "./cycles.yml",
-			Usage: "Path to the YML cycle configuration file.",
+			Name:   "cycles",
+			Value:  "./cycles.yml",
+			EnvVar: "CYCLES_FILE",
+			Usage:  "Path to the YML cycle configuration file.",
+		},
+		cli.StringFlag{
+			Name:   "blacklist",
+			Value:  "./carousel_blacklist.txt",
+			EnvVar: "BLACKLIST_FILE",
+			Usage:  "Path to the plaintxt blacklist file, which contains blacklisted uuids.",
 		},
 		cli.StringFlag{
 			Name:   "mongo-db",
@@ -50,15 +59,21 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "cms-notifier-url",
-			Value:  "http://localhost:8080/__cms-notifier/notify",
+			Value:  "http://localhost:8080/__cms-notifier",
 			EnvVar: "CMS_NOTIFIER_URL",
 			Usage:  "The CMS Notifier instance to POST publishes to.",
 		},
 		cli.StringFlag{
-			Name:   "cms-notifier-gtg",
-			Value:  "http://localhost:8080/__cms-notifier/__gtg",
-			EnvVar: "CMS_NOTIFIER_GTG",
-			Usage:  "The CMS Notifier GTG url.",
+			Name:   "pam-url",
+			Value:  "http://localhost:8080/__publish-availability-monitor",
+			EnvVar: "PAM_URL",
+			Usage:  "The URL of the publish availability monitor to check the health of the cluster.",
+		},
+		cli.StringFlag{
+			Name:   "lagcheck-url",
+			Value:  "http://localhost:8080/__kafka-lagcheck",
+			EnvVar: "LAGCHECK_URL",
+			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "aws-region",
@@ -104,12 +119,30 @@ func main() {
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
+		blist, err := blacklist.NewBuilder().FilterImages().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		if err != nil {
+			panic(err)
+		}
+
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
-		notifier := cms.NewNotifier(ctx.String("cms-notifier-url"), ctx.String("cms-notifier-gtg"), &http.Client{Timeout: time.Second * 30})
+		notifier, err := cms.NewNotifier(ctx.String("cms-notifier-url"), &http.Client{Timeout: time.Second * 30})
+		if err != nil {
+			log.WithError(err).Error("Error in CMS Notifier configuration")
+		}
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier)
+		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"))
+		if err != nil {
+			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
+		}
+
+		queueLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		if err != nil {
+			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+		}
+
+		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 
@@ -141,7 +174,7 @@ func main() {
 		sched.Start()
 
 		shutdown(sched)
-		serve(mongo, sched, s3rw, notifier, configError)
+		serve(mongo, sched, s3rw, notifier, configError, pam, queueLagcheck)
 	}
 
 	app.Run(os.Args)
@@ -159,26 +192,41 @@ func shutdown(sched scheduler.Scheduler) {
 	}()
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error) {
+func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error, upServices ...cluster.Service) {
 	r := mux.NewRouter()
+	methodNotAllowed := resources.MethodNotAllowed()
+
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError)).Methods("GET")
+	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
+	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles", methodNotAllowed).Methods("PUT", "DELETE")
 
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
+	r.HandleFunc("/cycles/{id}", methodNotAllowed).Methods("PUT", "POST")
 
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/resume", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/stop", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/reset", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
+	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
+	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 
 	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
+	r.HandleFunc("/scheduler/start", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
+	r.HandleFunc("/scheduler/shutdown", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	box := ui.UI()
 	dist := http.FileServer(box.HTTPBox())
