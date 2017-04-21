@@ -22,7 +22,7 @@ paths:
          summary: Get Cycle Information
          description: Displays state information for all configured cycles.
          tags:
-            - Public API
+            - Internal API
          responses:
             200:
                description: Shows the state of all configured cycles.
@@ -50,7 +50,7 @@ paths:
          summary: Create a new Cycle
          description: Creates and starts a new cycle with the provided configuration.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          parameters:
@@ -108,7 +108,7 @@ paths:
          summary: Get Cycle Information for ID
          description: Displays state information for the cycle with the given ID
          tags:
-            - Public API
+            - Internal API
          parameters:
             -  name: id
                in: path
@@ -145,7 +145,7 @@ paths:
          summary: Delete the Cycle
          description: Stops and removes the cycle from the Carousel. Deleted cycles cannot be resumed, and must be recreated.
          tags:
-            - Public API
+            - Internal API
          parameters:
             -  name: id
                in: path
@@ -163,7 +163,7 @@ paths:
          summary: Stop Cycle
          description: Stops the running of the cycle with the provided ID, and frees up connections to Mongo.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          parameters:
@@ -183,7 +183,7 @@ paths:
          summary: Resume Cycle
          description: Resumes a stopped cycle with ID.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          parameters:
@@ -203,7 +203,7 @@ paths:
          summary: Reset Cycle
          description: Stops the provided cycle, and resets it back to the beginning of its iteration. N.B. the cycle will need to be resumed after being reset.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          parameters:
@@ -223,7 +223,7 @@ paths:
          summary: Scheduler Shutdown
          description: Stops all cycles. Useful in a production incident.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          responses:
@@ -236,7 +236,7 @@ paths:
          summary: Start Scheduler
          description: Resumes all cycles. Useful when the production incident has been resolved.
          tags:
-            - Public API
+            - Internal API
          consumes:
             - application/json
          responses:
