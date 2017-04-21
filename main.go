@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -86,6 +87,12 @@ func main() {
 			EnvVar: "S3_BUCKET",
 			Value:  "",
 			Usage:  "The S3 Bucket to save carousel states.",
+		},
+		cli.StringFlag{
+			Name:   "api-yml",
+			EnvVar: "API_YML",
+			Value:  "./api.yml",
+			Usage:  "The swagger API yaml file for the service.",
 		},
 		cli.IntFlag{
 			Name:   "mongo-timeout",
@@ -174,7 +181,10 @@ func main() {
 		sched.Start()
 
 		shutdown(sched)
-		serve(mongo, sched, s3rw, notifier, configError, pam, queueLagcheck)
+
+		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
+
+		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
 	}
 
 	app.Run(os.Args)
@@ -192,9 +202,11 @@ func shutdown(sched scheduler.Scheduler) {
 	}()
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error, upServices ...cluster.Service) {
+func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
 	r := mux.NewRouter()
 	methodNotAllowed := resources.MethodNotAllowed()
+
+	r.HandleFunc("/__api", resources.API(api)).Methods("GET")
 
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
