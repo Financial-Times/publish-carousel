@@ -19,7 +19,7 @@ type readEnvironment struct {
 	authPassword string
 }
 
-type readCluster struct {
+type readService struct {
 	sync.RWMutex
 	watcher        etcd.Watcher
 	readURLsKey    string
@@ -28,13 +28,13 @@ type readCluster struct {
 }
 
 // NewReadCluster parse read cluster urls and credentials
-func newReadCluster(watcher etcd.Watcher, readURLsKey string, credentialsKey string) (*readCluster, error) {
+func newReadService(watcher etcd.Watcher, readURLsKey string, credentialsKey string) (*readService, error) {
 	urls, err := watcher.Read(readURLsKey)
 	if err != nil {
 		return nil, err
 	}
 
-	environmentMap, err := parseEnvironmentsToMap(urls)
+	environmentMap, err := parseEnvironmentsToSet(urls)
 	if err != nil {
 		return nil, err
 	}
@@ -56,16 +56,16 @@ func newReadCluster(watcher etcd.Watcher, readURLsKey string, credentialsKey str
 		err = readEnv.updateCredentials(credentials)
 		if err != nil {
 			log.WithField("name", envName).WithField("etcdKey", credentialsKey).Warn("Failed to parse read credentials from etcd key.")
-			continue
+			return nil, err // fail fast for credentials issue
 		}
 
 		all[envName] = *readEnv
 	}
 
-	return &readCluster{environments: all, watcher: watcher, readURLsKey: readURLsKey, credentialsKey: credentialsKey}, nil
+	return &readService{environments: all, watcher: watcher, readURLsKey: readURLsKey, credentialsKey: credentialsKey}, nil
 }
 
-func (r *readCluster) GetReadEnvironments() []readEnvironment {
+func (r *readService) GetReadEnvironments() []readEnvironment {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -77,26 +77,32 @@ func (r *readCluster) GetReadEnvironments() []readEnvironment {
 	return envs
 }
 
-func (r *readCluster) startWatcher(ctx context.Context) {
+func (r *readService) startWatcher(ctx context.Context) {
 	go r.watcher.Watch(ctx, r.readURLsKey, func(readURLs string) {
 		r.Lock()
 		defer r.Unlock()
 
-		updated, err := parseEnvironmentsToMap(readURLs)
+		updated, err := parseEnvironmentsToSet(readURLs)
 		if err != nil {
 			log.WithField("etcdKey", r.readURLsKey).WithField("readUrls", readURLs).Warn("Failed to parse updated etcd key for the read environment")
 			return
 		}
 
-		for name, env := range r.environments {
-			if _, ok := updated[name]; !ok { // environment isn't present in the update, so delete
-				delete(r.environments, name)
-				continue
+		for name := range updated {
+			env, ok := r.environments[name]
+			if !ok {
+				env = readEnvironment{name: name}
 			}
 
 			e := &env
 			e.updateReadURLs(readURLs)
 			r.environments[name] = *e
+		}
+
+		for _, env := range r.environments {
+			if _, ok := updated[env.name]; !ok {
+				delete(r.environments, env.name)
+			}
 		}
 	})
 
@@ -104,16 +110,16 @@ func (r *readCluster) startWatcher(ctx context.Context) {
 		r.Lock()
 		defer r.Unlock()
 
-		updated, err := parseEnvironmentsToMap(credentials)
+		updated, err := parseEnvironmentsToSet(credentials)
 		if err != nil {
 			log.WithField("etcdKey", r.credentialsKey).Warn("Failed to parse updated etcd key for the read credentials")
 			return
 		}
 
-		for name, env := range r.environments {
-			if _, ok := updated[name]; !ok { // environment isn't present in the update, so delete
-				delete(r.environments, name)
-				continue
+		for name := range updated {
+			env, ok := r.environments[name]
+			if !ok {
+				env = readEnvironment{name: name}
 			}
 
 			e := &env
@@ -123,9 +129,13 @@ func (r *readCluster) startWatcher(ctx context.Context) {
 	})
 }
 
-func parseEnvironmentsToMap(readURLs string) (map[string]struct{}, error) {
-	environments := strings.Split(readURLs, ",")
+func parseEnvironmentsToSet(readURLs string) (map[string]struct{}, error) {
 	envMap := make(map[string]struct{})
+	if strings.TrimSpace(readURLs) == "" {
+		return envMap, nil
+	}
+
+	environments := strings.Split(readURLs, ",")
 
 	for _, environment := range environments {
 		env := strings.SplitN(environment, ":", 2)
@@ -170,14 +180,14 @@ func (e *readEnvironment) updateCredentials(credentialsVal string) error {
 			creds := strings.Split(credential, ":")
 			if len(creds) != 3 {
 				log.WithField("name", e.name).Warn("Incorrect credentials found for external service!")
-				return errors.New("failed to parse credentials")
+				return errors.New("Failed to parse credentials")
 			}
 
 			e.authUser = creds[1]
 			e.authPassword = creds[2]
-			break
+			return nil
 		}
 	}
 
-	return nil
+	return fmt.Errorf(`No credentials for environment "%v"`, e.name)
 }
