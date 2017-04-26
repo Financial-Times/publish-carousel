@@ -155,3 +155,70 @@ func TestSchedulerInvalidToggleValue(t *testing.T) {
 	c1.AssertNotCalled(t, "Start")
 	c2.AssertNotCalled(t, "Start")
 }
+
+func TestMultipleToggles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	db := new(native.MockDB)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+	c1.On("Start").Return()
+	c2.On("Start").Return()
+	c1.On("Stop").Return()
+	c2.On("Stop").Return()
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ToggleHandler("true")
+	err := s.Start()
+	assert.NoError(t, err, "It should not return an error to Start")
+
+	go simulateFailoverToggle(s)
+	go simulateManualToggle(s)
+
+	time.Sleep(1 * time.Second)
+
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+
+	time.Sleep(3 * time.Second)
+
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+
+	time.Sleep(6 * time.Second)
+
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+}
+
+func simulateFailoverToggle(s Scheduler) {
+	for i := 1; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		if i%3 == 0 {
+			s.ToggleHandler("false")
+		} else {
+			s.ToggleHandler("true")
+		}
+	}
+}
+
+func simulateManualToggle(s Scheduler) {
+	for i := 1; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		s.ToggleHandler("true")
+	}
+}

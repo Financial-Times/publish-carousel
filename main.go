@@ -106,6 +106,12 @@ func main() {
 			Usage:  "The ETCD key that enables or disables the carousel",
 		},
 		cli.StringFlag{
+			Name:   "active-cluster-etcd-key",
+			Value:  "/ft/healthcheck-categories/publish/enabled",
+			EnvVar: "ACTIVE_CLUSTER_ETCD_KEY",
+			Usage:  "The ETCD key that specifies if the cluster is active",
+		},
+		cli.StringFlag{
 			Name:   "default-throttle",
 			Value:  "1m",
 			EnvVar: "DEFAULT_THROTTLE",
@@ -169,6 +175,7 @@ func main() {
 		sched.ToggleHandler(toggle)
 
 		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("failover-etcd-key"), sched.ToggleHandler)
 
 		sched.RestorePreviousState()
 		sched.Start()
