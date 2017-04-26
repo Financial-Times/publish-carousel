@@ -36,23 +36,23 @@ func (t *nativeContentTask) Prepare(collection string, uuid string) (*native.Con
 	content, err := t.nativeReader.Get(collection, uuid)
 	if err != nil {
 		log.WithField("uuid", uuid).WithError(err).Warn("Failed to read from native reader")
-		return nil, "(failed to read)", err
+		return nil, "", err
 	}
 
 	if content.Body == nil {
 		log.WithField("uuid", uuid).Warn("No Content found for uuid. Skipping.")
-		return nil, "(invalid)", fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
+		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
 	}
 
 	valid, err := t.blacklist.ValidForPublish(uuid, content)
 	if err != nil {
 		log.WithField("uuid", uuid).WithField("collection", collection).WithError(err).Warn("Blacklist check failed.")
-		return nil, "(blacklist check failed)", err
+		return nil, "", err
 	}
 
 	if !valid {
 		log.WithField("uuid", uuid).WithField("collection", collection).Info("This UUID has been blacklisted. Skipping republish.")
-		return nil, "(blacklisted)", fmt.Errorf(`Skipping uuid "%v" as it is blacklisted`, uuid)
+		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it is blacklisted`, uuid)
 	}
 
 	tid, ok := content.Body[publishReferenceAttr].(string)

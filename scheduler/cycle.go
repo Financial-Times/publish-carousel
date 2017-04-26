@@ -27,16 +27,17 @@ type Cycle interface {
 }
 
 type CycleMetadata struct {
-	CurrentPublishUUID string     `json:"currentPublishUuid"`
-	CurrentPublishRef  string     `json:"currentPublishReference"`
-	Errors             int        `json:"errors"`
-	Progress           float64    `json:"progress"`
-	State              []string   `json:"state"`
-	Completed          int        `json:"completed"`
-	Total              int        `json:"total"`
-	Iteration          int        `json:"iteration"`
-	Start              *time.Time `json:"windowStart,omitempty"`
-	End                *time.Time `json:"windowEnd,omitempty"`
+	CurrentPublishUUID  string     `json:"currentPublishUuid"`
+	CurrentPublishRef   string     `json:"currentPublishReference"`
+	CurrentPublishError string     `json:"currentPublishError,omitempty"`
+	Errors              int        `json:"errors"`
+	Progress            float64    `json:"progress"`
+	State               []string   `json:"state"`
+	Completed           int        `json:"completed"`
+	Total               int        `json:"total"`
+	Iteration           int        `json:"iteration"`
+	Start               *time.Time `json:"windowStart,omitempty"`
+	End                 *time.Time `json:"windowEnd,omitempty"`
 
 	state map[string]struct{}
 }
@@ -120,8 +121,11 @@ func (a *abstractCycle) updateProgress(uuid string, txId string, err error) {
 	a.metadataLock.Lock()
 	defer a.metadataLock.Unlock()
 
-	if err != nil {
+	if err == nil {
+		a.CycleMetadata.CurrentPublishError = ""
+	} else {
 		a.CycleMetadata.Errors++
+		a.CycleMetadata.CurrentPublishError = err.Error()
 	}
 
 	a.CycleMetadata.Completed++
