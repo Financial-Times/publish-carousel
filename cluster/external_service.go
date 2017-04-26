@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,6 +20,8 @@ type externalService struct {
 // NewExternalService returns a new instance of a UpP cluster service
 func NewExternalService(name string, watcher etcd.Watcher, readURLsKey string, credentialsKey string) (Service, error) {
 	readService, err := newReadService(watcher, readURLsKey, credentialsKey)
+	readService.startWatcher(context.Background())
+
 	return &externalService{name: name, readService: readService}, err
 }
 
@@ -34,7 +37,14 @@ func (e *externalService) GTG() error {
 
 	var errs []error
 	for _, env := range envs {
-		req, err := http.NewRequest("GET", env.readURL.String()+"/__"+e.name+"/__gtg", nil)
+		if env.readURL == nil {
+			log.WithField("name", env.name).Error("Partial information found for environment! Please confirm the etcd value for monitoring read-urls is setup correctly.")
+			continue
+		}
+
+		log.WithField("gtg", createGTG(env, e.Name())).Info("Calling GTG for external service.")
+
+		req, err := http.NewRequest("GET", createGTG(env, e.Name()), nil)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -50,13 +60,17 @@ func (e *externalService) GTG() error {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			err := fmt.Errorf("GTG for %v returned a non-200 code: %v", e.Name(), resp.StatusCode)
+			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.Name(), createGTG(env, e.Name()), resp.StatusCode)
 			log.WithError(err).Warn("GTG failed for external dependency.")
 			errs = append(errs, err)
 		}
 	}
 
 	return compactErrors(errs)
+}
+
+func createGTG(env readEnvironment, name string) string {
+	return env.readURL.String() + "/__" + name + "/__gtg"
 }
 
 func compactErrors(errs []error) error {

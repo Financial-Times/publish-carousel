@@ -78,7 +78,12 @@ func (r *readService) GetReadEnvironments() []readEnvironment {
 }
 
 func (r *readService) startWatcher(ctx context.Context) {
-	go r.watcher.Watch(ctx, r.readURLsKey, func(readURLs string) {
+	go r.watchReadURLs(ctx)
+	go r.watchCredentials(ctx)
+}
+
+func (r *readService) watchReadURLs(ctx context.Context) {
+	r.watcher.Watch(ctx, r.readURLsKey, func(readURLs string) {
 		r.Lock()
 		defer r.Unlock()
 
@@ -95,7 +100,13 @@ func (r *readService) startWatcher(ctx context.Context) {
 			}
 
 			e := &env
-			e.updateReadURLs(readURLs)
+			err = e.updateReadURLs(readURLs)
+			if err != nil {
+				log.WithField("environment", name).WithError(err).Error("Failed to parse read urls! Removing the environment from use.")
+				delete(r.environments, name)
+				continue
+			}
+
 			r.environments[name] = *e
 		}
 
@@ -105,15 +116,17 @@ func (r *readService) startWatcher(ctx context.Context) {
 			}
 		}
 	})
+}
 
-	go r.watcher.Watch(ctx, r.credentialsKey, func(credentials string) {
+func (r *readService) watchCredentials(ctx context.Context) {
+	r.watcher.Watch(ctx, r.credentialsKey, func(credentials string) {
 		r.Lock()
 		defer r.Unlock()
 
 		updated, err := parseEnvironmentsToSet(credentials)
 		if err != nil {
 			log.WithField("etcdKey", r.credentialsKey).Warn("Failed to parse updated etcd key for the read credentials")
-			return
+			return // leave the environments as is
 		}
 
 		for name := range updated {
@@ -123,24 +136,34 @@ func (r *readService) startWatcher(ctx context.Context) {
 			}
 
 			e := &env
-			e.updateCredentials(credentials)
+			err = e.updateCredentials(credentials)
+			if err != nil {
+				log.WithField("environment", name).WithError(err).Error("Failed to parse credentials! Removing the environment from use.")
+				delete(r.environments, name)
+				continue
+			}
+
 			r.environments[name] = *e
 		}
 	})
 }
 
-func parseEnvironmentsToSet(readURLs string) (map[string]struct{}, error) {
+func parseEnvironmentsToSet(value string) (map[string]struct{}, error) {
 	envMap := make(map[string]struct{})
-	if strings.TrimSpace(readURLs) == "" {
+	if strings.TrimSpace(value) == "" {
 		return envMap, nil
 	}
 
-	environments := strings.Split(readURLs, ",")
+	environments := strings.Split(value, ",")
 
 	for _, environment := range environments {
+		if strings.TrimSpace(environment) == "" {
+			continue
+		}
+
 		env := strings.SplitN(environment, ":", 2)
 		if len(env) != 2 {
-			return envMap, fmt.Errorf(`config for read environment "%v" is incorrect - should be in the format environment:read-url`, environment)
+			return envMap, fmt.Errorf(`config for environment "%v" is incorrect - should be in the format environment:*`, environment)
 		}
 		envMap[env[0]] = struct{}{}
 	}
@@ -152,12 +175,12 @@ func (e *readEnvironment) updateReadURLs(readUrlsVal string) error {
 	environments := strings.Split(readUrlsVal, ",")
 
 	for _, environment := range environments {
+		if strings.TrimSpace(environment) == "" {
+			continue
+		}
+
 		if strings.HasPrefix(environment, e.name+":") {
-			envAndURL := strings.SplitN(environment, ":", 2)
-			if len(envAndURL) != 2 {
-				log.WithField("name", e.name).WithField("readUrl", readUrlsVal).Warn("Incorrect config found for external service!")
-				return errors.New("failed to parse read url")
-			}
+			envAndURL := strings.SplitN(environment, ":", 2) // no need to check length currently, as we've checked it before
 
 			uri, err := url.Parse(envAndURL[1])
 			if err != nil {
@@ -176,6 +199,10 @@ func (e *readEnvironment) updateCredentials(credentialsVal string) error {
 	credentials := strings.Split(credentialsVal, ",")
 
 	for _, credential := range credentials {
+		if strings.TrimSpace(credential) == "" {
+			continue
+		}
+
 		if strings.HasPrefix(credential, e.name+":") {
 			creds := strings.Split(credential, ":")
 			if len(creds) != 3 {
