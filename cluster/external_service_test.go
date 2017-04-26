@@ -1,11 +1,9 @@
 package cluster
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/gorilla/mux"
@@ -35,11 +33,9 @@ func TestExternalService(t *testing.T) {
 
 	watcher := new(etcd.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
-	watcher.On("Read", "creds-key").Return("environment:user:pass,", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
-	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "creds-key", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key", "creds-key")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.Name()
@@ -48,6 +44,7 @@ func TestExternalService(t *testing.T) {
 	err = kafkaLagcheck.GTG()
 	assert.NoError(t, err)
 	assert.True(t, called)
+	watcher.AssertExpectations(t)
 }
 
 func TestExternalServiceFails(t *testing.T) {
@@ -59,11 +56,9 @@ func TestExternalServiceFails(t *testing.T) {
 
 	watcher := new(etcd.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
-	watcher.On("Read", "creds-key").Return("environment:user:pass,", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
-	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "creds-key", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key", "creds-key")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.Name()
@@ -72,39 +67,7 @@ func TestExternalServiceFails(t *testing.T) {
 	err = kafkaLagcheck.GTG()
 	assert.Error(t, err)
 	assert.True(t, called)
-}
-
-func TestExternalServiceNoURL(t *testing.T) {
-	// if testing.Short() {
-	// t.Skip("etcd integration test")
-	// }
-
-	readKey, credsKey := etcdKeys("external-service")
-	watcher := setupTests(t, readKey, credsKey)
-
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, readKey, credsKey)
-	assert.NoError(t, err)
-
-	go func() {
-		time.Sleep(500 * time.Millisecond)
-		api.Set(context.TODO(), readKey, "", nil)
-		api.Set(context.TODO(), credsKey, "environment:user:pass", nil)
-	}()
-
-	ctx, cancel := context.WithCancel(context.TODO())
-	watcher.Watch(ctx, credsKey, func(val string) {
-		assert.Equal(t, "environment:user:pass", val)
-		cancel()
-	})
-
-	name := kafkaLagcheck.Name()
-	assert.Equal(t, "kafka-lagcheck", name)
-
-	err = kafkaLagcheck.GTG()
-	assert.NoError(t, err)
-
-	envs := kafkaLagcheck.(*externalService).readService.GetReadEnvironments()
-	assert.Len(t, envs, 1)
+	watcher.AssertExpectations(t)
 }
 
 func TestExternalServiceCloses(t *testing.T) {
@@ -112,13 +75,11 @@ func TestExternalServiceCloses(t *testing.T) {
 
 	watcher := new(etcd.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
-	watcher.On("Read", "creds-key").Return("environment:user:pass,", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
-	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "creds-key", mock.AnythingOfType("func(string)"))
 
 	server.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key", "creds-key")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.Name()
@@ -126,6 +87,7 @@ func TestExternalServiceCloses(t *testing.T) {
 
 	err = kafkaLagcheck.GTG()
 	assert.Error(t, err)
+	watcher.AssertExpectations(t)
 }
 
 func TestMultipleExternalServicesFail(t *testing.T) {
@@ -137,11 +99,9 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 
 	watcher := new(etcd.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
-	watcher.On("Read", "creds-key").Return("environment:user:pass,environment2:user:pass", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
-	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "creds-key", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key", "creds-key")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.Name()
@@ -153,4 +113,5 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	t.Log(err.Error())
 	assert.Contains(t, err.Error(), server1.URL)
 	assert.Contains(t, err.Error(), server2.URL)
+	watcher.AssertExpectations(t)
 }

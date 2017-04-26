@@ -112,12 +112,6 @@ func main() {
 			Usage:  "The ETCD key that enables or disables the carousel",
 		},
 		cli.StringFlag{
-			Name:   "read-credentials-etcd-key",
-			Value:  "/ft/_credentials/publish-read/read-credentials",
-			EnvVar: "CREDENTIALS_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
-		},
-		cli.StringFlag{
 			Name:   "default-throttle",
 			Value:  "1m",
 			EnvVar: "DEFAULT_THROTTLE",
@@ -149,10 +143,10 @@ func main() {
 			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
 		}
 
-		// queueLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
-		// if err != nil {
-		// log.WithError(err).Error("Error in Kafka lagcheck configuration")
-		// }
+		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		if err != nil {
+			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+		}
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
@@ -161,7 +155,7 @@ func main() {
 			panic(err)
 		}
 
-		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"), ctx.String("read-credentials-etcd-key"))
+		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 		if err != nil {
 			log.WithError(err).Error("Error in external kafka lagcheck config.")
 		}
@@ -190,8 +184,7 @@ func main() {
 		sched.Start()
 
 		shutdown(sched)
-		// queueLagcheck,
-		serve(mongo, sched, s3rw, notifier, configError, pam, deliveryLagcheck)
+		serve(mongo, sched, s3rw, notifier, configError, pam, publishingLagcheck, deliveryLagcheck)
 	}
 
 	app.Run(os.Args)
