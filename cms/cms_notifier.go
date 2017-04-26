@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/native"
 	log "github.com/Sirupsen/logrus"
 )
@@ -18,15 +19,21 @@ type Notifier interface {
 }
 
 type cmsNotifier struct {
+	cluster.Service
 	client      *http.Client
 	notifierURL string
-	notifierGTG string
 }
 
 // NewNotifier returns a new cms notifier instance
-func NewNotifier(notifierURL string, notifierGTG string, client *http.Client) Notifier {
-	return &cmsNotifier{client: client, notifierURL: notifierURL, notifierGTG: notifierGTG}
+func NewNotifier(notifierURL string, client *http.Client) (Notifier, error) {
+	s, err := cluster.NewService("cms-notifier", notifierURL)
+	if err != nil {
+		return nil, err
+	}
+	return &cmsNotifier{s, client, notifierURL}, nil
 }
+
+const notifyPath = "/notify"
 
 func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content, hash string) error {
 	b := new(bytes.Buffer)
@@ -37,7 +44,7 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 		return err
 	}
 
-	req, err := http.NewRequest("POST", c.notifierURL, b)
+	req, err := http.NewRequest("POST", c.notifierURL+notifyPath, b)
 	req.Header.Add("Content-Type", content.ContentType)
 	req.Header.Add("X-Request-Id", tid)
 	req.Header.Add("X-Native-Hash", hash)
@@ -62,17 +69,4 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 	log.Info(string(dump))
 
 	return fmt.Errorf("A non 2xx error code was received by the CMS Notifier! Status: %v", resp.StatusCode)
-}
-
-func (c *cmsNotifier) GTG() error {
-	resp, err := c.client.Get(c.notifierGTG)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf(`CMS Notifier located at "%v" has responded with a "%v" status`, c.notifierGTG, resp.StatusCode)
-	}
-
-	return nil
 }

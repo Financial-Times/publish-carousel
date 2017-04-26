@@ -152,8 +152,6 @@ func StopCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// UPDATE PUT on /cycles/<id>
-
 // Get a cycle throttle
 func GetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

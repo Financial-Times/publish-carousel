@@ -55,6 +55,10 @@ func TestCappedThrottle(t *testing.T) {
 }
 
 func TestRateInterval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("long test.")
+	}
+
 	interval := time.Minute
 	minThrottle := time.Second
 	maxThrottle := time.Second * 30
