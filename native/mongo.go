@@ -74,18 +74,19 @@ func (db *MongoDB) Open() (TX, error) {
 func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, end time.Time, batchsize int) (DBIter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
-	query, projection := findUUIDsForTimeWindow(start, end)
+	query, projection := findUUIDsForTimeWindowQueryElements(start, end)
 	find := collection.Find(query).Select(projection).Batch(batchsize)
 
 	count, err := find.Count()
 	return find.Iter(), count, err
 }
 
+//returns all uuids for a collection sorted by lastodified date, if no lastmodified exists records are returned at the end of the list
 func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
-	query, projection := findUUIDs()
-	find := collection.Find(query).Select(projection).Batch(batchsize)
+	query, projection, sortByDate := findUUIDsQueryElements()
+	find := collection.Find(query).Select(projection).Sort(sortByDate).Batch(batchsize)
 
 	if skip > 0 {
 		find.Skip(skip)

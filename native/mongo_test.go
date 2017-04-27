@@ -58,7 +58,7 @@ func cleanupTestContent(t *testing.T, mongo DB, testUUID string) {
 	assert.NoError(t, err)
 }
 
-func TestFindByUUID(t *testing.T) {
+func TestFindUUIDs(t *testing.T) {
 	db := startMongo(t)
 	defer db.Close()
 

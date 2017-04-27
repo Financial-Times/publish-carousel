@@ -19,17 +19,18 @@ func TestReadNativeContentQuery(t *testing.T) {
 	assert.Equal(t, `{"uuid":{"$binary":"53Q3B7TESrOAQ7y19/3Vaw==","$type":"0x4"}}`, strings.TrimSpace(string(data)))
 }
 
-func TestFindUUIDs(t *testing.T) {
-	query, projection := findUUIDs()
+func TestFindUUIDsQueryElements(t *testing.T) {
+	query, projection, sortBy := findUUIDsQueryElements()
 	assert.Equal(t, bson.M{}, query)
 	assert.Equal(t, uuidProjection, projection)
+	assert.Equal(t, sortByDate, sortBy)
 }
 
-func TestFindUUIDsForTimeWindow(t *testing.T) {
+func TestFindUUIDsForTimeWindowQueryElements(t *testing.T) {
 	end := time.Date(2017, 03, 16, 0, 0, 0, 0, time.UTC)
 	start := end.Add(time.Minute * -1)
 
-	query, projection := findUUIDsForTimeWindow(start, end)
+	query, projection := findUUIDsForTimeWindowQueryElements(start, end)
 
 	data, err := bson.MarshalJSON(query)
 	assert.NoError(t, err)
