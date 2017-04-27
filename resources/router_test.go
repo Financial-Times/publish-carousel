@@ -5,36 +5,29 @@ import (
 	"net/http/httptest"
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 )
 
 func setupRouter(sched scheduler.Scheduler, req *http.Request) *httptest.ResponseRecorder {
-	r := mux.NewRouter()
-	r.HandleFunc("/cycles", GetCycles(sched)).Methods("GET")
-	r.HandleFunc("/cycles", CreateCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles", MethodNotAllowed()).Methods("PUT", "DELETE")
+	r := vestigo.NewRouter()
+	r.Get("/cycles", GetCycles(sched))
+	r.Post("/cycles", CreateCycle(sched))
 
-	r.HandleFunc("/cycles/{id}", GetCycleForID(sched)).Methods("GET")
-	r.HandleFunc("/cycles/{id}", DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", MethodNotAllowed()).Methods("PUT", "POST")
+	r.Get("/cycles/:id", GetCycleForID(sched))
+	r.Delete("/cycles/:id", DeleteCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/throttle", GetCycleThrottle(sched)).Methods("GET")
-	r.HandleFunc("/cycles/{id}/throttle", SetCycleThrottle(sched)).Methods("PUT")
+	r.Get("/cycles/:id/throttle", GetCycleThrottle(sched))
+	r.Put("/cycles/:id/throttle", SetCycleThrottle(sched))
 
-	r.HandleFunc("/cycles/{id}/resume", ResumeCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/resume", MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/resume", ResumeCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/stop", StopCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/stop", MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/stop", StopCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/reset", ResetCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/reset", MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/reset", ResetCycle(sched))
 
-	r.HandleFunc("/scheduler/start", StartScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/start", MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/start", StartScheduler(sched))
 
-	r.HandleFunc("/scheduler/shutdown", ShutdownScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/shutdown", MethodNotAllowed()).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/shutdown", ShutdownScheduler(sched))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

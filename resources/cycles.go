@@ -7,7 +7,7 @@ import (
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	log "github.com/Sirupsen/logrus"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 )
 
 // GetCycles returns all cycles as an array
@@ -87,8 +87,7 @@ func CreateCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 // DeleteCycle deletes the cycle by the given id
 func DeleteCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		id := vars["id"]
+		id := vestigo.Param(r, "id")
 		err := sched.DeleteCycle(id)
 
 		if err != nil {
@@ -105,8 +104,7 @@ func ResumeCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
 
-		vars := mux.Vars(r)
-		cycle, ok := cycles[vars["id"]]
+		cycle, ok := cycles[vestigo.Param(r, "id")]
 		if !ok {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -123,8 +121,7 @@ func ResetCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.R
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
 
-		vars := mux.Vars(r)
-		cycle, ok := cycles[vars["id"]]
+		cycle, ok := cycles[vestigo.Param(r, "id")]
 		if !ok {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -140,8 +137,7 @@ func StopCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.Re
 	return func(w http.ResponseWriter, r *http.Request) {
 		cycles := sched.Cycles()
 
-		vars := mux.Vars(r)
-		cycle, ok := cycles[vars["id"]]
+		cycle, ok := cycles[vestigo.Param(r, "id")]
 		if !ok {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -226,9 +222,7 @@ func SetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 
 func findCycle(sched scheduler.Scheduler, w http.ResponseWriter, r *http.Request) (scheduler.Cycle, error) {
 	cycles := sched.Cycles()
-
-	vars := mux.Vars(r)
-	cycleID := vars["id"]
+	cycleID := vestigo.Param(r, "id")
 	cycle, ok := cycles[cycleID]
 	if !ok {
 		log.WithField("cycleID", cycleID).Warn("Cycle not found")
