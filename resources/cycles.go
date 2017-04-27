@@ -188,7 +188,7 @@ func SetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 		throttledCycle, ok := cycle.(*scheduler.ThrottledWholeCollectionCycle)
 		if !ok {
 			log.WithField("cycleID", cycleID).Info("cycle is not throttled")
-			http.Error(w, fmt.Sprintf("Cycle is not throttled: %v", cycleID), http.StatusMethodNotAllowed)
+			http.Error(w, fmt.Sprintf("Cycle is not throttled: %v", cycleID), http.StatusBadRequest)
 			return
 		}
 
