@@ -15,3 +15,8 @@ func (m *MockService) Name() string {
 	args := m.Called()
 	return args.String(0)
 }
+
+func (m *MockService) URL() string {
+	args := m.Called()
+	return args.String(0)
+}

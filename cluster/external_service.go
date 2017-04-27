@@ -25,6 +25,16 @@ func NewExternalService(name string, watcher etcd.Watcher, readURLsKey string) (
 	return &externalService{name: name, environmentService: environmentService}, err
 }
 
+func (e *externalService) URL() string {
+	envs := e.environmentService.GetEnvironments()
+
+	url := ""
+	for _, env := range envs {
+		url += env.name + ": " + env.readURL.String() + ", "
+	}
+	return url
+}
+
 func (e *externalService) Name() string {
 	return e.name
 }

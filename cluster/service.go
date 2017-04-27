@@ -13,6 +13,7 @@ import (
 type Service interface {
 	GTG() error
 	Name() string
+	URL() string
 }
 
 type clusterService struct {
@@ -27,6 +28,10 @@ func NewService(serviceName string, urlString string) (Service, error) {
 		return nil, err
 	}
 	return &clusterService{serviceName, gtgURL}, nil
+}
+
+func (s *clusterService) URL() string {
+	return s.gtgURL.String()
 }
 
 func (s *clusterService) Name() string {

@@ -143,18 +143,26 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 	return func() (string, error) {
 		var unhealthyServices []string
 
+		errs := make([]error, 0)
 		for _, service := range upServices {
-			if service.GTG() != nil {
+			err := service.GTG()
+			if err != nil {
 				if sched.IsRunning() {
 					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
 					sched.Shutdown()
 				}
-				unhealthyServices = append(unhealthyServices, service.Name())
+				unhealthyServices = append(unhealthyServices, service.Name()+": "+service.URL())
+				errs = append(errs, err)
 			}
 		}
 
+		msg := ""
+		for _, err := range errs {
+			msg += err.Error() + ". "
+		}
+
 		if len(unhealthyServices) > 0 {
-			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices))
+			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices)), errors.New(msg)
 		}
 
 		if !sched.IsRunning() && sched.IsEnabled() {

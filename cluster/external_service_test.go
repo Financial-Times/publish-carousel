@@ -107,6 +107,9 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	name := kafkaLagcheck.Name()
 	assert.Equal(t, "kafka-lagcheck", name)
 
+	url := kafkaLagcheck.URL()
+	t.Log(url)
+
 	err = kafkaLagcheck.GTG()
 	assert.Error(t, err)
 
