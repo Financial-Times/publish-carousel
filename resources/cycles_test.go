@@ -219,8 +219,8 @@ func TestGetCycleThrottle(t *testing.T) {
 	cycles := make(map[string]scheduler.Cycle)
 
 	throttle, _ := scheduler.NewThrottle(30*time.Second, 1)
-	cycle := scheduler.ThrottledWholeCollectionCycle{Throttle: throttle}
-	cycles["123"] = &cycle
+	cycle := scheduler.NewThrottledWholeCollectionCycle("test-cycle", nil, "test-collection", "test-origin", time.Minute, throttle, nil)
+	cycles["123"] = cycle
 
 	sched.On("Cycles").Return(cycles)
 

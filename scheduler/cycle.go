@@ -17,6 +17,8 @@ import (
 
 type Cycle interface {
 	ID() string
+	Name() string
+	Type() string
 	Start()
 	Stop()
 	Reset()
@@ -48,8 +50,8 @@ func newCycleID(name string, dbcollection string) string {
 func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
 	cycle := &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
-		Name:          name,
-		Type:          cycleType,
+		CycleName:     name,
+		CycleType:     cycleType,
 		CycleMetadata: CycleMetadata{},
 		metadataLock:  &sync.RWMutex{},
 		db:            database,
@@ -66,8 +68,8 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 
 type abstractCycle struct {
 	CycleID       string        `json:"id"`
-	Name          string        `json:"name"`
-	Type          string        `json:"type"`
+	CycleName     string        `json:"name"`
+	CycleType     string        `json:"type"`
 	CycleMetadata CycleMetadata `json:"metadata"`
 	DBCollection  string        `json:"collection"`
 	Origin        string        `json:"origin"`
@@ -133,9 +135,17 @@ func (a *abstractCycle) ID() string {
 	return a.CycleID
 }
 
+func (a *abstractCycle) Name() string {
+	return a.CycleName
+}
+
+func (a *abstractCycle) Type() string {
+	return a.CycleType
+}
+
 func (a *abstractCycle) Stop() {
 	a.cancel()
-	log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Cycle stopped.")
+	log.WithField("id", a.CycleID).WithField("name", a.CycleName).WithField("collection", a.DBCollection).Info("Cycle stopped.")
 	a.UpdateState(stoppedState)
 }
 

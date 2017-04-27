@@ -22,7 +22,7 @@ func NewFixedWindowCycle(name string, db native.DB, dbCollection string, origin 
 }
 
 func (s *FixedWindowCycle) Start() {
-	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("timeWindow", s.timeWindow).Info("Starting fixed window cycle.")
+	log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithField("timeWindow", s.timeWindow).Info("Starting fixed window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.UpdateState(startingState)
@@ -34,5 +34,5 @@ func (s *FixedWindowCycle) Start() {
 }
 
 func (s *FixedWindowCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow}
+	return &CycleConfig{Name: s.CycleName, Type: s.CycleType, Collection: s.DBCollection, TimeWindow: s.TimeWindow}
 }

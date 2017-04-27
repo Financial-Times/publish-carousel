@@ -157,21 +157,28 @@ func GetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 			return
 		}
 
-		throttledCycle, ok := cycle.(*scheduler.ThrottledWholeCollectionCycle)
-		if !ok {
+		switch cycle.Type() {
+		case scheduler.ThrottledWholeCollectionType:
+			throttledCycle, ok := cycle.(*scheduler.ThrottledWholeCollectionCycle)
+			if !ok {
+				log.WithError(err).Info("Failed to cast cycle.")
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			data, err := json.Marshal(throttledCycle.Throttle)
+			if err != nil {
+				log.WithError(err).Info("Failed to marshal cycle throttle.")
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Write(data)
+
+		default:
 			log.WithField("cycleID", cycle.ID()).Info("cycle is not throttled")
 			http.Error(w, fmt.Sprintf("Cycle is not throttled: %v", cycle.ID()), http.StatusNotFound)
-			return
 		}
-
-		data, err := json.Marshal(throttledCycle.Throttle)
-		if err != nil {
-			log.WithError(err).Info("Failed to marshal cycle throttle.")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(data)
 	}
 }
 

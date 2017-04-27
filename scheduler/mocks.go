@@ -100,6 +100,16 @@ func (m *MockCycle) ID() string {
 	return args.String(0)
 }
 
+func (m *MockCycle) Name() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockCycle) Type() string {
+	args := m.Called()
+	return args.String(0)
+}
+
 func (m *MockCycle) Start() {
 	m.Called()
 }
