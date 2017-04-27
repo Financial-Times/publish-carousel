@@ -4,7 +4,29 @@ A microservice that continuously republishes content and annotations from the na
 
 # API
 
-> TBC
+* `/scheduler/start`
+    * POST starts the scheduler
+* `/scheduler/shutdown`
+    * POST stops the scheduler
+
+* `/cycles`
+    * GET gets all cycles
+    * POST creates a new cycle
+
+* `/cycles/:id`
+    * GET gets a cycle by ID
+    * DELETE deletes a cycle
+
+* `/cycles/:id/throttle` - for ThrottledWholeCollectionCycle only
+    * GET gets a cycle throttle
+    * PUT temporarily updates a cycle throttle (not persisted on application shutdown)
+
+* `/cycles/:id/stop`
+    * POST stops execution of a cycle
+* `/cycles/:id/resume`
+    * POST resumes execution of a cycle
+* `/cycles/:id/reset`
+    * POST resets metadata for a cycle
 
 # Developer Notes
 
@@ -15,6 +37,18 @@ govendor sync
 ```
 
 before building and running the project locally.
+
+## Testing
+Please set the environment variable `MONGO_TEST_URL` to run mongo integration tests (e.g. `export MONGO_TEST_URL=localhost:27017`). Alternatively, run `go test -short` to skip them.
+
+## Running locally
+`etcd` is required.
+
+## Developers on Windows
+
+The Publish Carousel writes a metadata file to S3 on a graceful shutdown. Unfortunately, this functionality (executing a shutdown hook) does not work on Windows using Git Bash, but does work when using the Command Prompt.
+
+It works as expected on a Mac.
 
 # Code Structure
 
@@ -150,9 +184,3 @@ The ScalingWindow and FixedWindow types require the following additional fields:
 And finally, the ScalingWindow requires one extra field:
 
 * `maximumThrottle`: The upper bound for the computed throttle.
-
-# Developers on Windows
-
-The Publish Carousel writes a metadata file to S3 on a graceful shutdown. Unfortunately, this functionality does not work on Windows using Git Bash, but does work when using the Command Prompt.
-
-It works as expected on a Mac.
