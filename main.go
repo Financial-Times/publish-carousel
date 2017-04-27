@@ -180,6 +180,11 @@ func main() {
 		sched.Start()
 
 		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
+		if err != nil {
+			log.WithError(err).Error("Invalid checkpoint interval, defaulting to hourly.")
+			checkpointInterval = time.Hour
+		}
+
 		ticker := checkpoint(sched, checkpointInterval)
 		shutdown(sched, ticker)
 		serve(mongo, sched, s3rw, notifier, configError, pam, queueLagcheck)
