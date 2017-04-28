@@ -167,15 +167,20 @@ func main() {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
 
-		toggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
+		manualToggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
+		if err != nil {
+			panic(err)
+		}
+		autoToggle, err := etcdWatcher.Read(ctx.String("failover-etcd-key"))
 		if err != nil {
 			panic(err)
 		}
 
-		sched.ToggleHandler(toggle)
+		sched.ManualToggleHandler(manualToggle)
+		sched.AutomaticToggleHandler(autoToggle)
 
-		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ToggleHandler)
-		go etcdWatcher.Watch(context.Background(), ctx.String("failover-etcd-key"), sched.ToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ManualToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("failover-etcd-key"), sched.AutomaticToggleHandler)
 
 		sched.RestorePreviousState()
 		sched.Start()

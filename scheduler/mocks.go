@@ -77,7 +77,11 @@ func (m *MockScheduler) Shutdown() error {
 	return args.Error(0)
 }
 
-func (m *MockScheduler) ToggleHandler(toggleValue string) {
+func (m *MockScheduler) ManualToggleHandler(toggleValue string) {
+	m.Called(toggleValue)
+}
+
+func (m *MockScheduler) AutomaticToggleHandler(toggleValue string) {
 	m.Called(toggleValue)
 }
 
@@ -87,6 +91,16 @@ func (m *MockScheduler) IsEnabled() bool {
 }
 
 func (m *MockScheduler) IsRunning() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockScheduler) IsAutomaticallyDisabled() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockScheduler) WasAutomaticallyDisabled() bool {
 	args := m.Called()
 	return args.Bool(0)
 }
