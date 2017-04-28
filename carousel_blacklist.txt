@@ -1,3 +1,33 @@
+--SYNTHETIC REQUEST UUIDS
+--prod-uk
+38bb47a2-80e6-11e6-a078-d6ccddbc3d35
+4f2f97ea-b8ec-11e4-b8e6-00144feab7de
+c94a3a57-3c99-423c-a6bd-ed8c4c10a3c3
+--prod-us
+6c984298-12bc-11e6-bb40-c30e3bfcf63b
+6442247f-6e94-4cbd-aaca-906158bae38c
+43eabb23-88a2-4e62-a4dc-6e1e8f737c1f
+--pre-prod uk
+2ca63ad2-63b8-49a0-ab01-4f6a80de6ec0
+85a30235-2a52-485d-a492-6a59055a453f
+da41b1f8-289b-47c1-a640-e1cca7afa811
+--pre-prod-us
+fbe8b93a-67f0-47e0-b55c-f7b811284b47
+f8aeb712-b008-468b-bc30-a5ddd92d2d5f
+614a9bf2-4639-408b-8493-635dd996224e
+--dynpub
+39c7a6a5-e820-433c-b5aa-48d62405f033
+806a34c0-0438-4a5f-bcb1-da7d8a27b9bf
+342473aa-fbdb-4120-b66f-59e1034aa363
+--semantic
+dd2615a8-a424-48fe-a024-c19312465021
+a648c244-b3af-4391-9e11-f9e234bcb591
+a6b4c15b-dfbe-48e0-a42f-c80df24fb280
+--xp
+70ff2011-db31-4808-ad5b-102773034c67
+3abe5917-3da9-49e1-acc7-7ea77bc22841
+fa525e88-ab9d-457d-b36e-4723445f3bde
+--END SYNTHETIC REQUEST IDS
 2565e15c-6fd3-11de-b835-00144feabdc0
 233152d0-8055-11de-bf04-00144feabdc0
 626d75fa-92c0-11de-b63b-00144feabdc0
