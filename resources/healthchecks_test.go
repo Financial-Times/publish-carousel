@@ -30,6 +30,9 @@ func TestHappyHealthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -88,6 +91,9 @@ func TestUnhappyMongoDBHealthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -143,6 +149,9 @@ func TestUnhappyS3Healthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -201,6 +210,9 @@ func TestUnhappyCMSNotifierHealthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -232,6 +244,7 @@ func TestUnhappyCMSNotifierHealthcheck(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -260,6 +273,9 @@ func TestUnhappyCyclesHealthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -291,6 +307,7 @@ func TestUnhappyCyclesHealthcheck(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":false`, "Cycles should not be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -318,6 +335,9 @@ func TestUnhappyCycleConfigHealthcheck(t *testing.T) {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -349,6 +369,7 @@ func TestUnhappyCycleConfigHealthcheck(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":false`, "Cycles configuration should not be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -377,6 +398,9 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
 	sched.On("Shutdown").Return(nil)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -409,6 +433,7 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":false`, "Cluster should not be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -439,6 +464,8 @@ func TestSchedulerRestartWhenClusterReturnHealthy(t *testing.T) {
 	sched.On("IsRunning").Return(false)
 	sched.On("IsEnabled").Return(true)
 	sched.On("Start").Return(nil).Once()
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("GTG").Return(nil)
@@ -471,6 +498,190 @@ func TestSchedulerRestartWhenClusterReturnHealthy(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
+
+	sched.AssertExpectations(t)
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+	db.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
+	s3RW.AssertExpectations(t)
+	cmsNotifier.AssertExpectations(t)
+	upService1.AssertExpectations(t)
+	upService2.AssertExpectations(t)
+}
+
+func TestHappyHealthcheckIfManualToggleIsDisabled(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+
+	c1 := new(scheduler.MockCycle)
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+	c2 := new(scheduler.MockCycle)
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+
+	mockCycles := map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	}
+
+	sched.On("Cycles").Return(mockCycles)
+	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(false)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
+
+	upService1 := new(cluster.MockService)
+	upService1.On("GTG").Return(nil)
+	upService2 := new(cluster.MockService)
+	upService2.On("GTG").Return(nil)
+
+	db := new(native.MockDB)
+	mockTx := new(native.MockTX)
+	db.On("Open").Return(mockTx, nil)
+	mockTx.On("Ping").Return(nil)
+	mockTx.On("Close").Return()
+
+	s3RW := new(s3.MockReadWriter)
+	s3RW.On("Ping").Return(nil)
+
+	cmsNotifier := new(cms.MockNotifier)
+	cmsNotifier.On("GTG").Return(nil)
+
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	Health(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck should return 200")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":true`, "Cluster should not be in failover state")
+
+	sched.AssertExpectations(t)
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+	db.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
+	s3RW.AssertExpectations(t)
+	cmsNotifier.AssertExpectations(t)
+	upService1.AssertExpectations(t)
+	upService2.AssertExpectations(t)
+}
+
+func TestUnhappyHealthcheckBecauseOfCurrentFailover(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+
+	c1 := new(scheduler.MockCycle)
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+	c2 := new(scheduler.MockCycle)
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+
+	mockCycles := map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	}
+
+	sched.On("Cycles").Return(mockCycles)
+	sched.On("IsRunning").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(true)
+
+	upService1 := new(cluster.MockService)
+	upService1.On("GTG").Return(nil)
+	upService2 := new(cluster.MockService)
+	upService2.On("GTG").Return(nil)
+
+	db := new(native.MockDB)
+	mockTx := new(native.MockTX)
+	db.On("Open").Return(mockTx, nil)
+	mockTx.On("Ping").Return(nil)
+	mockTx.On("Close").Return()
+
+	s3RW := new(s3.MockReadWriter)
+	s3RW.On("Ping").Return(nil)
+
+	cmsNotifier := new(cms.MockNotifier)
+	cmsNotifier.On("GTG").Return(nil)
+
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	Health(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck should return 200")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should not be in failover state")
+
+	sched.AssertExpectations(t)
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+	db.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
+	s3RW.AssertExpectations(t)
+	cmsNotifier.AssertExpectations(t)
+	upService1.AssertExpectations(t)
+	upService2.AssertExpectations(t)
+}
+
+func TestUnhappyHealthcheckBecauseOfNotRestartAfterFailback(t *testing.T) {
+	sched := new(scheduler.MockScheduler)
+
+	c1 := new(scheduler.MockCycle)
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+	c2 := new(scheduler.MockCycle)
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"running"}})
+
+	mockCycles := map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	}
+
+	sched.On("Cycles").Return(mockCycles)
+	sched.On("IsRunning").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(true)
+
+	upService1 := new(cluster.MockService)
+	upService1.On("GTG").Return(nil)
+	upService2 := new(cluster.MockService)
+	upService2.On("GTG").Return(nil)
+
+	db := new(native.MockDB)
+	mockTx := new(native.MockTX)
+	db.On("Open").Return(mockTx, nil)
+	mockTx.On("Ping").Return(nil)
+	mockTx.On("Close").Return()
+
+	s3RW := new(s3.MockReadWriter)
+	s3RW.On("Ping").Return(nil)
+
+	cmsNotifier := new(cms.MockNotifier)
+	cmsNotifier.On("GTG").Return(nil)
+
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	Health(db, s3RW, cmsNotifier, sched, nil, upService1, upService2)(w, req)
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck should return 200")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToNativeDatabase","ok":true`, "Database should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckConnectivityToS3","ok":true`, "S3 should be healthy")
+	assert.Contains(t, string(body), `"name":"CheckCMSNotifierHealth","ok":true`, "CMS notifier should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
+	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
+	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should not be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)

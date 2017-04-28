@@ -87,6 +87,14 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          unhealthyClusters(sched, upServices...),
 		},
+		{
+			Name:             "ActivePublishingCluster",
+			BusinessImpact:   "No Business Impact.",
+			TechnicalSummary: `In situation of publishing cluster failover, the Carousel scheduler will be automaticalli disabled.`,
+			Severity:         1,
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			Checker:          clusterFailoverHealthcheck(sched),
+		},
 	}
 }
 
@@ -169,5 +177,20 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 func configHealthcheck(err error) func() (string, error) {
 	return func() (string, error) {
 		return "", err
+	}
+}
+
+func clusterFailoverHealthcheck(s scheduler.Scheduler) func() (string, error) {
+	return func() (string, error) {
+		if s.IsAutomaticallyDisabled() {
+			return "Detected publishing cluster failover", errors.New("carousel scheduler have been automatically disabled")
+		}
+		if s.WasAutomaticallyDisabled() {
+			return "Detected publishing cluster failback", errors.New("carousel scheduler is enabled but stopped")
+		}
+		if !s.IsEnabled() {
+			return "Carousel scheduler manually disabled", nil
+		}
+		return "No failover issues, carousel scheduler enabled", nil
 	}
 }
