@@ -58,7 +58,7 @@ func cleanupTestContent(t *testing.T, mongo DB, testUUID string) {
 	assert.NoError(t, err)
 }
 
-func TestFindUUIDs(t *testing.T) {
+func TestFindByUUID(t *testing.T) {
 	db := startMongo(t)
 	defer db.Close()
 
@@ -92,6 +92,50 @@ func TestFindUUIDs(t *testing.T) {
 
 	assert.True(t, found)
 	cleanupTestContent(t, db, testUUID)
+}
+
+func TestFindUUIDsDateSort(t *testing.T) {
+	db := startMongo(t)
+	defer db.Close()
+
+	tx, err := db.Open()
+	defer tx.Close()
+	assert.NoError(t, err)
+
+	testUUID1 := uuid.NewUUID().String()
+	testUUID2 := uuid.NewUUID().String()
+	testUUID3 := uuid.NewUUID().String()
+	testUUIDs := [3]string{testUUID1, testUUID2, testUUID3}
+
+	insertTestContent(t, db, testUUID2, time.Now().AddDate(0, 0, -1))
+	insertTestContent(t, db, testUUID1, time.Now())
+	insertTestContent(t, db, testUUID3, time.Now().AddDate(0, 0, -2))
+
+	iter, count, err := tx.FindUUIDs("methode", 0, 10)
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, count)
+	i := 0
+	found := false
+	for !iter.Done() {
+		result := map[string]interface{}{}
+		iter.Next(&result)
+
+		t.Log(result)
+		val, ok := result["uuid"]
+		if !ok {
+			continue
+		}
+		if parseBinaryUUID(val) == testUUIDs[i] {
+			found = true
+			i++
+		}
+
+		assert.True(t, found, "uuids do not match therefore they are not in expected descending date order")
+	}
+
+	cleanupTestContent(t, db, testUUID1)
+	cleanupTestContent(t, db, testUUID2)
+	cleanupTestContent(t, db, testUUID3)
 }
 
 func TestFindByTimeWindow(t *testing.T) {
