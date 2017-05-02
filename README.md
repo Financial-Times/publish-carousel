@@ -17,6 +17,28 @@ govendor sync
 
 before building and running the project locally.
 
+To test the project, use:
+
+```
+govendor test -v -race +local
+```
+
+There are MongoDB and Etcd integration tests, which require local running instances of MongoDB and Etcd. These can be skipped (along with long running tests) by using the command:
+
+```
+govendor test -v -race -short +local
+```
+
+To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`. To connect to an Etcd instance, please use the environment variable `ETCD_TEST_URL` i.e. `export ETCD_TEST_URL=http://localhost:2379`.
+
+For running the Carousel locally, please see the command line arguments that need to be set using:
+
+```
+./publish-carousel --help
+```
+
+Please note that you must connect to the **Primary** Mongo instance if you are connecting to one of our UPP clusters.
+
 # Code Structure
 
 ## Packages
