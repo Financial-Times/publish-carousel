@@ -399,7 +399,15 @@
 			"versionExact": "v1.1.4"
 		},
 		{
-			"checksumSHA1": "CoxdaTYdPZNJXr8mJfLxye428N0=",
+			"checksumSHA1": "oqDuQM/+8vHvSt7f8w7WJfmHqws=",
+			"path": "github.com/stretchr/testify/require",
+			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
+			"revisionTime": "2017-01-30T11:31:45Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
+		},
+		{
+			"checksumSHA1": "i1oySm1zXP3iDj+031i8F9InUqE=",
 			"path": "github.com/ugorji/go/codec",
 			"revision": "c88ee250d0221a57af388746f5cf03768c21d6e2",
 			"revisionTime": "2017-02-15T20:11:44Z"
