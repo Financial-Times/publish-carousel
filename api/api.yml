@@ -11,8 +11,8 @@ info:
 host: api.ft.com
 
 schemes:
-   - https
    - http
+   - https
 
 basePath: /
 

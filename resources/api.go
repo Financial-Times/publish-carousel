@@ -1,11 +1,6 @@
 package resources
 
-import (
-	"net/http"
-	"net/url"
-
-	yaml "gopkg.in/yaml.v2"
-)
+import "net/http"
 
 // API returns the swagger.yml for this service.
 func API(api []byte) func(w http.ResponseWriter, r *http.Request) {
@@ -15,28 +10,7 @@ func API(api []byte) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		swagger := make(map[string]interface{})
-		err := yaml.Unmarshal(api, swagger)
-		if err != nil {
-			outputStaticAPI(w, api)
-			return
-		}
-
-		uri, _ := url.Parse(r.RequestURI) // must be a valid url
-
-		swagger["host"] = uri.Host
-		updatedAPI, err := yaml.Marshal(swagger)
-		if err != nil {
-			outputStaticAPI(w, api)
-			return
-		}
-
 		w.Header().Add("Content-Type", "text/vnd.yaml")
-		w.Write(updatedAPI)
+		w.Write(api)
 	}
-}
-
-func outputStaticAPI(w http.ResponseWriter, api []byte) {
-	w.Header().Add("Content-Type", "text/vnd.yaml")
-	w.Write(api)
 }
