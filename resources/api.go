@@ -2,7 +2,7 @@ package resources
 
 import (
 	"net/http"
-	"net/url"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -22,9 +22,14 @@ func API(api []byte) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		uri, _ := url.Parse(r.RequestURI) // must be a valid url
+		swagger["basePath"] = getBasePath(r)
+		swagger["schemes"] = getSchemes(r)
 
-		swagger["host"] = uri.Host
+		host, ok := getHost(r)
+		if ok {
+			swagger["host"] = host
+		}
+
 		updatedAPI, err := yaml.Marshal(swagger)
 		if err != nil {
 			outputStaticAPI(w, api)
@@ -34,6 +39,29 @@ func API(api []byte) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/vnd.yaml")
 		w.Write(updatedAPI)
 	}
+}
+
+func getHost(r *http.Request) (string, bool) {
+	if r.Host == "" {
+		return "api.ft.com", false
+	}
+	return r.Host, true
+}
+
+func getBasePath(r *http.Request) string {
+	if r.URL.Path == "" || r.URL.Path == "/__api" || !strings.HasSuffix(r.URL.Path, "/__api") {
+		return "/"
+	}
+
+	return strings.TrimSuffix(r.URL.Path, "/__api")
+}
+
+func getSchemes(r *http.Request) []string {
+	if strings.TrimSpace(r.URL.Scheme) == "" {
+		return []string{"http", "https"}
+	}
+
+	return []string{r.URL.Scheme}
 }
 
 func outputStaticAPI(w http.ResponseWriter, api []byte) {

@@ -10,16 +10,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAPIEndpoint(t *testing.T) {
-	api := API([]byte(`host: localhost`))
+func TestAPIEndpointHTTP(t *testing.T) {
+	api := API([]byte("host: localhost"))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "http://129.1.1.160/__api", nil)
+	r := httptest.NewRequest("GET", "http://129.1.1.160/__publish-carousel/__api", nil)
 
 	api(w, r)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `host: 129.1.1.160`, strings.TrimSpace(w.Body.String()))
+	assert.Equal(t, "basePath: /__publish-carousel\nhost: 129.1.1.160\nschemes:\n- http", strings.TrimSpace(w.Body.String()))
+	assert.Equal(t, "text/vnd.yaml", w.Header().Get("Content-Type"))
+}
+
+func TestAPIEndpointHTTPS(t *testing.T) {
+	api := API([]byte(`host: localhost`))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "https://129.1.1.160/__api", nil)
+
+	api(w, r)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "basePath: /\nhost: 129.1.1.160\nschemes:\n- https", strings.TrimSpace(w.Body.String()))
+	assert.Equal(t, "text/vnd.yaml", w.Header().Get("Content-Type"))
+}
+
+func TestAPIEndpointNoScheme(t *testing.T) {
+	api := API([]byte("host: localhost"))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/__publish-carousel/__api", nil)
+
+	api(w, r)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "basePath: /__publish-carousel\nhost: example.com\nschemes:\n- http\n- https", strings.TrimSpace(w.Body.String()))
 	assert.Equal(t, "text/vnd.yaml", w.Header().Get("Content-Type"))
 }
 
@@ -33,19 +59,6 @@ func TestAPIEndpointYAMLFails(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `hi i am an api`, strings.TrimSpace(w.Body.String()))
-	assert.Equal(t, "text/vnd.yaml", w.Header().Get("Content-Type"))
-}
-
-func TestAPIEndpointURLFails(t *testing.T) {
-	api := API([]byte(`host: localhost`))
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "http://192.168.1.1/__api", nil)
-
-	api(w, r)
-
-	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `host: 192.168.1.1`, strings.TrimSpace(w.Body.String()))
 	assert.Equal(t, "text/vnd.yaml", w.Header().Get("Content-Type"))
 }
 
