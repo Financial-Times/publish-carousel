@@ -118,6 +118,12 @@ func main() {
 			EnvVar: "DEFAULT_THROTTLE",
 			Usage:  "Default throttle for whole collection cycles, if it is not specified in configuration file",
 		},
+		cli.StringFlag{
+			Name:   "checkpoint-interval",
+			Value:  "1h",
+			EnvVar: "CHECKPOINT_INTERVAL",
+			Usage:  "Interval for saving metadata checkpoints",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -180,26 +186,44 @@ func main() {
 		sched.RestorePreviousState()
 		sched.Start()
 
-		shutdown(sched)
-
 		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
 
+		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
+		if err != nil {
+			log.WithError(err).Error("Invalid checkpoint interval, defaulting to hourly.")
+			checkpointInterval = time.Hour
+		}
+
+		ticker := checkpoint(sched, checkpointInterval)
+		shutdown(sched, ticker)
 		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
 	}
 
 	app.Run(os.Args)
 }
 
-func shutdown(sched scheduler.Scheduler) {
+func shutdown(sched scheduler.Scheduler, ticker *time.Ticker) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-signals
-		log.Info("Saving current carousel state to S3.")
+		ticker.Stop()
 		sched.SaveCycleMetadata()
 		os.Exit(0)
 	}()
+}
+
+func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker {
+	t := time.NewTicker(interval)
+
+	go func() {
+		for range t.C {
+			sched.SaveCycleMetadata()
+		}
+	}()
+
+	return t
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
