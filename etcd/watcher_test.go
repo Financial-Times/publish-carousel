@@ -2,6 +2,8 @@ package etcd
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,12 +11,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWatch(t *testing.T) {
+func startEtcd(t *testing.T) (Watcher, error) {
 	if testing.Short() {
 		t.Skip("Skipping etcd integration test")
 	}
 
-	watcher, err := NewEtcdWatcher([]string{"http://localhost:2379"})
+	etcdURL := os.Getenv("ETCD_TEST_URL")
+	if strings.TrimSpace(etcdURL) == "" {
+		t.Fatal("Please set the environment variable ETCD_TEST_URL to run etcd integration tests (e.g. ETCD_TEST_URL=http://localhost:2379). Alternatively, run tests with `-short` to skip them.")
+	}
+
+	return NewEtcdWatcher([]string{etcdURL})
+}
+
+func TestWatch(t *testing.T) {
+	watcher, err := startEtcd(t)
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
@@ -39,11 +50,7 @@ func TestWatch(t *testing.T) {
 }
 
 func TestWatchCallbackPanics(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping etcd integration test")
-	}
-
-	watcher, err := NewEtcdWatcher([]string{"http://localhost:2379"})
+	watcher, err := startEtcd(t)
 	assert.NoError(t, err)
 
 	cfg := etcdClient.Config{
