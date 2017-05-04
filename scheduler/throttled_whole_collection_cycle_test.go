@@ -164,7 +164,37 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIter(expectedUUID, false, nextCalled, stopped)
+	count := 0
+	iter := new(native.MockDBIter)
+
+	iter.On("Next", mock.MatchedBy(func(arg *map[string]interface{}) bool {
+		m := *arg
+		m["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(expectedUUID))}
+
+		if count < 3 {
+			count++
+			nextCalled <- struct{}{}
+			return true
+		}
+		return false
+	})).Return(false)
+
+	iter.On("Next", mock.MatchedBy(func(arg *map[string]interface{}) bool {
+		m := *arg
+		m["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(expectedUUID))}
+
+		if count == 3 {
+			count = 0
+			nextCalled <- struct{}{}
+			return true
+		}
+		return false
+	})).Return(false)
+
+	iter.On("Close").Run(func(arg1 mock.Arguments) {
+		stopped <- struct{}{}
+	}).Return(nil)
+
 	iter.On("Err").Return(nil)
 	iter.On("Timeout").Return(false)
 
@@ -176,6 +206,10 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	c.Start()
 
 	<-opened
+	<-throttleCalled
+	<-nextCalled
+
+	// send another
 	<-throttleCalled
 	<-nextCalled
 
