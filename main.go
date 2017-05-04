@@ -171,7 +171,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		autoToggle, err := etcdWatcher.Read(ctx.String("failover-etcd-key"))
+		autoToggle, err := etcdWatcher.Read(ctx.String("active-cluster-etcd-key"))
 		if err != nil {
 			panic(err)
 		}
