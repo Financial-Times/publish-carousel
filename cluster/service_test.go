@@ -19,7 +19,7 @@ func newMockHTTPService(t *testing.T, status int) *httptest.Server {
 func TestHappyNewService(t *testing.T) {
 	s, err := NewService("pam", "http://someting.com")
 	assert.NoError(t, err, "It should not return an error")
-	assert.Equal(t, "pam", s.Name(), "The name should match the one gave in the constructor function")
+	assert.Equal(t, "pam", s.ServiceName(), "The name should match the one gave in the constructor function")
 }
 
 func TestUnhappyNewService(t *testing.T) {
@@ -49,4 +49,12 @@ func TestGTGConnectionError(t *testing.T) {
 	s, err := NewService("pam", "http://a-url-that-does-not-exixts.com/something")
 	assert.NoError(t, err, "It should not return an error")
 	assert.Error(t, s.GTG(), "The service should not be good to go")
+}
+
+func TestServiceNameAndString(t *testing.T) {
+	s, err := NewService("pam", "http://a-url-that-does-not-exixts.com/something")
+	assert.NoError(t, err, "It should not return an error")
+
+	assert.Equal(t, "pam", s.Name())
+	assert.Equal(t, "http://a-url-that-does-not-exixts.com/something/__gtg", s.String())
 }

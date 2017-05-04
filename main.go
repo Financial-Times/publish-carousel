@@ -161,7 +161,7 @@ func main() {
 			panic(err)
 		}
 
-		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
+		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 		if err != nil {
 			panic(err)
 		}

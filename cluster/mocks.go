@@ -16,6 +16,16 @@ func (m *MockService) Name() string {
 	return args.String(0)
 }
 
+func (m *MockService) ServiceName() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockService) String() string {
+	args := m.Called()
+	return args.String(0)
+}
+
 func (m *MockService) Description() string {
 	args := m.Called()
 	return args.String(0)
