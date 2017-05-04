@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"github.com/Financial-Times/publish-carousel/etcd"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func setupFakeGTG(t *testing.T, status int, path string, called func()) *httptest.Server {
-	r := mux.NewRouter()
-	r.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	r := vestigo.NewRouter()
+	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, path, r.URL.Path)
 		called()
@@ -90,6 +90,64 @@ func TestExternalServiceCloses(t *testing.T) {
 	watcher.AssertExpectations(t)
 }
 
+func TestSomeExternalServicesFail(t *testing.T) {
+	server1 := setupFakeGTG(t, 503, "/__kafka-lagcheck/__gtg", func() {})
+	server2 := setupFakeGTG(t, 200, "/__kafka-lagcheck/__gtg", func() {})
+
+	defer server1.Close()
+	defer server2.Close()
+
+	watcher := new(etcd.MockWatcher)
+	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
+	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
+
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
+	assert.NoError(t, err)
+
+	name := kafkaLagcheck.Name()
+	assert.Equal(t, "kafka-lagcheck", name)
+
+	url := kafkaLagcheck.Description()
+	t.Log(url)
+
+	err = kafkaLagcheck.GTG()
+	assert.Error(t, err)
+
+	t.Log(err.Error())
+	assert.Contains(t, err.Error(), server1.URL)
+	assert.NotContains(t, err.Error(), server2.URL)
+	watcher.AssertExpectations(t)
+}
+
+func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
+	server1 := setupFakeGTG(t, 401, "/__kafka-lagcheck/__gtg", func() {})
+	server2 := setupFakeGTG(t, 504, "/__kafka-lagcheck/__gtg", func() {})
+
+	defer server1.Close()
+	defer server2.Close()
+
+	watcher := new(etcd.MockWatcher)
+	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
+	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
+
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck", watcher, "read-key")
+	assert.NoError(t, err)
+
+	name := kafkaLagcheck.Name()
+	assert.Equal(t, "kafka-lagcheck", name)
+
+	url := kafkaLagcheck.Description()
+	t.Log(url)
+
+	err = kafkaLagcheck.GTG()
+	assert.Error(t, err)
+
+	t.Log(err.Error())
+	assert.Contains(t, err.Error(), server1.URL)
+	assert.Contains(t, err.Error(), server2.URL)
+	watcher.AssertExpectations(t)
+}
+
 func TestMultipleExternalServicesFail(t *testing.T) {
 	server1 := setupFakeGTG(t, 503, "/__kafka-lagcheck/__gtg", func() {})
 	server2 := setupFakeGTG(t, 503, "/__kafka-lagcheck/__gtg", func() {})
@@ -107,7 +165,7 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	name := kafkaLagcheck.Name()
 	assert.Equal(t, "kafka-lagcheck", name)
 
-	url := kafkaLagcheck.URL()
+	url := kafkaLagcheck.Description()
 	t.Log(url)
 
 	err = kafkaLagcheck.GTG()

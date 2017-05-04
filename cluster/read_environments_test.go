@@ -89,12 +89,13 @@ func TestWatchingEtcdKeys(t *testing.T) {
 
 	assertEnvironment(t, envs[0], "environment", "http://localhost:8080")
 
-	WatchAddingNewEnvChangingDetails(t, watcher, readService, readURLsKey)
-	WatchRemovingNewEnvChangingDetails(t, watcher, readService, readURLsKey)
-	WatchInvalidReadURLValue(t, watcher, readService, readURLsKey)
+	watchAddingNewEnvChangingDetails(t, watcher, readService, readURLsKey)
+	watchRemovingOriginalAddingNew(t, watcher, readService, readURLsKey)
+	watchRemovingNewEnvChangingDetails(t, watcher, readService, readURLsKey)
+	watchInvalidReadURLValue(t, watcher, readService, readURLsKey)
 }
 
-func WatchAddingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
+func watchAddingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
 	go func() { // Validate adding a new environment and changing the original details
 		time.Sleep(1 * time.Second)
 		api.Set(context.TODO(), readURLsKey, "environment:http://host-changed:8080,environment2:http://host-added:8080", nil)
@@ -121,7 +122,7 @@ func WatchAddingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readSe
 	assertEnvironment(t, environment2, "environment2", "http://host-added:8080")
 }
 
-func WatchRemovingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
+func watchRemovingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
 	go func() { // Validate removing the new environment and changing the original environment again
 		time.Sleep(1 * time.Second)
 		api.Set(context.TODO(), readURLsKey, "environment:http://host-changed-back:8080", nil)
@@ -138,7 +139,7 @@ func WatchRemovingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, read
 	assertEnvironment(t, envs[0], "environment", "http://host-changed-back:8080")
 }
 
-func WatchRemovingOriginalAddingNew(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string, credentialsKey string) {
+func watchRemovingOriginalAddingNew(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
 	go func() { // Validate removing the original environment and adding a new one. (reverse order of keys too)
 		time.Sleep(1 * time.Second)
 		api.Set(context.TODO(), readURLsKey, ",environment2:http://another-host-added:8080", nil)
@@ -157,7 +158,7 @@ func WatchRemovingOriginalAddingNew(t *testing.T, watcher etcd.Watcher, readServ
 	assertEnvironment(t, environment, "environment2", "http://another-host-added:8080")
 }
 
-func WatchInvalidReadURLValue(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
+func watchInvalidReadURLValue(t *testing.T, watcher etcd.Watcher, readService *environmentService, readURLsKey string) {
 	go func() { // Invalid values
 		time.Sleep(1 * time.Second)
 		api.Set(context.TODO(), readURLsKey, "environment2::#", nil)

@@ -9,11 +9,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// Service is a generic service of an UP cluster that implements a standard FT Good-To-Go endpoint.
+// Service is a generic service of an UPP cluster that implements a standard FT Good-To-Go endpoint.
 type Service interface {
 	GTG() error
 	Name() string
-	URL() string
+	Description() string
 }
 
 type clusterService struct {
@@ -21,7 +21,7 @@ type clusterService struct {
 	gtgURL *url.URL
 }
 
-// NewService returns a new instance of a UpP cluster service
+// NewService returns a new instance of a UPP cluster service
 func NewService(serviceName string, urlString string) (Service, error) {
 	gtgURL, err := url.ParseRequestURI(urlString + httphandlers.GTGPath)
 	if err != nil {
@@ -30,7 +30,7 @@ func NewService(serviceName string, urlString string) (Service, error) {
 	return &clusterService{serviceName, gtgURL}, nil
 }
 
-func (s *clusterService) URL() string {
+func (s *clusterService) Description() string {
 	return s.gtgURL.String()
 }
 

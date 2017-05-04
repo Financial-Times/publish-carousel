@@ -59,7 +59,7 @@ func (e *etcdWatcher) Watch(ctx context.Context, key string, callback func(val s
 
 	for {
 		if ctx.Err() != nil {
-			log.WithField("key", key).Info("Etcd watcher canceled.")
+			log.WithField("key", key).Info("Etcd watcher cancelled.")
 			break
 		}
 

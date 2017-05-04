@@ -151,7 +151,7 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
 					sched.Shutdown()
 				}
-				unhealthyServices = append(unhealthyServices, service.Name()+": "+service.URL())
+				unhealthyServices = append(unhealthyServices, service.Name()+": "+service.Description())
 				errs = append(errs, err)
 			}
 		}

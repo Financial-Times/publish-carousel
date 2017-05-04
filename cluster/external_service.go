@@ -17,7 +17,7 @@ type externalService struct {
 	environmentService *environmentService
 }
 
-// NewExternalService returns a new instance of a UpP cluster service
+// NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
 func NewExternalService(name string, watcher etcd.Watcher, readURLsKey string) (Service, error) {
 	environmentService, err := newEnvironmentService(watcher, readURLsKey)
 	environmentService.startWatcher(context.Background())
@@ -25,7 +25,7 @@ func NewExternalService(name string, watcher etcd.Watcher, readURLsKey string) (
 	return &externalService{name: name, environmentService: environmentService}, err
 }
 
-func (e *externalService) URL() string {
+func (e *externalService) Description() string {
 	envs := e.environmentService.GetEnvironments()
 
 	url := ""
@@ -45,11 +45,12 @@ func (e *externalService) GTG() error {
 
 	envs := e.environmentService.GetEnvironments()
 
-	var errs []error
+	errs := make([]error, 0)
 	for _, env := range envs {
-		log.WithField("gtg", createGTG(env, e.Name())).Info("Calling GTG for external service.")
+		gtg := gtgURLFor(env, e.Name())
+		log.WithField("gtg", gtg).Info("Calling GTG for external service.")
 
-		req, err := http.NewRequest("GET", createGTG(env, e.Name()), nil)
+		req, err := http.NewRequest("GET", gtg, nil)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -64,21 +65,21 @@ func (e *externalService) GTG() error {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.Name(), createGTG(env, e.Name()), resp.StatusCode)
+			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.Name(), gtg, resp.StatusCode)
 			log.WithError(err).Warn("GTG failed for external dependency.")
 			errs = append(errs, err)
 		}
 	}
 
-	return compactErrors("Failure occurred while checking GTG for external service.", errs)
+	return compactErrors("Failure occurred while checking GTG for external service.", errs...)
 }
 
-func createGTG(env readEnvironment, name string) string {
+func gtgURLFor(env readEnvironment, name string) string {
 	return env.readURL.String() + "/__" + name + "/__gtg"
 }
 
-func compactErrors(msg string, errs []error) error {
-	if errs == nil || len(errs) == 0 {
+func compactErrors(msg string, errs ...error) error {
+	if len(errs) == 0 {
 		return nil
 	}
 

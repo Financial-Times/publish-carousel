@@ -91,5 +91,5 @@ func parseEnvironments(value string) (map[string]readEnvironment, error) {
 		envMap[envAndURL[0]] = readEnvironment{name: envAndURL[0], readURL: uri}
 	}
 
-	return envMap, compactErrors("One or more read-urls failed validation", errs)
+	return envMap, compactErrors("One or more read-urls failed validation", errs...)
 }

@@ -384,7 +384,7 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	upService2 := new(cluster.MockService)
 	upService2.On("GTG").Return(errors.New("not good to go"))
 	upService2.On("Name").Return("a UPP service")
-	upService2.On("URL").Return("localhost")
+	upService2.On("Description").Return("localhost")
 
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)

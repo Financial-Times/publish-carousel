@@ -103,13 +103,13 @@ func main() {
 			Name:   "toggle-etcd-key",
 			Value:  "/ft/config/publish-carousel/enable",
 			EnvVar: "TOGGLE_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
+			Usage:  "The etcd key that enables or disables the carousel",
 		},
 		cli.StringFlag{
 			Name:   "read-monitoring-etcd-key",
 			Value:  "/ft/config/monitoring/read-urls",
 			EnvVar: "READ_URLS_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
+			Usage:  "The etcd key which contains all the read environments",
 		},
 		cli.StringFlag{
 			Name:   "default-throttle",
@@ -145,7 +145,7 @@ func main() {
 
 		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
 		if err != nil {
-			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+			panic(err)
 		}
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
@@ -157,11 +157,10 @@ func main() {
 
 		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 		if err != nil {
-			log.WithError(err).Error("Error in external kafka lagcheck config.")
+			panic(err)
 		}
 
 		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
-
 		if err != nil {
 			log.WithError(err).Error("Invalid value for default throttle")
 		}
