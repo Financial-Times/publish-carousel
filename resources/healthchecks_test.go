@@ -620,7 +620,7 @@ func TestUnhappyHealthcheckBecauseOfCurrentFailover(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
-	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should not be in failover state")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)
@@ -681,7 +681,7 @@ func TestUnhappyHealthcheckBecauseOfNotRestartAfterFailback(t *testing.T) {
 	assert.Contains(t, string(body), `"name":"UnhealthyCycles","ok":true`, "Cycles should be healthy")
 	assert.Contains(t, string(body), `"name":"InvalidCycleConfiguration","ok":true`, "Cycles configuration should be healthy")
 	assert.Contains(t, string(body), `"name":"UnhealthyCluster","ok":true`, "Cluster should be healthy")
-	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should not be in failover state")
+	assert.Contains(t, string(body), `"name":"ActivePublishingCluster","ok":false`, "Cluster should be in failover state")
 
 	sched.AssertExpectations(t)
 	c1.AssertExpectations(t)

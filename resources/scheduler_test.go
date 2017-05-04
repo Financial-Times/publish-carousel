@@ -45,7 +45,7 @@ func TestUnhappyStartScheduler(t *testing.T) {
 
 func TestUnhappyShutdownScheduler(t *testing.T) {
 	sched := new(scheduler.MockScheduler)
-	sched.On("Shutdown").Return(errors.New("this southern service has been cancel"))
+	sched.On("Shutdown").Return(errors.New("this southern service has been canceled"))
 
 	req := httptest.NewRequest("POST", "/scheduler/shutdown", nil)
 	w := setupRouter(sched, req)
