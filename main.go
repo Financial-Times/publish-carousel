@@ -180,7 +180,7 @@ func main() {
 		sched.AutomaticToggleHandler(autoToggle)
 
 		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ManualToggleHandler)
-		go etcdWatcher.Watch(context.Background(), ctx.String("failover-etcd-key"), sched.AutomaticToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("active-cluster-etcd-key"), sched.AutomaticToggleHandler)
 
 		sched.RestorePreviousState()
 		sched.Start()
