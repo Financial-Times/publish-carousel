@@ -117,6 +117,12 @@ func main() {
 			EnvVar: "DEFAULT_THROTTLE",
 			Usage:  "Default throttle for whole collection cycles, if it is not specified in configuration file",
 		},
+		cli.StringFlag{
+			Name:   "checkpoint-interval",
+			Value:  "1h",
+			EnvVar: "CHECKPOINT_INTERVAL",
+			Usage:  "Interval for saving metadata checkpoints",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -182,27 +188,48 @@ func main() {
 		sched.RestorePreviousState()
 		sched.Start()
 
-		shutdown(sched)
+		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
+		if err != nil {
+			log.WithError(err).Error("Invalid checkpoint interval, defaulting to hourly.")
+			checkpointInterval = time.Hour
+		}
+
+		ticker := checkpoint(sched, checkpointInterval)
+		shutdown(sched, ticker)
 		serve(mongo, sched, s3rw, notifier, configError, pam, publishingLagcheck, deliveryLagcheck)
 	}
 
 	app.Run(os.Args)
 }
 
-func shutdown(sched scheduler.Scheduler) {
+func shutdown(sched scheduler.Scheduler, ticker *time.Ticker) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-signals
-		log.Info("Saving current carousel state to S3.")
+		ticker.Stop()
 		sched.SaveCycleMetadata()
 		os.Exit(0)
 	}()
 }
 
+func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker {
+	t := time.NewTicker(interval)
+
+	go func() {
+		for range t.C {
+			sched.SaveCycleMetadata()
+		}
+	}()
+
+	return t
+}
+
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error, upServices ...cluster.Service) {
 	r := mux.NewRouter()
+	methodNotAllowed := resources.MethodNotAllowed()
+
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
 
@@ -211,16 +238,29 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 
 	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
 	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles", methodNotAllowed).Methods("PUT", "DELETE")
+
+	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
+	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
+	r.HandleFunc("/cycles/{id}", methodNotAllowed).Methods("PUT", "POST")
 
 	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/resume", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/stop", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
+	r.HandleFunc("/cycles/{id}/reset", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
 	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
 
 	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
+	r.HandleFunc("/scheduler/start", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+
 	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
+	r.HandleFunc("/scheduler/shutdown", methodNotAllowed).Methods("GET", "PUT", "DELETE")
 
 	box := ui.UI()
 	dist := http.FileServer(box.HTTPBox())

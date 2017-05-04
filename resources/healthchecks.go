@@ -44,7 +44,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The service is unable to connect to MongoDB. Content will not be periodically republished.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          pingMongo(db),
 		},
 		{
@@ -52,7 +52,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The service is unable to connect to S3, which prevents the reading and writing of Carousel cycle state information, which will force the carousel to restart all cycles from the beginning.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          pingS3(s3Service),
 		},
 		{
@@ -60,7 +60,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The CMS Notifier service is unhealthy. Carousel publishes may fail, and will not be retried until the next cycle. ",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          cmsNotifierGTG(notifier),
 		},
 		{
@@ -68,7 +68,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "At least one of the Carousel cycles is unhealthy. This should be investigated.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          unhealthyCycles(sched),
 		},
 		{
@@ -76,7 +76,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: `At least one error occurred while intialising cycles from the "cycles.yml" file.`,
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          configHealthcheck(configError),
 		},
 		{
@@ -84,7 +84,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: `If the cluster is unhealthy, the Carousel scheduler will shutdown until the system has stabilised.`,
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/upp-publish-carousel.html",
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          unhealthyClusters(sched, upServices...),
 		},
 	}
@@ -98,14 +98,24 @@ func pingMongo(db native.DB) func() (string, error) {
 		}
 
 		defer tx.Close()
+		err = tx.Ping()
 
-		return "", tx.Ping()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
 func pingS3(svc s3.ReadWriter) func() (string, error) {
 	return func() (string, error) {
-		return "", svc.Ping()
+		err := svc.Ping()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
@@ -124,13 +134,18 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 			return "", errors.New("The following cycles are unhealthy! " + toJSON(unhealthyIDs))
 		}
 
-		return "", nil
+		return "No unhealthy cycles.", nil
 	}
 }
 
 func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	return func() (string, error) {
-		return "", notifier.GTG()
+		err := notifier.GTG()
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
 
@@ -176,6 +191,10 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 
 func configHealthcheck(err error) func() (string, error) {
 	return func() (string, error) {
-		return "", err
+		if err != nil {
+			return "", err
+		}
+
+		return "OK", nil
 	}
 }
