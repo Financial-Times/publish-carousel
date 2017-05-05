@@ -6,7 +6,7 @@ type MockService struct {
 	mock.Mock
 }
 
-func (m *MockService) GTG() error {
+func (m *MockService) Check() error {
 	args := m.Called()
 	return args.Error(0)
 }

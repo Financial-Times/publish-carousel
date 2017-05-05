@@ -14,7 +14,7 @@ func (m *MockNotifier) Notify(origin string, tid string, content *native.Content
 	return args.Error(0)
 }
 
-func (m *MockNotifier) GTG() error {
+func (m *MockNotifier) Check() error {
 	args := m.Called()
 	return args.Error(0)
 }
