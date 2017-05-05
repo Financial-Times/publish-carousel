@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	log "github.com/Sirupsen/logrus"
@@ -80,7 +81,7 @@ func CreateCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		w.Header().Set("Location", cycleURL(cycle))
+		w.Header().Set("Location", cycleURL(r, cycle))
 	}
 }
 
@@ -223,7 +224,7 @@ func SetCycleThrottle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *
 			return
 		}
 
-		http.Redirect(w, r, cycleURL(newCycle), http.StatusSeeOther)
+		http.Redirect(w, r, cycleURL(r, newCycle), http.StatusSeeOther)
 	}
 }
 
@@ -262,6 +263,16 @@ func createCycle(sched scheduler.Scheduler, cycleConfig *scheduler.CycleConfig, 
 	return cycle, nil
 }
 
-func cycleURL(cycle scheduler.Cycle) string {
-	return fmt.Sprintf("/cycles/%v", cycle.ID())
+func cycleURL(req *http.Request, cycle scheduler.Cycle) string {
+	clientReqUrl := req.Header.Get("X-Original-Request-URL")
+	if len(clientReqUrl) > 0 {
+		i := strings.Index(clientReqUrl, "/cycles")
+		if i > -1 {
+			clientReqUrl = clientReqUrl[:i]
+		} else {
+			clientReqUrl = ""
+		}
+	}
+
+	return fmt.Sprintf("%s/cycles/%v", clientReqUrl, cycle.ID())
 }

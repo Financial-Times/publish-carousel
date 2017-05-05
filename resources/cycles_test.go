@@ -290,3 +290,64 @@ func TestSetCycleThrottle(t *testing.T) {
 	assert.Regexp(t, fmt.Sprintf("/cycles/%s$", cycleID), w.Header().Get("Location"), "Location header")
 	assert.Equal(t, newCycle.Metadata(), metadata)
 }
+
+func TestSetCycleThrottleRedirectUsesOriginalRequestURL(t *testing.T) {
+	name := "test-cycle"
+	origin := "methode-web-pub"
+	collection := "test-collection"
+	oldThrottle, _ := scheduler.NewThrottle(30*time.Second, 1)
+	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, nil, collection, origin, time.Minute, oldThrottle, nil)
+	cycleID := oldCycle.ID()
+
+	metadata := scheduler.CycleMetadata{
+		CurrentPublishUUID: "00000000-0000-0000-0000-000000000000",
+		Errors:             1,
+		Progress:           0.5,
+		State:              []string{"running", "healthy"},
+		Completed:          2,
+		Total:              3,
+		Iteration:          4,
+		Start:              nil,
+		End:                nil,
+	}
+	oldCycle.SetMetadata(metadata)
+
+	throttleEntity := `{"interval": "10s"}`
+	newThrottle, _ := scheduler.NewThrottle(10*time.Second, 1)
+
+	sched := new(scheduler.MockScheduler)
+	cycles := make(map[string]scheduler.Cycle)
+
+	cycles[cycleID] = oldCycle
+
+	sched.On("Cycles").Return(cycles)
+	sched.On("DeleteCycle", cycleID).Return(nil)
+
+	expected := scheduler.CycleConfig{
+		Name:       name,
+		Type:       "ThrottledWholeCollection",
+		Origin:     origin,
+		Collection: collection,
+		CoolDown:   "1m0s",
+		Throttle:   "10s",
+		//	TimeWindow
+		//	MinimumThrottle
+		//	MaximumThrottle
+	}
+
+	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, nil, collection, origin, time.Minute, newThrottle, nil)
+	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
+		return reflect.DeepEqual(expected, actual)
+	})).Return(newCycle, nil)
+	sched.On("AddCycle", newCycle).Return(nil)
+
+	setThrottlePath := fmt.Sprintf("/cycles/%s/throttle", cycleID)
+	req := httptest.NewRequest("PUT", setThrottlePath, strings.NewReader(throttleEntity))
+	req.Header.Set("X-Original-Request-URL", "https://www.example.com/__test/"+setThrottlePath)
+	w := setupRouter(sched, req)
+
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+	sched.AssertExpectations(t)
+	assert.Equal(t, "https://www.example.com/__test/"+fmt.Sprintf("/cycles/%s", cycleID), w.Header().Get("Location"), "Location header")
+	assert.Equal(t, newCycle.Metadata(), metadata)
+}
