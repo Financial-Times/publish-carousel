@@ -34,6 +34,7 @@ type CycleMetadata struct {
 	Completed          int        `json:"completed"`
 	Total              int        `json:"total"`
 	Iteration          int        `json:"iteration"`
+	Attempts           int        `json:"attempts"`
 	Start              *time.Time `json:"windowStart,omitempty"`
 	End                *time.Time `json:"windowEnd,omitempty"`
 

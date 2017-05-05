@@ -36,7 +36,7 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 	cycle := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
 
-	metadata := CycleMetadata{Completed: expectedSkip, Iteration: 1}
+	metadata := CycleMetadata{Completed: expectedSkip, Iteration: 1, Attempts: 36}
 	cycle.SetMetadata(metadata)
 
 	cycle.Start()
@@ -64,6 +64,7 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 	assert.Equal(t, 1, cycle.Metadata().Iteration)
 	assert.Equal(t, 501, cycle.Metadata().Completed)
+	assert.Equal(t, 37, cycle.Metadata().Attempts)
 }
 
 func TestWholeCollectionCycleTaskFails(t *testing.T) {

@@ -49,7 +49,7 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 		iteration++
 	}
 
-	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: iteration, Total: uuidCollection.Length(), state: make(map[string]struct{})}
+	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: iteration, Attempts: l.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), state: make(map[string]struct{})}
 	l.SetMetadata(metadata)
 
 	if uuidCollection.Length() == 0 {
