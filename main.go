@@ -197,9 +197,12 @@ func shutdown(sched scheduler.Scheduler) {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		<-signals
-		log.Info("Saving current carousel state to S3.")
-		sched.SaveCycleMetadata()
+		signal := <-signals
+		log.WithField("signal", signal).Info("Stopping scheduler after receiving OS signal")
+		err := sched.Shutdown()
+		if err != nil {
+			log.WithError(err).Error("Error in stopping scheduler")
+		}
 		os.Exit(0)
 	}()
 }

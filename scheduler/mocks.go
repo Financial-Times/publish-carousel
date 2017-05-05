@@ -63,10 +63,6 @@ func (m *MockScheduler) RestorePreviousState() {
 	m.Called()
 }
 
-func (m *MockScheduler) SaveCycleMetadata() {
-	m.Called()
-}
-
 func (m *MockScheduler) Start() error {
 	args := m.Called()
 	return args.Error(0)

@@ -21,7 +21,6 @@ type Scheduler interface {
 	AddCycle(cycle Cycle) error
 	DeleteCycle(cycleID string) error
 	RestorePreviousState()
-	SaveCycleMetadata()
 	Start() error
 	Shutdown() error
 	ManualToggleHandler(toggleValue string)
@@ -93,7 +92,7 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 	return nil
 }
 
-func (s *defaultScheduler) SaveCycleMetadata() {
+func (s *defaultScheduler) saveCycleMetadata() {
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *ThrottledWholeCollectionCycle:
@@ -156,6 +155,7 @@ func (s *defaultScheduler) Shutdown() error {
 		cycle.Stop()
 	}
 	s.state.setState(stopped)
+	s.saveCycleMetadata()
 	return nil
 }
 
@@ -194,7 +194,6 @@ func (s *defaultScheduler) toggleHandler(toggleValue string, requestType int) {
 				log.WithError(err).Error("Error in stopping carousel scheduler")
 				return
 			}
-			s.SaveCycleMetadata()
 		}
 		if requestType == automatic {
 			s.state.setState(autoDisabled)
