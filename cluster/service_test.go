@@ -105,7 +105,7 @@ func TestNonOKHealth(t *testing.T) {
 func TestHealthConnection(t *testing.T) {
 	s, err := NewService("pam", "http://a-url-that-does-not-exixts.com/something", true)
 	assert.NoError(t, err)
-	assert.EqualError(t, s.Check(), `Get http://a-url-that-does-not-exixts.com/something/__health: dial tcp: lookup a-url-that-does-not-exixts.com: no such host`)
+	assert.Error(t, s.Check())
 }
 
 func TestGTGConnectionError(t *testing.T) {
