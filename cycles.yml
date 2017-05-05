@@ -3,6 +3,7 @@ cycles:
       type: ThrottledWholeCollection
       origin: methode-web-pub
       collection: methode
+      throttle: 1m
       coolDown: 5m
 
   # -  name: methode-one-hour

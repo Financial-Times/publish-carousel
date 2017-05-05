@@ -5,7 +5,7 @@ A microservice that continuously republishes content and annotations from the na
 
 # API
 
-> TBC
+See the Swagger YML [here](./api/api.yml) or the API Blueprint [here](./api/api.md).
 
 # Developer Notes
 
