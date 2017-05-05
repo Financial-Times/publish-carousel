@@ -99,10 +99,15 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 }
 
 func (s *defaultScheduler) SaveCycleMetadata() {
+	log.Info("Saving cycle metadata to S3.")
+
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *ThrottledWholeCollectionCycle:
-			s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle)
+			err := s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle)
+			if err != nil {
+				log.WithField("cycle", cycle.ID()).WithError(err).Error("cycle metadata not saved")
+			}
 		}
 	}
 }

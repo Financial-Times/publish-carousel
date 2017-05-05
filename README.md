@@ -1,32 +1,11 @@
 # Publish Carousel
+[![Coverage Status](https://coveralls.io/repos/github/Financial-Times/publish-carousel/badge.svg?branch=master)](https://coveralls.io/github/Financial-Times/publish-carousel?branch=master)
 
 A microservice that continuously republishes content and annotations from the native store.
 
 # API
 
-* `/scheduler/start`
-    * POST starts the scheduler
-* `/scheduler/shutdown`
-    * POST stops the scheduler
-
-* `/cycles`
-    * GET gets all cycles
-    * POST creates a new cycle
-
-* `/cycles/:id`
-    * GET gets a cycle by ID
-    * DELETE deletes a cycle
-
-* `/cycles/:id/throttle` - for ThrottledWholeCollectionCycle only
-    * GET gets a cycle throttle
-    * PUT temporarily updates a cycle throttle (not persisted on application shutdown)
-
-* `/cycles/:id/stop`
-    * POST stops execution of a cycle
-* `/cycles/:id/resume`
-    * POST resumes execution of a cycle
-* `/cycles/:id/reset`
-    * POST resets metadata for a cycle
+See the Swagger YML [here](./api/api.yml) or the API Blueprint [here](./api/api.md).
 
 # Developer Notes
 
