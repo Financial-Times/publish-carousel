@@ -151,12 +151,12 @@ func main() {
 			log.WithError(err).Error("Error in CMS Notifier configuration")
 		}
 
-		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"))
+		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"), true) // true so that we check /__health
 		if err != nil {
 			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
 		}
 
-		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"), false)
 		if err != nil {
 			panic(err)
 		}

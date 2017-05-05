@@ -15,7 +15,7 @@ import (
 // Notifier handles the publishing of the content to the cms-notifier
 type Notifier interface {
 	Notify(origin string, tid string, content *native.Content, hash string) error
-	GTG() error
+	Check() error
 }
 
 type cmsNotifier struct {
@@ -26,7 +26,7 @@ type cmsNotifier struct {
 
 // NewNotifier returns a new cms notifier instance
 func NewNotifier(notifierURL string, client *http.Client) (Notifier, error) {
-	s, err := cluster.NewService("cms-notifier", notifierURL)
+	s, err := cluster.NewService("cms-notifier", notifierURL, false)
 	if err != nil {
 		return nil, err
 	}

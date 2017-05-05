@@ -140,7 +140,7 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 
 func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	return func() (string, error) {
-		err := notifier.GTG()
+		err := notifier.Check()
 		if err != nil {
 			return "", err
 		}
@@ -160,7 +160,7 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 
 		errs := make([]error, 0)
 		for _, service := range upServices {
-			err := service.GTG()
+			err := service.Check()
 			if err != nil {
 				if sched.IsRunning() {
 					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")

@@ -109,7 +109,7 @@ func TestOKGTG(t *testing.T) {
 	notifier, err := NewNotifier(server.URL, &http.Client{})
 	assert.NoError(t, err)
 
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.NoError(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -123,7 +123,7 @@ func TestFailingGTG(t *testing.T) {
 	notifier, err := NewNotifier(server.URL, &http.Client{})
 	assert.NoError(t, err)
 
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.Error(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -131,6 +131,12 @@ func TestFailingGTG(t *testing.T) {
 func TestNoServer(t *testing.T) {
 	notifier, err := NewNotifier("http://localhost", &http.Client{})
 	assert.NoError(t, err)
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.Error(t, err)
+}
+
+func TestInvalidURL(t *testing.T) {
+	notifier, err := NewNotifier(":#", &http.Client{})
+	assert.Error(t, err)
+	assert.Nil(t, notifier)
 }

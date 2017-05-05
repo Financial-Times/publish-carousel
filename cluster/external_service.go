@@ -34,7 +34,7 @@ func (e *externalService) ServiceName() string {
 	return e.serviceName
 }
 
-func (e *externalService) GTG() error {
+func (e *externalService) Check() error {
 	e.RLock()
 	defer e.RUnlock()
 
