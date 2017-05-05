@@ -11,6 +11,8 @@ import (
 var expectedConnections = 1
 var connections = 0
 
+const sortByDate = "-content.lastModified"
+
 type Content struct {
 	Body        map[string]interface{} `bson:"content"`
 	ContentType string                 `bson:"content-type"`
@@ -85,7 +87,7 @@ func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, e
 func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
-	query, projection, sortByDate := findUUIDsQueryElements()
+	query, projection := findUUIDsQueryElements()
 	find := collection.Find(query).Select(projection).Sort(sortByDate).Batch(batchsize)
 
 	if skip > 0 {

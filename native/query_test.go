@@ -20,10 +20,9 @@ func TestReadNativeContentQuery(t *testing.T) {
 }
 
 func TestFindUUIDsQueryElements(t *testing.T) {
-	query, projection, sortBy := findUUIDsQueryElements()
+	query, projection := findUUIDsQueryElements()
 	assert.Equal(t, bson.M{}, query)
 	assert.Equal(t, uuidProjection, projection)
-	assert.Equal(t, sortByDate, sortBy)
 }
 
 func TestFindUUIDsForTimeWindowQueryElements(t *testing.T) {

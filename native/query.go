@@ -16,8 +16,6 @@ var uuidProjection = bson.M{
 	"uuid": 1,
 }
 
-var sortByDate = "-content.lastModified"
-
 func findUUIDsForTimeWindowQueryElements(start time.Time, end time.Time) (bson.M, bson.M) {
 	query := bson.M{
 		"$and": []bson.M{
@@ -37,6 +35,6 @@ func findUUIDsForTimeWindowQueryElements(start time.Time, end time.Time) (bson.M
 	return query, uuidProjection
 }
 
-func findUUIDsQueryElements() (bson.M, bson.M, string) {
-	return bson.M{}, uuidProjection, sortByDate
+func findUUIDsQueryElements() (bson.M, bson.M) {
+	return bson.M{}, uuidProjection
 }
