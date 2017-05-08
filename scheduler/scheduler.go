@@ -149,9 +149,8 @@ func (s *defaultScheduler) Start() error {
 	for id, cycle := range s.cycles {
 		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
-		if startInterval > time.Duration(0) {
-			time.Sleep(startInterval)
-		}
+		time.Sleep(startInterval)
+
 	}
 	return nil
 }
