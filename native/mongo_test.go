@@ -115,23 +115,17 @@ func TestFindUUIDsDateSort(t *testing.T) {
 	iter, count, err := tx.FindUUIDs("methode", 0, 10)
 	assert.NoError(t, err)
 	assert.NotEqual(t, 0, count)
-	i := 0
-	found := false
+	actualUUIDs := []string{}
 	for !iter.Done() {
-		found = false
 		result := map[string]interface{}{}
 		iter.Next(&result)
 		val, ok := result["uuid"]
+		actualUUIDs = append(actualUUIDs, parseBinaryUUID(val))
 		if !ok {
 			continue
 		}
-		if parseBinaryUUID(val) == testUUIDs[i] {
-			t.Log("actual " + parseBinaryUUID(val) + " expected " + testUUIDs[i])
-			found = true
-		}
-		i++
-		assert.True(t, found, "uuids do not match therefore they are not in expected descending date order")
 	}
+	assert.Equal(t, testUUIDs, actualUUIDs, "uuids do not match therefore they are not in expected descending date order")
 
 	cleanupTestContent(t, db, testUUIDs...)
 }
