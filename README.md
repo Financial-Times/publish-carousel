@@ -1,10 +1,11 @@
 # Publish Carousel
+[![Coverage Status](https://coveralls.io/repos/github/Financial-Times/publish-carousel/badge.svg?branch=master)](https://coveralls.io/github/Financial-Times/publish-carousel?branch=master)
 
 A microservice that continuously republishes content and annotations from the native store.
 
 # API
 
-> TBC
+See the Swagger YML [here](./api/api.yml) or the API Blueprint [here](./api/api.md).
 
 # Developer Notes
 

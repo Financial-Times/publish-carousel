@@ -15,6 +15,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// Important!
+//
+// The tests in this file can block indefinitely if the ThrottledWholeCollection cycle does not work as expected! Please be aware of failures due to tests timing out.
+//
+
 func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
 	expectedSkip := 500
@@ -400,6 +405,8 @@ func mockThrottle(interval time.Duration, called chan struct{}) *MockThrottle {
 
 func mockTask(expectedUUID string, err error) *tasks.MockTask {
 	task := new(tasks.MockTask)
-	task.On("Publish", "origin", "collection", expectedUUID).Return(err)
+
+	task.On("Prepare", "collection", expectedUUID).Return(&native.Content{}, "tid_"+expectedUUID, nil)
+	task.On("Execute", expectedUUID, mock.AnythingOfType("*native.Content"), "origin", "tid_"+expectedUUID).Return(err)
 	return task
 }

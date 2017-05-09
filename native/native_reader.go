@@ -1,9 +1,7 @@
 package native
 
-import "encoding/json"
-
 type Reader interface {
-	Get(collection string, uuid string) (*Content, string, error)
+	Get(collection string, uuid string) (*Content, error)
 }
 
 type MongoReader struct {
@@ -14,29 +12,19 @@ func NewMongoNativeReader(mongo DB) Reader {
 	return &MongoReader{mongo}
 }
 
-func (m *MongoReader) Get(collection string, uuid string) (*Content, string, error) {
+func (m *MongoReader) Get(collection string, uuid string) (*Content, error) {
 	tx, err := m.mongo.Open()
 
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	defer tx.Close()
 
 	content, err := tx.ReadNativeContent(collection, uuid)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	data, err := json.Marshal(content.Body)
-	if err != nil {
-		return nil, "", err
-	}
-
-	hash, err := Hash(data)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return content, hash, nil
+	return content, nil
 }

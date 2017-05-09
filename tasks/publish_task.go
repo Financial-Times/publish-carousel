@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,7 +15,8 @@ import (
 )
 
 type Task interface {
-	Publish(origin string, collection string, uuid string) error
+	Prepare(collection string, uuid string) (*native.Content, string, error)
+	Execute(uuid string, content *native.Content, origin string, txId string) error
 }
 
 type nativeContentTask struct {
@@ -30,27 +32,27 @@ func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier, bl
 
 const publishReferenceAttr = "publishReference"
 
-func (t *nativeContentTask) Publish(origin string, collection string, uuid string) error {
-	content, hash, err := t.nativeReader.Get(collection, uuid)
+func (t *nativeContentTask) Prepare(collection string, uuid string) (*native.Content, string, error) {
+	content, err := t.nativeReader.Get(collection, uuid)
 	if err != nil {
 		log.WithField("uuid", uuid).WithError(err).Warn("Failed to read from native reader")
-		return err
+		return nil, "", err
 	}
 
 	if content.Body == nil {
 		log.WithField("uuid", uuid).Warn("No Content found for uuid. Skipping.")
-		return fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
+		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
 	}
 
 	valid, err := t.blacklist.ValidForPublish(uuid, content)
 	if err != nil {
 		log.WithField("uuid", uuid).WithField("collection", collection).WithError(err).Warn("Blacklist check failed.")
-		return err
+		return nil, "", err
 	}
 
 	if !valid {
 		log.WithField("uuid", uuid).WithField("collection", collection).Info("This UUID has been blacklisted. Skipping republish.")
-		return nil
+		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it is blacklisted`, uuid)
 	}
 
 	tid, ok := content.Body[publishReferenceAttr].(string)
@@ -58,6 +60,20 @@ func (t *nativeContentTask) Publish(origin string, collection string, uuid strin
 		tid = generateCarouselTXID()
 	} else {
 		tid = toCarouselTXID(tid)
+	}
+
+	return content, tid, nil
+}
+
+func (t *nativeContentTask) Execute(uuid string, content *native.Content, origin string, tid string) error {
+	data, err := json.Marshal(content.Body)
+	if err != nil {
+		return err
+	}
+
+	hash, err := native.Hash(data)
+	if err != nil {
+		return err
 	}
 
 	content.Body[publishReferenceAttr] = tid
