@@ -24,7 +24,7 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
 	expectedSkip := 500
 
-	task := mockTask(expectedUUID, nil)
+	task := mockTask(expectedUUID, nil, nil)
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
@@ -72,11 +72,50 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 	assert.Equal(t, 37, cycle.Metadata().Attempts)
 }
 
+func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
+	expectedUUID := uuid.NewUUID().String()
+	expectedSkip := 0
+
+	task := mockTask(expectedUUID, errors.New("i fail soz"), nil)
+
+	throttleCalled := make(chan struct{}, 1)
+	opened := make(chan struct{}, 1)
+	nextCalled := make(chan struct{}, 1)
+	stopped := make(chan struct{}, 1)
+
+	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
+
+	iter := mockIter(expectedUUID, true, nextCalled, stopped)
+	iter.On("Timeout").Return(false)
+
+	tx := mockTx(iter, expectedSkip, nil)
+	db := mockDB(opened, tx, nil)
+
+	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+
+	c.Start()
+
+	<-opened
+	<-throttleCalled
+	<-nextCalled
+
+	c.Stop()
+
+	<-throttleCalled
+	<-stopped
+
+	assert.Len(t, c.State(), 1)
+	assert.Contains(t, c.State(), stoppedState)
+
+	mock.AssertExpectationsForObjects(t, throttle, iter, tx, db, task)
+	assert.Equal(t, 1, c.Metadata().Errors)
+}
+
 func TestWholeCollectionCycleTaskFails(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
 	expectedSkip := 0
 
-	task := mockTask(expectedUUID, errors.New("i fail soz"))
+	task := mockTask(expectedUUID, nil, errors.New("i fail soz"))
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
@@ -116,7 +155,7 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	expectedSkip := 0
 	collectionSize := 10
 
-	task := mockTask(expectedUUID, nil)
+	task := mockTask(expectedUUID, nil, nil)
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
@@ -403,10 +442,14 @@ func mockThrottle(interval time.Duration, called chan struct{}) *MockThrottle {
 	return throttle
 }
 
-func mockTask(expectedUUID string, err error) *tasks.MockTask {
+func mockTask(expectedUUID string, prepErr error, execErr error) *tasks.MockTask {
 	task := new(tasks.MockTask)
 
-	task.On("Prepare", "collection", expectedUUID).Return(&native.Content{}, "tid_"+expectedUUID, nil)
-	task.On("Execute", expectedUUID, mock.AnythingOfType("*native.Content"), "origin", "tid_"+expectedUUID).Return(err)
+	task.On("Prepare", "collection", expectedUUID).Return(&native.Content{}, "tid_"+expectedUUID, prepErr)
+	if prepErr != nil {
+		return task
+	}
+
+	task.On("Execute", expectedUUID, mock.AnythingOfType("*native.Content"), "origin", "tid_"+expectedUUID).Return(execErr)
 	return task
 }
