@@ -159,7 +159,7 @@ func TestSchedulerInvalidToggleValue(t *testing.T) {
 	c2.AssertNotCalled(t, "Start")
 }
 
-func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
+func TestAutomaticToggleDisabledAndManualToggleEnabled(t *testing.T) {
 	db := new(native.MockDB)
 	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
 
@@ -180,12 +180,24 @@ func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
 	err := s.Start()
 	assert.NoError(t, err, "It should not return an error to Start")
 
-	go simulateFailoverToggle(s)
-	go simulateManualToggle(s)
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			s.ManualToggleHandler("true")
+		}
+	}()
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.AutomaticToggleHandler("false")
+			} else {
+				s.AutomaticToggleHandler("true")
+			}
+		}
+	}()
 
-	time.Sleep(1500 * time.Millisecond)
-
-	// 1 - autoToggle enabled - manualToggle enabled
+	time.Sleep(500 * time.Millisecond)
 	c1.AssertNumberOfCalls(t, "Start", 1)
 	c2.AssertNumberOfCalls(t, "Start", 1)
 	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
@@ -194,8 +206,6 @@ func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
 	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
 	time.Sleep(2 * time.Second)
-
-	// 2 - autoToggle disabled - manualToggle enabled
 	c1.AssertNumberOfCalls(t, "Start", 1)
 	c2.AssertNumberOfCalls(t, "Start", 1)
 	c1.AssertNumberOfCalls(t, "Stop", 1)
@@ -205,9 +215,7 @@ func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
 	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
 	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
-	// 3 - autoToggle enabled - manualToggle enabled
 	time.Sleep(1 * time.Second)
-
 	c1.AssertNumberOfCalls(t, "Start", 1)
 	c2.AssertNumberOfCalls(t, "Start", 1)
 	c1.AssertNumberOfCalls(t, "Stop", 1)
@@ -217,7 +225,6 @@ func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
 	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
 	assert.True(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should be autoDisabled state")
 
-	// 4 - autoToggle enabled - manualToggle enabled (restarting scheduler)
 	s.Start()
 	time.Sleep(250 * time.Millisecond)
 	c1.AssertNumberOfCalls(t, "Start", 2)
@@ -229,88 +236,161 @@ func TestAutomaticToggleWithManualToggleEnabled(t *testing.T) {
 	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
 	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
-	// 5 - autoToggle enabled - manualToggle disabled
-	time.Sleep(750 * time.Millisecond)
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+}
 
-	c1.AssertNumberOfCalls(t, "Start", 2)
-	c2.AssertNumberOfCalls(t, "Start", 2)
-	c1.AssertNumberOfCalls(t, "Stop", 2)
-	c2.AssertNumberOfCalls(t, "Stop", 2)
-	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+func TestAutomaticToggleEnabledAndManualToggleDisabled(t *testing.T) {
+	db := new(native.MockDB)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+	c1.On("Start").Return()
+	c2.On("Start").Return()
+	c1.On("Stop").Return()
+	c2.On("Stop").Return()
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("true")
+	err := s.Start()
+	assert.NoError(t, err, "It should not return an error to Start")
+
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			s.AutomaticToggleHandler("true")
+		}
+	}()
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.ManualToggleHandler("false")
+			} else {
+				s.ManualToggleHandler("true")
+			}
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
 	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
-	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
 	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
-	// 6 - autoToggle disable - manualToggle disabled (expected no changes in state)
-	time.Sleep(1 * time.Second)
-
-	c1.AssertNumberOfCalls(t, "Start", 2)
-	c2.AssertNumberOfCalls(t, "Start", 2)
-	c1.AssertNumberOfCalls(t, "Stop", 2)
-	c2.AssertNumberOfCalls(t, "Stop", 2)
-	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
-	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
-	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
-	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
-
-	// 7 - autoToggle enabled - manualToggle enabled
 	time.Sleep(2 * time.Second)
-
-	c1.AssertNumberOfCalls(t, "Start", 2)
-	c2.AssertNumberOfCalls(t, "Start", 2)
-	c1.AssertNumberOfCalls(t, "Stop", 2)
-	c2.AssertNumberOfCalls(t, "Stop", 2)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
 	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
 	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
-	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
-	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
-
-	// 8 - autoToggle disabled - manualToggle enabled
-	time.Sleep(1 * time.Second)
-
-	c1.AssertNumberOfCalls(t, "Start", 2)
-	c2.AssertNumberOfCalls(t, "Start", 2)
-	c1.AssertNumberOfCalls(t, "Stop", 2)
-	c2.AssertNumberOfCalls(t, "Stop", 2)
-	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
-	assert.True(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
 	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
 	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
-	// 9 - autoToggle enabled - manualToggle enabled
 	time.Sleep(1 * time.Second)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
+	s.Start()
+	time.Sleep(250 * time.Millisecond)
 	c1.AssertNumberOfCalls(t, "Start", 2)
 	c2.AssertNumberOfCalls(t, "Start", 2)
-	c1.AssertNumberOfCalls(t, "Stop", 2)
-	c2.AssertNumberOfCalls(t, "Stop", 2)
-	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
 	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
 	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
-	assert.True(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should be autoDisabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
 
 	c1.AssertExpectations(t)
 	c2.AssertExpectations(t)
 }
 
-func simulateFailoverToggle(s Scheduler) {
-	for i := 1; i <= 10; i++ {
-		time.Sleep(1 * time.Second)
-		if i%3 == 0 {
-			s.AutomaticToggleHandler("false")
-		} else {
-			s.AutomaticToggleHandler("true")
+func TestAutomaticToggleFlappingAndManualToggleDisabled(t *testing.T) {
+	db := new(native.MockDB)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("false")
+	s.AutomaticToggleHandler("true")
+	err := s.Start()
+	assert.Error(t, err, "It should return an error to Start")
+
+	go func() {
+		for i := 0; i < 4; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.AutomaticToggleHandler("false")
+			} else {
+				s.AutomaticToggleHandler("true")
+			}
 		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 4; i++ {
+		assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+		assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+		assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+		assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+		time.Sleep(1 * time.Second)
 	}
 }
 
-func simulateManualToggle(s Scheduler) {
-	for i := 1; i <= 10; i++ {
-		time.Sleep(1 * time.Second)
-		if i < 5 || i > 7 {
-			s.ManualToggleHandler("true")
-		} else {
-			s.ManualToggleHandler("false")
+func TestAutomaticToggleDisabledAndManualToggleFlapping(t *testing.T) {
+	db := new(native.MockDB)
+	s := NewScheduler(db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("false")
+	err := s.Start()
+	assert.Error(t, err, "It should return an error to Start")
+
+	go func() {
+		for i := 0; i < 4; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.ManualToggleHandler("false")
+			} else {
+				s.ManualToggleHandler("true")
+			}
 		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 4; i++ {
+		assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+		assert.True(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+		assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+		assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+		time.Sleep(1 * time.Second)
 	}
 }
