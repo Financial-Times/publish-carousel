@@ -441,7 +441,7 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 
 	throttle := new(MockThrottle)
 	throttle.On("Interval").Return(5 * time.Second)
-	throttle.On("Queue").Return(nil)
+	throttle.On("Queue").Return(nil).After(5 * time.Second)
 
 	id1 := "id1"
 	c1 := new(MockCycle)
