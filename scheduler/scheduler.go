@@ -41,10 +41,13 @@ type defaultScheduler struct {
 	autoDisabled       bool
 	toggleHandlerLock  *sync.Mutex
 	defaultThrottle    time.Duration
+	checkpointInterval time.Duration
+	checkpointTicker   *time.Ticker
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration) Scheduler {
+func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
+
 	return &defaultScheduler{
 		database:           database,
 		publishTask:        publishTask,
@@ -54,6 +57,7 @@ func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter
 		state:              newSchedulerState(),
 		toggleHandlerLock:  &sync.Mutex{},
 		defaultThrottle:    defaultThrottle,
+		checkpointInterval: checkpointInterval,
 	}
 }
 
@@ -138,12 +142,22 @@ func (s *defaultScheduler) Start() error {
 	}
 
 	s.state.setState(running)
+	s.startCheckpointTicker()
 
 	for id, cycle := range s.cycles {
 		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
 	}
 	return nil
+}
+
+func (s *defaultScheduler) startCheckpointTicker() {
+	s.checkpointTicker = time.NewTicker(s.checkpointInterval)
+	go func() {
+		for range s.checkpointTicker.C {
+			s.saveCycleMetadata()
+		}
+	}()
 }
 
 func (s *defaultScheduler) Shutdown() error {
@@ -160,8 +174,13 @@ func (s *defaultScheduler) Shutdown() error {
 		cycle.Stop()
 	}
 	s.state.setState(stopped)
+	s.stopCheckpointTicker()
 	s.saveCycleMetadata()
 	return nil
+}
+
+func (s *defaultScheduler) stopCheckpointTicker() {
+	s.checkpointTicker.Stop()
 }
 
 const (
