@@ -394,3 +394,31 @@ func TestAutomaticToggleDisabledAndManualToggleFlapping(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 }
+
+func TestSaveCycleMetadata(t *testing.T) {
+	id1 := "id1"
+
+	c1 := new(MockCycle)
+	c1.On("ID").Return(id1)
+	c1.On("Start").Return()
+
+	db := new(native.MockDB)
+	dbCollection := "testCollection"
+	origin := "testOrigin"
+	coolDown := time.Minute
+	throttle, _ := NewThrottle(time.Second, 1)
+	c2 := NewThrottledWholeCollectionCycle("test", db, dbCollection, origin, coolDown, throttle, nil)
+	id2 := c2.ID()
+
+	rw := MockMetadataRW{}
+	rw.On("WriteMetadata", id2, c2).Return(nil)
+
+	s := NewScheduler(db, &tasks.MockTask{}, &rw, 1*time.Minute)
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+
+	s.(*defaultScheduler).saveCycleMetadata()
+
+	rw.AssertExpectations(t)
+}
