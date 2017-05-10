@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -124,6 +125,12 @@ func main() {
 			EnvVar: "CHECKPOINT_INTERVAL",
 			Usage:  "Interval for saving metadata checkpoints",
 		},
+		cli.IntFlag{
+			Name:   "port",
+			Value:  8080,
+			EnvVar: "PORT",
+			Usage:  "Port to listen for http connections on",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -196,7 +203,7 @@ func main() {
 
 		ticker := checkpoint(sched, checkpointInterval)
 		shutdown(sched, ticker)
-		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
+		serve(ctx.Int("port"), mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
 	}
 
 	app.Run(os.Args)
@@ -226,7 +233,7 @@ func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker 
 	return t
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
+func serve(port int, mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
 	r := mux.NewRouter()
 	methodNotAllowed := resources.MethodNotAllowed()
 
@@ -271,7 +278,7 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	http.Handle("/", r)
 	log.Info("Publish Carousel Started!")
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
 	if err != nil {
 		log.WithError(err).Panic("Couldn't set up HTTP listener")
 	}
