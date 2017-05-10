@@ -23,7 +23,7 @@ func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched 
 // GTG returns a handler for a standard GTG endpoint.
 func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...), clusterFailoverHealthcheck(sched)}
 
 		for _, check := range checks {
 			_, err := check()
