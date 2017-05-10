@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -87,6 +88,12 @@ func main() {
 			Value:  "",
 			Usage:  "The S3 Bucket to save carousel states.",
 		},
+		cli.StringFlag{
+			Name:   "api-yml",
+			EnvVar: "API_YML",
+			Value:  "./api.yml",
+			Usage:  "The swagger API yaml file for the service.",
+		},
 		cli.IntFlag{
 			Name:   "mongo-timeout",
 			Value:  10000,
@@ -110,6 +117,12 @@ func main() {
 			Value:  "1m",
 			EnvVar: "DEFAULT_THROTTLE",
 			Usage:  "Default throttle for whole collection cycles, if it is not specified in configuration file",
+		},
+		cli.StringFlag{
+			Name:   "checkpoint-interval",
+			Value:  "1h",
+			EnvVar: "CHECKPOINT_INTERVAL",
+			Usage:  "Interval for saving metadata checkpoints",
 		},
 	}
 
@@ -173,28 +186,51 @@ func main() {
 		sched.RestorePreviousState()
 		sched.Start()
 
-		shutdown(sched)
-		serve(mongo, sched, s3rw, notifier, configError, pam, queueLagcheck)
+		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
+
+		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
+		if err != nil {
+			log.WithError(err).Error("Invalid checkpoint interval, defaulting to hourly.")
+			checkpointInterval = time.Hour
+		}
+
+		ticker := checkpoint(sched, checkpointInterval)
+		shutdown(sched, ticker)
+		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
 	}
 
 	app.Run(os.Args)
 }
 
-func shutdown(sched scheduler.Scheduler) {
+func shutdown(sched scheduler.Scheduler, ticker *time.Ticker) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-signals
-		log.Info("Saving current carousel state to S3.")
+		ticker.Stop()
 		sched.SaveCycleMetadata()
 		os.Exit(0)
 	}()
 }
 
-func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, configError error, upServices ...cluster.Service) {
+func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker {
+	t := time.NewTicker(interval)
+
+	go func() {
+		for range t.C {
+			sched.SaveCycleMetadata()
+		}
+	}()
+
+	return t
+}
+
+func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
 	r := mux.NewRouter()
 	methodNotAllowed := resources.MethodNotAllowed()
+
+	r.HandleFunc("/__api", resources.API(api)).Methods("GET")
 
 	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
 	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
