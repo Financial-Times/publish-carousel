@@ -32,32 +32,34 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask        tasks.Task
-	database           native.DB
-	cycles             map[string]Cycle
-	metadataReadWriter MetadataReadWriter
-	cycleLock          *sync.RWMutex
-	state              *schedulerState
-	autoDisabled       bool
-	toggleHandlerLock  *sync.Mutex
-	defaultThrottle    time.Duration
-	checkpointInterval time.Duration
-	checkpointTicker   *time.Ticker
+	publishTask          tasks.Task
+	database             native.DB
+	cycles               map[string]Cycle
+	metadataReadWriter   MetadataReadWriter
+	cycleLock            *sync.RWMutex
+	state                *schedulerState
+	autoDisabled         bool
+	toggleHandlerLock    *sync.Mutex
+	defaultThrottle      time.Duration
+	checkpointInterval   time.Duration
+	checkpointTicker     *time.Ticker
+	checkpointTickerLock *sync.RWMutex
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
 func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
 
 	return &defaultScheduler{
-		database:           database,
-		publishTask:        publishTask,
-		cycles:             map[string]Cycle{},
-		metadataReadWriter: metadataReadWriter,
-		cycleLock:          &sync.RWMutex{},
-		state:              newSchedulerState(),
-		toggleHandlerLock:  &sync.Mutex{},
-		defaultThrottle:    defaultThrottle,
-		checkpointInterval: checkpointInterval,
+		database:             database,
+		publishTask:          publishTask,
+		cycles:               map[string]Cycle{},
+		metadataReadWriter:   metadataReadWriter,
+		cycleLock:            &sync.RWMutex{},
+		state:                newSchedulerState(),
+		toggleHandlerLock:    &sync.Mutex{},
+		defaultThrottle:      defaultThrottle,
+		checkpointInterval:   checkpointInterval,
+		checkpointTickerLock: &sync.RWMutex{},
 	}
 }
 
@@ -68,12 +70,13 @@ func (s *defaultScheduler) Cycles() map[string]Cycle {
 }
 
 func (s *defaultScheduler) AddCycle(c Cycle) error {
+	s.cycleLock.Lock()
+	defer s.cycleLock.Unlock()
+
 	if _, ok := s.cycles[c.ID()]; ok {
 		return fmt.Errorf("Conflicting ID found for cycle %v", c.ID())
 	}
 
-	s.cycleLock.Lock()
-	defer s.cycleLock.Unlock()
 	s.cycles[c.ID()] = c
 
 	if s.state.isEnabled() && s.state.isRunning() {
@@ -97,12 +100,15 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 }
 
 func (s *defaultScheduler) saveCycleMetadata() {
+	s.cycleLock.RLock()
+	defer s.cycleLock.RUnlock()
+
 	log.Info("Saving cycle metadata to S3.")
 
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *ThrottledWholeCollectionCycle:
-			err := s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle)
+			err := s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle.TransformToConfig(), cycle.Metadata())
 			if err != nil {
 				log.WithField("cycle", cycle.ID()).WithError(err).Error("cycle metadata not saved")
 			}
@@ -142,22 +148,35 @@ func (s *defaultScheduler) Start() error {
 	}
 
 	s.state.setState(running)
-	s.startCheckpointTicker()
 
 	for id, cycle := range s.cycles {
 		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
 	}
+
+	s.startCheckpointTicker()
 	return nil
 }
 
 func (s *defaultScheduler) startCheckpointTicker() {
-	s.checkpointTicker = time.NewTicker(s.checkpointInterval)
+	s.initTicker()
 	go func() {
-		for range s.checkpointTicker.C {
+		for range s.checkpointTick() {
 			s.saveCycleMetadata()
 		}
 	}()
+}
+
+func (s *defaultScheduler) initTicker() {
+	s.checkpointTickerLock.Lock()
+	defer s.checkpointTickerLock.Unlock()
+	s.checkpointTicker = time.NewTicker(s.checkpointInterval)
+}
+
+func (s *defaultScheduler) checkpointTick() <-chan time.Time {
+	s.checkpointTickerLock.RLock()
+	defer s.checkpointTickerLock.RUnlock()
+	return s.checkpointTicker.C
 }
 
 func (s *defaultScheduler) Shutdown() error {
@@ -180,6 +199,8 @@ func (s *defaultScheduler) Shutdown() error {
 }
 
 func (s *defaultScheduler) stopCheckpointTicker() {
+	s.checkpointTickerLock.RLock()
+	defer s.checkpointTickerLock.RUnlock()
 	s.checkpointTicker.Stop()
 }
 

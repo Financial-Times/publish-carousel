@@ -16,8 +16,8 @@ func (m *MockMetadataRW) LoadMetadata(id string) (CycleMetadata, error) {
 	return args.Get(0).(CycleMetadata), args.Error(1)
 }
 
-func (m *MockMetadataRW) WriteMetadata(id string, state Cycle) error {
-	args := m.Called(id, state)
+func (m *MockMetadataRW) WriteMetadata(id string, config CycleConfig, metadata CycleMetadata) error {
+	args := m.Called(id, config, metadata)
 	return args.Error(0)
 }
 
@@ -131,9 +131,9 @@ func (m *MockCycle) SetMetadata(state CycleMetadata) {
 	m.Called(state)
 }
 
-func (m *MockCycle) TransformToConfig() *CycleConfig {
+func (m *MockCycle) TransformToConfig() CycleConfig {
 	args := m.Called()
-	return args.Get(0).(*CycleConfig)
+	return args.Get(0).(CycleConfig)
 }
 
 func (m *MockCycle) State() []string {

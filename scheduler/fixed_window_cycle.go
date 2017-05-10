@@ -33,6 +33,6 @@ func (s *FixedWindowCycle) Start() {
 	go s.start(ctx, throttle)
 }
 
-func (s *FixedWindowCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow}
+func (s *FixedWindowCycle) TransformToConfig() CycleConfig {
+	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow}
 }
