@@ -85,7 +85,7 @@ func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIt
 	collection := tx.session.DB("native-store").C(collectionID)
 
 	query, projection := findUUIDs()
-	find := collection.Find(query).Select(projection).Batch(batchsize)
+	find := collection.Find(query).Select(projection).Batch(batchsize).Snapshot()
 
 	if skip > 0 {
 		find.Skip(skip)
