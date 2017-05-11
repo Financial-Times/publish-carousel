@@ -142,14 +142,44 @@ func (s *defaultScheduler) Start() error {
 	if s.IsRunning() {
 		return errors.New("Scheduler is already running")
 	}
-
 	s.setCurrentExecutionState(running)
+
+	startInterval := s.archiveCycleStartInterval()
 
 	for id, cycle := range s.cycles {
 		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
+		time.Sleep(startInterval)
+
 	}
 	return nil
+}
+
+func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
+
+	var temp time.Duration
+	var archiveCycles []*ThrottledWholeCollectionCycle
+
+	for _, cycle := range s.cycles {
+		if "ThrottledWholeCollection" == cycle.TransformToConfig().Type {
+			archiveCycles = append(archiveCycles, cycle.(*ThrottledWholeCollectionCycle))
+		}
+	}
+	numArchiveCycles := len(archiveCycles)
+
+	if numArchiveCycles > 1 {
+
+		minimumStartInterval := archiveCycles[0].throttle.Interval()
+
+		for _, cycle := range archiveCycles {
+			temp = cycle.throttle.Interval()
+			if temp < minimumStartInterval {
+				minimumStartInterval = temp
+			}
+		}
+		return minimumStartInterval / time.Duration(numArchiveCycles)
+	}
+	return temp
 }
 
 func (s *defaultScheduler) Shutdown() error {

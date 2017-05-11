@@ -5,6 +5,14 @@ cycles:
       collection: methode
       throttle: 1m
       coolDown: 5m
+      
+      
+   -  name: wordpress-whole-archive
+      type: ThrottledWholeCollection
+      origin: wordpress
+      collection: wordpress
+      throttle: 1m
+      coolDown: 5m
 
   # -  name: methode-one-hour
   #    type: ScalingWindow
