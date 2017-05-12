@@ -90,7 +90,7 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 		{
 			Name:             "ActivePublishingCluster",
 			BusinessImpact:   "No Business Impact.",
-			TechnicalSummary: `In situation of publishing cluster failover, the Carousel scheduler will be automaticalli disabled.`,
+			TechnicalSummary: `In case of a failover of the publishing cluster, the Carousel will be automatically disabled.`,
 			Severity:         1,
 			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          clusterFailoverHealthcheck(sched),
