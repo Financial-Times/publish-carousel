@@ -182,6 +182,8 @@ func TestAutomaticToggleDisabledAndManualToggleEnabled(t *testing.T) {
 	c2.On("Start").Return()
 	c1.On("Stop").Return()
 	c2.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{})
+	c2.On("TransformToConfig").Return(CycleConfig{})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
@@ -267,6 +269,8 @@ func TestAutomaticToggleEnabledAndManualToggleDisabled(t *testing.T) {
 	c2.On("Start").Return()
 	c1.On("Stop").Return()
 	c2.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{})
+	c2.On("TransformToConfig").Return(CycleConfig{})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
@@ -423,7 +427,7 @@ func TestSaveCycleMetadata(t *testing.T) {
 	c1 := new(MockCycle)
 	c1.On("ID").Return(id1)
 	c1.On("Start").Return()
-	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	db := new(native.MockDB)
 	dbCollection := "testCollection"
@@ -474,6 +478,7 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 	c1.On("ID").Return(id1)
 	c1.On("Start").Return()
 	c1.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	c2 := NewThrottledWholeCollectionCycle("test", db, dbCollection, origin, coolDown, throttle, nil)
 	id2 := c2.ID()
