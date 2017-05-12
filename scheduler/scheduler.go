@@ -32,34 +32,31 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask          tasks.Task
-	database             native.DB
-	cycles               map[string]Cycle
-	metadataReadWriter   MetadataReadWriter
-	cycleLock            *sync.RWMutex
-	state                *schedulerState
-	autoDisabled         bool
-	toggleHandlerLock    *sync.Mutex
-	defaultThrottle      time.Duration
-	checkpointInterval   time.Duration
-	checkpointTicker     *time.Ticker
-	checkpointTickerLock *sync.RWMutex
+	publishTask        tasks.Task
+	database           native.DB
+	cycles             map[string]Cycle
+	metadataReadWriter MetadataReadWriter
+	cycleLock          *sync.RWMutex
+	state              *schedulerState
+	autoDisabled       bool
+	toggleHandlerLock  *sync.Mutex
+	defaultThrottle    time.Duration
+	checkpointHandler  *checkpointHandler
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
 func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
 
 	return &defaultScheduler{
-		database:             database,
-		publishTask:          publishTask,
-		cycles:               map[string]Cycle{},
-		metadataReadWriter:   metadataReadWriter,
-		cycleLock:            &sync.RWMutex{},
-		state:                newSchedulerState(),
-		toggleHandlerLock:    &sync.Mutex{},
-		defaultThrottle:      defaultThrottle,
-		checkpointInterval:   checkpointInterval,
-		checkpointTickerLock: &sync.RWMutex{},
+		database:           database,
+		publishTask:        publishTask,
+		cycles:             map[string]Cycle{},
+		metadataReadWriter: metadataReadWriter,
+		cycleLock:          &sync.RWMutex{},
+		state:              newSchedulerState(),
+		toggleHandlerLock:  &sync.Mutex{},
+		defaultThrottle:    defaultThrottle,
+		checkpointHandler:  newCheckpointHandler(checkpointInterval),
 	}
 }
 
@@ -157,29 +154,9 @@ func (s *defaultScheduler) Start() error {
 		time.Sleep(startInterval)
 	}
 
-	s.startCheckpointTicker()
+	s.checkpointHandler.start(s.saveCycleMetadata)
+
 	return nil
-}
-
-func (s *defaultScheduler) startCheckpointTicker() {
-	s.initTicker()
-	go func() {
-		for range s.checkpointTick() {
-			s.saveCycleMetadata()
-		}
-	}()
-}
-
-func (s *defaultScheduler) initTicker() {
-	s.checkpointTickerLock.Lock()
-	defer s.checkpointTickerLock.Unlock()
-	s.checkpointTicker = time.NewTicker(s.checkpointInterval)
-}
-
-func (s *defaultScheduler) checkpointTick() <-chan time.Time {
-	s.checkpointTickerLock.RLock()
-	defer s.checkpointTickerLock.RUnlock()
-	return s.checkpointTicker.C
 }
 
 func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
@@ -223,15 +200,9 @@ func (s *defaultScheduler) Shutdown() error {
 	}
 
 	s.state.setState(stopped)
-	s.stopCheckpointTicker()
+	s.checkpointHandler.stop()
 	s.saveCycleMetadata()
 	return nil
-}
-
-func (s *defaultScheduler) stopCheckpointTicker() {
-	s.checkpointTickerLock.RLock()
-	defer s.checkpointTickerLock.RUnlock()
-	s.checkpointTicker.Stop()
 }
 
 const (
