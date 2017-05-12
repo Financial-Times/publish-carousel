@@ -182,7 +182,7 @@ func main() {
 		}
 
 		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle, checkpointInterval)
-		if err != nil {
+		if configError != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
 
