@@ -29,6 +29,8 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	c2.On("ID").Return("id2")
 	c1.On("Start").Return()
 	c2.On("Start").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
+	c2.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
@@ -88,6 +90,8 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 	c2.On("Start").Return()
 	c1.On("Stop").Return()
 	c2.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
+	c2.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
@@ -419,6 +423,7 @@ func TestSaveCycleMetadata(t *testing.T) {
 	c1 := new(MockCycle)
 	c1.On("ID").Return(id1)
 	c1.On("Start").Return()
+	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
 
 	db := new(native.MockDB)
 	dbCollection := "testCollection"
@@ -502,4 +507,38 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 	assert.NoError(t, err, "It should not return an error to Shutdown")
 
 	rw.AssertExpectations(t)
+}
+
+func TestCalculateArchiveCycleStartInterval(t *testing.T) {
+	assert := assert.New(t)
+	id1 := "id1"
+
+	c1 := new(MockCycle)
+	c1.On("ID").Return(id1)
+	c1.On("Start").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
+
+	db := new(native.MockDB)
+	dbCollection := "testCollection"
+	origin := "testOrigin"
+	coolDown := time.Minute
+	throttle, _ := NewThrottle(time.Second, 1)
+	throttle2, _ := NewThrottle(time.Second, 2)
+	c2 := NewThrottledWholeCollectionCycle("test", db, dbCollection, origin, coolDown, throttle, nil)
+	c3 := NewThrottledWholeCollectionCycle("test2", db, dbCollection, origin, coolDown, throttle2, nil)
+
+	rw := MockMetadataRW{}
+
+	s := NewScheduler(db, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.AddCycle(c3)
+
+	testIterval := s.(*defaultScheduler).archiveCycleStartInterval()
+
+	//we have 2 archive cycles out of 3, cycles and the shortest throttle is 1 sec
+	//therefore the startup interval is 500ms
+	expected, _ := time.ParseDuration("500ms")
+	assert.Equal(expected, testIterval, "test interval should be 500ms")
 }
