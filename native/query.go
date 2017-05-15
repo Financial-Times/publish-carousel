@@ -16,7 +16,7 @@ var uuidProjection = bson.M{
 	"uuid": 1,
 }
 
-func findUUIDsForTimeWindow(start time.Time, end time.Time) (bson.M, bson.M) {
+func findUUIDsForTimeWindowQueryElements(start time.Time, end time.Time) (bson.M, bson.M) {
 	query := bson.M{
 		"$and": []bson.M{
 			{
@@ -35,6 +35,6 @@ func findUUIDsForTimeWindow(start time.Time, end time.Time) (bson.M, bson.M) {
 	return query, uuidProjection
 }
 
-func findUUIDs() (bson.M, bson.M) {
+func findUUIDsQueryElements() (bson.M, bson.M) {
 	return bson.M{}, uuidProjection
 }

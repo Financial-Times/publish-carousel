@@ -50,12 +50,13 @@ func insertTestContent(t *testing.T, mongo DB, testUUID string, lastModified tim
 	assert.NoError(t, err)
 }
 
-func cleanupTestContent(t *testing.T, mongo DB, testUUID string) {
+func cleanupTestContent(t *testing.T, mongo DB, testUUIDs ...string) {
 	session := mongo.(*MongoDB).session.Copy()
 	defer session.Close()
-
-	err := session.DB("native-store").C("methode").Remove(bson.M{"content.uuid": testUUID})
-	assert.NoError(t, err)
+	for _, testUUID := range testUUIDs {
+		err := session.DB("native-store").C("methode").Remove(bson.M{"content.uuid": testUUID})
+		assert.NoError(t, err)
+	}
 }
 
 func TestFindByUUID(t *testing.T) {
@@ -92,6 +93,41 @@ func TestFindByUUID(t *testing.T) {
 
 	assert.True(t, found)
 	cleanupTestContent(t, db, testUUID)
+}
+
+func TestFindUUIDsDateSort(t *testing.T) {
+	db := startMongo(t)
+	defer db.Close()
+
+	tx, err := db.Open()
+	defer tx.Close()
+	assert.NoError(t, err)
+
+	testUUID1 := uuid.NewUUID().String()
+	testUUID2 := uuid.NewUUID().String()
+	testUUID3 := uuid.NewUUID().String()
+	testUUIDs := []string{testUUID1, testUUID2, testUUID3}
+
+	insertTestContent(t, db, testUUID2, time.Now().Add(-10*time.Second))
+	insertTestContent(t, db, testUUID1, time.Now())
+	insertTestContent(t, db, testUUID3, time.Now().Add(-20*time.Second))
+
+	iter, count, err := tx.FindUUIDs("methode", 0, 10)
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, count)
+	actualUUIDs := []string{}
+	for !iter.Done() {
+		result := map[string]interface{}{}
+		iter.Next(&result)
+		val, ok := result["uuid"]
+		actualUUIDs = append(actualUUIDs, parseBinaryUUID(val))
+		if !ok {
+			continue
+		}
+	}
+	assert.Equal(t, testUUIDs, actualUUIDs, "uuids do not match therefore they are not in expected descending date order")
+
+	cleanupTestContent(t, db, testUUIDs...)
 }
 
 func TestFindByTimeWindow(t *testing.T) {
@@ -133,8 +169,7 @@ func TestFindByTimeWindow(t *testing.T) {
 	}
 
 	assert.True(t, found)
-	cleanupTestContent(t, db, testUUID)
-	cleanupTestContent(t, db, testUUID2)
+	cleanupTestContent(t, db, testUUID, testUUID2)
 }
 
 func TestReadNativeContent(t *testing.T) {
