@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
-	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/s3"
@@ -100,17 +98,11 @@ func main() {
 			EnvVar: "MONGO_DB_TIMEOUT",
 			Usage:  "The timeout (in milliseconds) for Mongo DB connections.",
 		},
-		cli.StringSliceFlag{
-			Name:   "etcd-peers",
-			Value:  &cli.StringSlice{"http://localhost:2379"},
-			EnvVar: "ETCD_PEERS",
-			Usage:  `The list of ETCD peers (e,g. "http://localhost:2379")`,
-		},
 		cli.StringFlag{
-			Name:   "toggle-etcd-key",
-			Value:  "/ft/config/publish-carousel/enable",
-			EnvVar: "TOGGLE_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
+			Name:   "toggle",
+			Value:  "false",
+			EnvVar: "TOGGLE",
+			Usage:  "Enable or disable the application",
 		},
 		cli.StringFlag{
 			Name:   "default-throttle",
@@ -157,12 +149,6 @@ func main() {
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
-		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
-
-		if err != nil {
-			panic(err)
-		}
-
 		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
 
 		if err != nil {
@@ -174,15 +160,7 @@ func main() {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
 
-		toggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
-		if err != nil {
-			panic(err)
-		}
-
-		sched.ToggleHandler(toggle)
-
-		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ToggleHandler)
-
+		sched.ToggleHandler(ctx.String("toggle"))
 		sched.RestorePreviousState()
 		sched.Start()
 
