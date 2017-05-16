@@ -107,6 +107,8 @@ func watchAddingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, readSe
 		cancel2()
 	})
 
+	time.Sleep(100 * time.Millisecond)
+
 	envs := readService.GetEnvironments()
 	require.Len(t, envs, 2)
 
@@ -134,6 +136,8 @@ func watchRemovingNewEnvChangingDetails(t *testing.T, watcher etcd.Watcher, read
 		cancel()
 	})
 
+	time.Sleep(100 * time.Millisecond)
+
 	envs := readService.GetEnvironments()
 	require.Len(t, envs, 1)
 	assertEnvironment(t, envs[0], "environment", "http://host-changed-back:8080")
@@ -150,6 +154,8 @@ func watchRemovingOriginalAddingNew(t *testing.T, watcher etcd.Watcher, readServ
 		assert.Equal(t, ",environment2:http://another-host-added:8080", val)
 		cancel3()
 	})
+
+	time.Sleep(100 * time.Millisecond)
 
 	envs := readService.GetEnvironments()
 	require.Len(t, envs, 1)
@@ -169,6 +175,8 @@ func watchInvalidReadURLValue(t *testing.T, watcher etcd.Watcher, readService *e
 		assert.Equal(t, "environment2::#", val)
 		cancel4()
 	})
+
+	time.Sleep(100 * time.Millisecond)
 
 	envs := readService.GetEnvironments()
 	require.Len(t, envs, 0)
