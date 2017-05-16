@@ -23,13 +23,13 @@ To test the project, use:
 govendor test -v -race +local
 ```
 
-There are MongoDB and Etcd integration tests, which require local running instances of MongoDB and Etcd. These can be skipped (along with long running tests) by using the command:
+There are MongoDB integration tests, which require a local running instance of MongoDB. These can be skipped (along with long running tests) by using the command:
 
 ```
 govendor test -v -race -short +local
 ```
 
-To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`. To connect to an Etcd instance, please use the environment variable `ETCD_TEST_URL` i.e. `export ETCD_TEST_URL=http://localhost:2379`.
+To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`.
 
 For running the Carousel locally, please see the command line arguments that need to be set using:
 
@@ -46,7 +46,6 @@ Please note that you must connect to the **Primary** Mongo instance if you are c
 The following packages have quite straightforward areas of responsibility:
 
 * The `cms` package is responsible for making the POST calls to the `cms-notifier` in the required format.
-* The `etcd` package is responsible for retrieving and watching keys in etcd.
 * The `native` package is responsible for finding and reading documents from the `native-store` in Mongo.
 * The `resources` package provides the services http endpoints.
 * The `s3` package provides a high-level (reusable) package for reading and writing files to Amazon S3.
@@ -149,8 +148,6 @@ The Carosuel will run in the Publishing Cluster, which is an Active/Passive envi
 
 The Carousel, however, will **not** be automatically started during a failover scenario, and will remain passive. This is to ensure we do not overload the Cluster, which could potentially exacerbate any problems within the Publishing environment.
 
-The Carousel uses the etcd key `/ft/config/publish-carousel/enable` to determine whether or not it needs to be in the Active or Passive modes on startup. If this toggle changes at any time, the Carousel will shutdown or startup as required.
-
 ## Configuration
 
 On startup, the Carousel will read cycle configuration from a provided YAML file, add them to the Scheduler, attempt to restore the previous state from S3, and start them up. To configure cycles, the following fields are **required** for all cycle types:
@@ -160,6 +157,7 @@ On startup, the Carousel will read cycle configuration from a provided YAML file
 * `origin`: The Origin System ID to use when POST-ing to the `cms-notifier`.
 * `collection`: The `native-store` collection to retrieve content from.
 * `coolDown`: The time between iterations. N.B. this is currently required for all cycle types.
+* `toggle`: Boolean value that enables or disables the carousel. Set to 'false' by default.
 
 The ThrottledWholeCollection type requires one additional field:
 
