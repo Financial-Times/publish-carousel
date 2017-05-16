@@ -64,6 +64,8 @@ func (e *externalService) Check() error {
 			log.WithError(err).Warn("GTG failed for external dependency.")
 			errs = append(errs, err)
 		}
+
+		log.WithField("gtg", gtg).Info("GTG succeeded for external service [code]: %v", resp.StatusCode)
 	}
 
 	return compactErrors("Failure occurred while checking GTG for external service.", errs...)
