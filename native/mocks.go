@@ -84,3 +84,37 @@ func (m *MockDBIter) Close() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+type MockUUIDCollection struct {
+	mock.Mock
+	uuids []string
+	count int
+}
+
+func (m *MockUUIDCollection) Next() (bool, string, error) {
+	args := m.Called()
+
+	done := m.count == len(m.uuids)
+	if done {
+		return done, "", args.Error(0)
+	}
+
+	val := m.uuids[m.count]
+	m.count++
+
+	return false, val, args.Error(0)
+}
+
+func (m *MockUUIDCollection) Length() int {
+	m.Called()
+	return len(m.uuids) - m.count
+}
+
+func (m *MockUUIDCollection) Done() bool {
+	m.Called()
+	return m.count == len(m.uuids)
+}
+
+func (m *MockUUIDCollection) Close() error {
+	return m.Called().Error(0)
+}

@@ -53,10 +53,6 @@ func (c CycleConfig) Validate() error {
 		if err := checkDurations(c.Name, c.Throttle); c.Throttle != "" && err != nil {
 			return err
 		}
-	case "fixedwindow":
-		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle); err != nil {
-			return err
-		}
 	case "scalingwindow":
 		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle, c.MaximumThrottle); err != nil {
 			return err

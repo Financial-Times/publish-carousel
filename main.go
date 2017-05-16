@@ -132,7 +132,12 @@ func main() {
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
-		blist, err := blacklist.NewBuilder().FilterImages().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		taskBlacklist, err := blacklist.NewBuilder().FilterImages().Build()
+		if err != nil {
+			panic(err)
+		}
+
+		preBlacklist, err := blacklist.NewBuilder().FileBasedBlacklist(ctx.String("blacklist")).Build()
 		if err != nil {
 			panic(err)
 		}
@@ -155,7 +160,7 @@ func main() {
 			log.WithError(err).Error("Error in Kafka lagcheck configuration")
 		}
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
+		task := tasks.NewNativeContentPublishTask(reader, notifier, taskBlacklist)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 

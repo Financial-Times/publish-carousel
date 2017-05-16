@@ -3,12 +3,11 @@ package blacklist
 import (
 	"testing"
 
-	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFileBasedBlacklist(t *testing.T) {
-	blacklist, err := NewBuilder().FileBasedBlacklist("./test_blacklist.txt").Build()
+	blacklist, err := NewFileBasedBlacklist("./test_blacklist.txt")
 	assert.NoError(t, err)
 
 	uuids := map[string]bool{
@@ -20,15 +19,14 @@ func TestFileBasedBlacklist(t *testing.T) {
 		"4fce28d4-2401-4c17-b484-29da67386cba": true,
 	}
 
-	content := &native.Content{}
 	for uuid, expectedValid := range uuids {
-		actualValid, err := blacklist.ValidForPublish(uuid, content)
+		actualValid, err := blacklist(uuid)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedValid, actualValid, "The validation should match")
 	}
 }
 
 func TestFileNotFound(t *testing.T) {
-	_, err := NewBuilder().FileBasedBlacklist("./not-a-real-file.txt").Build()
+	_, err := NewFileBasedBlacklist("./not-a-real-file.txt")
 	assert.Error(t, err)
 }

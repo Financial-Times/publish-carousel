@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -49,7 +50,7 @@ func newCycleID(name string, dbcollection string) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
+func newAbstractCycle(name string, cycleType string, blist blacklist.IsBlacklisted, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
 	cycle := &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		Name:          name,
@@ -62,6 +63,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		CoolDown:      coolDown.String(),
 		coolDown:      coolDown,
 		publishTask:   task,
+		blacklist:     blist,
 	}
 	cycle.UpdateState(stoppedState)
 
@@ -82,6 +84,7 @@ type abstractCycle struct {
 	cancel       context.CancelFunc
 	db           native.DB
 	publishTask  tasks.Task
+	blacklist    blacklist.IsBlacklisted
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) (bool, error) {

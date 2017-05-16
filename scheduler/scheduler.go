@@ -263,11 +263,6 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 		t, _ := NewThrottle(throttleInterval, 1)
 		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
-	case "fixedwindow":
-		interval, _ := time.ParseDuration(config.TimeWindow)
-		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, interval, minimumThrottle, s.publishTask)
-
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
