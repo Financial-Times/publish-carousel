@@ -150,6 +150,8 @@ The Carousel, however, will **not** be automatically started during a failover s
 
 ## Configuration
 
+* `toggle`: Boolean value that enables or disables the carousel. Set to 'false' by default.
+
 On startup, the Carousel will read cycle configuration from a provided YAML file, add them to the Scheduler, attempt to restore the previous state from S3, and start them up. To configure cycles, the following fields are **required** for all cycle types:
 
 * `name`: The name of the cycle.
@@ -157,7 +159,6 @@ On startup, the Carousel will read cycle configuration from a provided YAML file
 * `origin`: The Origin System ID to use when POST-ing to the `cms-notifier`.
 * `collection`: The `native-store` collection to retrieve content from.
 * `coolDown`: The time between iterations. N.B. this is currently required for all cycle types.
-* `toggle`: Boolean value that enables or disables the carousel. Set to 'false' by default.
 
 The ThrottledWholeCollection type requires one additional field:
 
