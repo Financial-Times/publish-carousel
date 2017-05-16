@@ -7,7 +7,16 @@ import (
 
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
+	"time"
 )
+
+var client *http.Client
+
+const requestTimeout = 5
+
+func init() {
+	client = &http.Client{Timeout: requestTimeout * time.Second}
+}
 
 // Service is a generic service of an UP cluster that implements a standard FT Good-To-Go endpoint.
 type Service interface {
@@ -34,7 +43,7 @@ func (s *clusterService) Name() string {
 }
 
 func (s *clusterService) GTG() error {
-	resp, err := http.Get(s.gtgURL.String())
+	resp, err := client.Get(s.gtgURL.String())
 	if err != nil {
 		log.WithError(err).WithField("service", s.name).Error("Failed to call the GTG endpoint of the service")
 		return err
