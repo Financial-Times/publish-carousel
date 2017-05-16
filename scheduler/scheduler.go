@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -35,6 +36,7 @@ type Scheduler interface {
 
 type defaultScheduler struct {
 	publishTask        tasks.Task
+	blacklist          blacklist.IsBlacklisted
 	database           native.DB
 	cycles             map[string]Cycle
 	metadataReadWriter MetadataReadWriter
@@ -47,8 +49,9 @@ type defaultScheduler struct {
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration) Scheduler {
+func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration) Scheduler {
 	return &defaultScheduler{
+		blacklist:          blist,
 		database:           database,
 		publishTask:        publishTask,
 		cycles:             map[string]Cycle{},
@@ -261,13 +264,13 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)
 		}
 		t, _ := NewThrottle(throttleInterval, 1)
-		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
+		c = NewThrottledWholeCollectionCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
 		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
-		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
+		c = NewScalingWindowCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
 	}
 
 	return c, nil

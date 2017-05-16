@@ -14,6 +14,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/etcd"
+	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/s3"
@@ -132,12 +133,8 @@ func main() {
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
-		taskBlacklist, err := blacklist.NewBuilder().FilterImages().Build()
-		if err != nil {
-			panic(err)
-		}
-
-		preBlacklist, err := blacklist.NewBuilder().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		isImage := image.NewFilter()
+		blacklist, err := blacklist.NewFileBasedBlacklist(ctx.String("blacklist"))
 		if err != nil {
 			panic(err)
 		}
@@ -160,7 +157,7 @@ func main() {
 			log.WithError(err).Error("Error in Kafka lagcheck configuration")
 		}
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier, taskBlacklist)
+		task := tasks.NewNativeContentPublishTask(reader, notifier, isImage)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 
@@ -174,7 +171,7 @@ func main() {
 			log.WithError(err).Error("Invalid value for default throttle")
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle)
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle)
 		if err != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}

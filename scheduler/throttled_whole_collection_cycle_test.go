@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/mgo.v2/bson"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/pborman/uuid"
@@ -28,18 +29,18 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
+	consumed := make(chan struct{}, 1)
 	closed := make(chan struct{}, 1)
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIter(expectedUUID, true, nextCalled, closed)
+	iter := mockIter(expectedUUID, true, consumed, closed)
 	iter.On("Timeout").Return(false)
 
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	cycle := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	cycle := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	metadata := CycleMetadata{Completed: expectedSkip, Iteration: 1, Attempts: 36}
 	cycle.SetMetadata(metadata)
@@ -55,7 +56,7 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 	assert.Len(t, cycle.State(), 1)
 	assert.Contains(t, cycle.State(), runningState)
 
-	<-nextCalled
+	<-consumed
 
 	cycle.Stop()
 
@@ -74,7 +75,6 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
-	expectedSkip := 0
 
 	task := mockTask(expectedUUID, errors.New("i fail soz"), nil)
 
@@ -88,10 +88,10 @@ func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 	iter := mockIter(expectedUUID, true, nextCalled, stopped)
 	iter.On("Timeout").Return(false)
 
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -113,8 +113,6 @@ func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 
 func TestWholeCollectionCycleTaskFails(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
-	expectedSkip := 0
-
 	task := mockTask(expectedUUID, nil, errors.New("i fail soz"))
 
 	throttleCalled := make(chan struct{}, 1)
@@ -127,10 +125,10 @@ func TestWholeCollectionCycleTaskFails(t *testing.T) {
 	iter := mockIter(expectedUUID, true, nextCalled, stopped)
 	iter.On("Timeout").Return(false)
 
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -152,7 +150,6 @@ func TestWholeCollectionCycleTaskFails(t *testing.T) {
 
 func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
-	expectedSkip := 0
 	collectionSize := 10
 
 	task := mockTask(expectedUUID, nil, nil)
@@ -165,10 +162,10 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
 	iter := mockIterWithCollectionSize(expectedUUID, collectionSize, nextCalled, stopped)
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -202,7 +199,6 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 
 func TestWholeCollectionCycleIterationError(t *testing.T) {
 	expectedUUID := uuid.NewUUID().String()
-	expectedSkip := 0
 
 	task := new(tasks.MockTask)
 
@@ -216,10 +212,10 @@ func TestWholeCollectionCycleIterationError(t *testing.T) {
 	iter := mockIter(expectedUUID, false, nextCalled, stopped)
 	iter.On("Err").Return(errors.New("ruh-roh"))
 
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -238,7 +234,6 @@ func TestWholeCollectionCycleIterationError(t *testing.T) {
 
 func TestWholeCollectionCycleRunEmptyUUID(t *testing.T) {
 	expectedUUID := ""
-	expectedSkip := 0
 
 	task := new(tasks.MockTask)
 
@@ -252,10 +247,10 @@ func TestWholeCollectionCycleRunEmptyUUID(t *testing.T) {
 	iter := mockIter(expectedUUID, true, nextCalled, stopped)
 	iter.On("Timeout").Return(false)
 
-	tx := mockTx(iter, expectedSkip, nil)
+	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -285,7 +280,7 @@ func TestWholeCollectionCycleMongoDBConnectionError(t *testing.T) {
 	tx := new(native.MockTX)
 	db := mockDB(opened, tx, errors.New("nein"))
 
-	c := NewThrottledWholeCollectionCycle("name", db, "collection", "origin", time.Millisecond*50, throttle, task)
+	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 	<-opened
@@ -315,9 +310,8 @@ func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
 
 	task := new(tasks.MockTask)
 	throttle := new(MockThrottle)
-	throttle.On("Interval").Return(1 * time.Second)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Start()
 
 	<-opened
@@ -339,7 +333,7 @@ func TestThrottledWholeCollectionTransformToConfig(t *testing.T) {
 
 	throttle.On("Interval").Return(time.Minute)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 
 	conf := c.TransformToConfig()
 	assert.Equal(t, "a-collection", conf.Collection)
@@ -365,9 +359,9 @@ func mockDB(opened chan struct{}, tx native.TX, err error) *native.MockDB {
 	return db
 }
 
-func mockTx(iter native.DBIter, expectedSkip int, err error) *native.MockTX {
+func mockTx(iter native.DBIter, err error) *native.MockTX {
 	mockTx := new(native.MockTX)
-	mockTx.On("FindUUIDs", "collection", expectedSkip, 80).Return(iter, 15, err)
+	mockTx.On("FindUUIDs", "collection", 0, 100).Return(iter, 15, err)
 	return mockTx
 }
 
@@ -388,14 +382,13 @@ func mockIter(expectedUUID string, moreItems bool, next chan struct{}, closed ch
 	return iter
 }
 
-func mockIterWithCollectionSize(expectedUUID string, collectionSize int, nextCalled chan struct{}, closed chan struct{}) *native.MockDBIter {
+func mockIterWithCollectionSize(expectedUUID string, collectionSize int, consumed chan struct{}, closed chan struct{}) *native.MockDBIter {
 	count := &atomicInt{val: 1}
 	iter := new(native.MockDBIter)
 
 	next := func(args map[string]interface{}) {
 		count.val++
 		args["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(expectedUUID))}
-		nextCalled <- struct{}{}
 	}
 
 	iter.On("Next", mock.MatchedBy(func(arg *map[string]interface{}) bool {
@@ -403,6 +396,7 @@ func mockIterWithCollectionSize(expectedUUID string, collectionSize int, nextCal
 		defer count.Unlock()
 
 		if count.val%collectionSize == 0 {
+			consumed <- struct{}{}
 			return false
 		}
 
