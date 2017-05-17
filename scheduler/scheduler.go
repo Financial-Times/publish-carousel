@@ -153,7 +153,6 @@ func (s *defaultScheduler) Start() error {
 		log.WithField("id", id).Info("Starting cycle.")
 		cycle.Start()
 		time.Sleep(startInterval)
-
 	}
 	return nil
 }

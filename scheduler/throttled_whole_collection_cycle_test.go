@@ -29,13 +29,12 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	consumed := make(chan struct{}, 1)
 	closed := make(chan struct{}, 1)
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIter(expectedUUID, true, consumed, closed)
-	iter.On("Timeout").Return(false)
+	iter := mockIterWithCollectionSize(expectedUUID, 2000, closed)
+	happyIter(iter)
 
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
@@ -47,21 +46,21 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 
 	cycle.Start()
 
+	<-opened
+
 	assert.Len(t, cycle.State(), 1)
 	assert.Contains(t, cycle.State(), startingState)
 
-	<-opened
-	<-throttleCalled
+	<-closed
 
 	assert.Len(t, cycle.State(), 1)
 	assert.Contains(t, cycle.State(), runningState)
 
-	<-consumed
+	<-throttleCalled
 
 	cycle.Stop()
 
 	<-throttleCalled
-	<-closed
 
 	assert.Len(t, cycle.State(), 1)
 	assert.Contains(t, cycle.State(), stoppedState)
@@ -80,13 +79,12 @@ func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
-	stopped := make(chan struct{}, 1)
+	closed := make(chan struct{}, 1)
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIter(expectedUUID, true, nextCalled, stopped)
-	iter.On("Timeout").Return(false)
+	iter := mockIterWithCollectionSize(expectedUUID, 2000, closed)
+	happyIter(iter)
 
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
@@ -96,13 +94,11 @@ func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 	c.Start()
 
 	<-opened
+	<-closed
+
 	<-throttleCalled
-	<-nextCalled
 
 	c.Stop()
-
-	<-throttleCalled
-	<-stopped
 
 	assert.Len(t, c.State(), 1)
 	assert.Contains(t, c.State(), stoppedState)
@@ -117,13 +113,12 @@ func TestWholeCollectionCycleTaskFails(t *testing.T) {
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
-	stopped := make(chan struct{}, 1)
+	closed := make(chan struct{}, 1)
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIter(expectedUUID, true, nextCalled, stopped)
-	iter.On("Timeout").Return(false)
+	iter := mockIterWithCollectionSize(expectedUUID, 2000, closed)
+	happyIter(iter)
 
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
@@ -133,13 +128,13 @@ func TestWholeCollectionCycleTaskFails(t *testing.T) {
 	c.Start()
 
 	<-opened
+	<-closed
+
 	<-throttleCalled
-	<-nextCalled
 
 	c.Stop()
 
 	<-throttleCalled
-	<-stopped
 
 	assert.Len(t, c.State(), 1)
 	assert.Contains(t, c.State(), stoppedState)
@@ -156,12 +151,13 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 
 	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
-	stopped := make(chan struct{}, 1)
+	closed := make(chan struct{}, 1)
 
 	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
 
-	iter := mockIterWithCollectionSize(expectedUUID, collectionSize, nextCalled, stopped)
+	iter := mockIterWithCollectionSize(expectedUUID, collectionSize, closed)
+	happyIter(iter)
+
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
@@ -170,23 +166,23 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	c.Start()
 
 	<-opened
+	<-closed
 
 	for i := 0; i < collectionSize; i++ {
 		<-throttleCalled
-		<-nextCalled
 	}
 
 	assert.Equal(t, 1, c.Metadata().Iteration)
 	assert.Equal(t, collectionSize-1, c.Metadata().Completed)
-	<-stopped
+
+	<-opened
+	<-closed
 
 	for i := 0; i < 3; i++ {
 		<-throttleCalled
-		<-nextCalled
 	}
 
 	c.Stop()
-	<-stopped
 
 	assert.Len(t, c.State(), 1)
 	assert.Contains(t, c.State(), stoppedState)
@@ -202,14 +198,12 @@ func TestWholeCollectionCycleIterationError(t *testing.T) {
 
 	task := new(tasks.MockTask)
 
-	throttleCalled := make(chan struct{}, 1)
 	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
-	stopped := make(chan struct{}, 1)
+	closed := make(chan struct{}, 1)
 
-	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
+	throttle := new(MockThrottle)
 
-	iter := mockIter(expectedUUID, false, nextCalled, stopped)
+	iter := mockIter(expectedUUID, false, closed)
 	iter.On("Err").Return(errors.New("ruh-roh"))
 
 	tx := mockTx(iter, nil)
@@ -220,51 +214,13 @@ func TestWholeCollectionCycleIterationError(t *testing.T) {
 	c.Start()
 
 	<-opened
-	<-throttleCalled
-	<-nextCalled
+	<-closed
 
-	<-stopped
+	time.Sleep(50 * time.Millisecond)
 
 	assert.Len(t, c.State(), 2)
 	assert.Contains(t, c.State(), stoppedState)
 	assert.Contains(t, c.State(), unhealthyState)
-
-	mock.AssertExpectationsForObjects(t, throttle, iter, tx, db, task)
-}
-
-func TestWholeCollectionCycleRunEmptyUUID(t *testing.T) {
-	expectedUUID := ""
-
-	task := new(tasks.MockTask)
-
-	throttleCalled := make(chan struct{}, 1)
-	opened := make(chan struct{}, 1)
-	nextCalled := make(chan struct{}, 1)
-	stopped := make(chan struct{}, 1)
-
-	throttle := mockThrottle(time.Millisecond*50, throttleCalled)
-
-	iter := mockIter(expectedUUID, true, nextCalled, stopped)
-	iter.On("Timeout").Return(false)
-
-	tx := mockTx(iter, nil)
-	db := mockDB(opened, tx, nil)
-
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
-
-	c.Start()
-
-	<-opened
-	<-throttleCalled
-	<-nextCalled
-
-	c.Stop()
-
-	<-throttleCalled
-	<-stopped
-
-	assert.Len(t, c.State(), 1)
-	assert.Contains(t, c.State(), stoppedState)
 
 	mock.AssertExpectationsForObjects(t, throttle, iter, tx, db, task)
 }
@@ -275,7 +231,6 @@ func TestWholeCollectionCycleMongoDBConnectionError(t *testing.T) {
 	opened := make(chan struct{}, 1)
 
 	throttle := new(MockThrottle)
-	throttle.On("Interval").Return(time.Millisecond * 50)
 
 	tx := new(native.MockTX)
 	db := mockDB(opened, tx, errors.New("nein"))
@@ -304,7 +259,7 @@ func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
 	}).Return(nil)
 
 	tx := new(native.MockTX)
-	tx.On("FindUUIDs", "a-collection", 0, 80).Return(iter, 0, nil)
+	tx.On("FindUUIDs", "a-collection", 0, 100).Return(iter, 0, nil)
 
 	db := mockDB(opened, tx, nil)
 
@@ -316,6 +271,8 @@ func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
 
 	<-opened
 	<-closed
+
+	time.Sleep(50 * time.Millisecond)
 
 	assert.Len(t, c.State(), 2)
 	assert.Contains(t, c.State(), stoppedState)
@@ -365,15 +322,13 @@ func mockTx(iter native.DBIter, err error) *native.MockTX {
 	return mockTx
 }
 
-func mockIter(expectedUUID string, moreItems bool, next chan struct{}, closed chan struct{}) *native.MockDBIter {
+func mockIter(expectedUUID string, moreItems bool, closed chan struct{}) *native.MockDBIter {
 	iter := new(native.MockDBIter)
 	iter.On("Next", mock.MatchedBy(func(arg *map[string]interface{}) bool {
 		m := *arg
 		m["uuid"] = bson.Binary{Kind: 0x04, Data: []byte(uuid.Parse(expectedUUID))}
 		return true
-	})).Run(func(arg1 mock.Arguments) {
-		next <- struct{}{}
-	}).Return(moreItems)
+	})).Return(moreItems)
 
 	iter.On("Close").Run(func(arg1 mock.Arguments) {
 		closed <- struct{}{}
@@ -382,7 +337,7 @@ func mockIter(expectedUUID string, moreItems bool, next chan struct{}, closed ch
 	return iter
 }
 
-func mockIterWithCollectionSize(expectedUUID string, collectionSize int, consumed chan struct{}, closed chan struct{}) *native.MockDBIter {
+func mockIterWithCollectionSize(expectedUUID string, collectionSize int, closed chan struct{}) *native.MockDBIter {
 	count := &atomicInt{val: 1}
 	iter := new(native.MockDBIter)
 
@@ -396,7 +351,6 @@ func mockIterWithCollectionSize(expectedUUID string, collectionSize int, consume
 		defer count.Unlock()
 
 		if count.val%collectionSize == 0 {
-			consumed <- struct{}{}
 			return false
 		}
 
@@ -420,15 +374,16 @@ func mockIterWithCollectionSize(expectedUUID string, collectionSize int, consume
 		closed <- struct{}{}
 	}).Return(nil)
 
+	return iter
+}
+
+func happyIter(iter *native.MockDBIter) {
 	iter.On("Err").Return(nil)
 	iter.On("Timeout").Return(false)
-
-	return iter
 }
 
 func mockThrottle(interval time.Duration, called chan struct{}) *MockThrottle {
 	throttle := new(MockThrottle)
-	throttle.On("Interval").Return(interval)
 	throttle.On("Queue").Run(func(arg1 mock.Arguments) {
 		time.Sleep(interval)
 		called <- struct{}{}

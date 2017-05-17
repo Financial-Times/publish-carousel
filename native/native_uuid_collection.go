@@ -89,7 +89,7 @@ func (n *NativeUUIDCollection) Next() (bool, string, error) {
 
 	success := n.iter.Next(&result)
 
-	if !success && n.iter.Err() != nil {
+	if !success || n.iter.Err() != nil {
 		return true, "", n.iter.Err()
 	}
 

@@ -103,23 +103,23 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			return false, err
 		}
 
-		if strings.TrimSpace(uuid) == "" {
+		if strings.TrimSpace(uuid) == "" { // N.B. UUID cannot be empty for the in memory collection
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
 			a.updateProgress(uuid, "", errors.New("Empty uuid"))
 			continue
 		}
 
 		log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
-		content, txId, err := a.publishTask.Prepare(a.DBCollection, uuid)
+		content, txID, err := a.publishTask.Prepare(a.DBCollection, uuid)
 
 		if err == nil {
-			err = a.publishTask.Execute(uuid, content, a.Origin, txId)
+			err = a.publishTask.Execute(uuid, content, a.Origin, txID)
 			if err != nil {
 				log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 			}
 		}
 
-		a.updateProgress(uuid, txId, err)
+		a.updateProgress(uuid, txID, err)
 	}
 }
 

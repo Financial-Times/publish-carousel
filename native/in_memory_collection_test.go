@@ -48,6 +48,7 @@ func TestLoadIntoMemory(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 0, noopBlacklist)
 	assert.NoError(t, err)
@@ -58,6 +59,7 @@ func TestLoadIntoMemoryWithSkip(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
@@ -73,6 +75,7 @@ func TestLoadIntoMemoryIgnoresBlanks(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", ""}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
@@ -88,6 +91,7 @@ func TestLoadIntoMemoryBlacklisted(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 0, func(uuid string) (bool, error) {
 		if uuid == "my name" {
@@ -109,7 +113,19 @@ func TestLoadIntoMemoryErrors(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(errors.New("oh dear"))
+	uuidCollection.On("Length").Return(3)
 
 	_, err := LoadIntoMemory(uuidCollection, "collection", 0, noopBlacklist)
 	assert.Error(t, err)
+}
+
+func TestLoadIntoMemoryEmptyCollection(t *testing.T) {
+	uuidCollection := &MockUUIDCollection{uuids: []string{}}
+	uuidCollection.On("Close").Return(nil)
+	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(0)
+
+	it, err := LoadIntoMemory(uuidCollection, "collection", 0, noopBlacklist)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, it.Length())
 }

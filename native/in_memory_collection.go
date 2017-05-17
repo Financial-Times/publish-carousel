@@ -17,6 +17,12 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	defer uuidCollection.Close()
 
 	it := &InMemoryUUIDCollection{collection: collection, uuids: make([]string, 0)}
+	if uuidCollection.Length() == 0 {
+		log.WithField("collection", collection).Warn("No data in mongo cursor for this collection.")
+		return it, nil
+	}
+
+	log.WithField("collection", collection).WithField("skip", skip).Info("Loading collection into memory...")
 
 	i := 0
 	start := time.Now()
@@ -24,17 +30,16 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 
 	for {
 		finished, uuid, err := uuidCollection.Next()
-
-		if finished {
-			break
-		}
+		i++
 
 		if err != nil {
 			log.WithError(err).Error("Failed to retrieve all elements from cursor!")
 			return it, err
 		}
 
-		i++
+		if finished {
+			break
+		}
 
 		if i%1000 == 0 {
 			end = time.Now()
@@ -43,7 +48,7 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 			start = end
 		}
 
-		if skip >= i {
+		if i <= skip {
 			continue
 		}
 

@@ -1,6 +1,7 @@
 package native
 
 import (
+	"context"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -38,8 +39,8 @@ func (t *MockTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIter
 	return args.Get(0).(DBIter), args.Int(1), args.Error(2)
 }
 
-func (t *MockTX) Ping() error {
-	args := t.Called()
+func (t *MockTX) Ping(ctx context.Context) error {
+	args := t.Called(ctx)
 	return args.Error(0)
 }
 
