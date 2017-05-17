@@ -12,10 +12,10 @@ import (
 
 var client *http.Client
 
-const requestTimeout = 5
+const requestTimeout = 4500
 
 func init() {
-	client = &http.Client{Timeout: requestTimeout * time.Second}
+	client = &http.Client{Timeout: requestTimeout * time.Millisecond}
 }
 
 // Service is a generic service of an UP cluster that implements a standard FT Good-To-Go endpoint.
