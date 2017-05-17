@@ -12,9 +12,9 @@ import (
 )
 
 func startEtcd(t *testing.T) (Watcher, error) {
-	if testing.Short() {
-		t.Skip("Skipping etcd integration test")
-	}
+	// if testing.Short() {
+	// t.Skip("Skipping etcd integration test")
+	// }
 
 	etcdURL := os.Getenv("ETCD_TEST_URL")
 	if strings.TrimSpace(etcdURL) == "" {
@@ -62,14 +62,14 @@ func TestWatchCallbackPanics(t *testing.T) {
 
 	api := etcdClient.NewKeysAPI(client)
 	go func() {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		api.Set(context.Background(), "/ft/cluster/health/test_key", "panic", nil)
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		api.Set(context.Background(), "/ft/cluster/health/test_key", "don't panic", nil)
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*7)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
 	success := false
 	watcher.Watch(ctx, "/ft/cluster/health/test_key", func(val string) {
