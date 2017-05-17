@@ -12,7 +12,7 @@ import (
 
 var client *http.Client
 
-const requestTimeout = 4500
+const requestTimeout = 4000
 
 func init() {
 	client = &http.Client{Timeout: requestTimeout * time.Millisecond}
