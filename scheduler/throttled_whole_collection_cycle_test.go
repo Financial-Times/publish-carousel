@@ -172,10 +172,11 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 		<-throttleCalled
 	}
 
-	assert.Equal(t, 1, c.Metadata().Iteration)
-	assert.Equal(t, collectionSize-1, c.Metadata().Completed)
-
 	<-opened
+
+	assert.Equal(t, 1, c.Metadata().Iteration)
+	assert.Equal(t, collectionSize, c.Metadata().Completed)
+
 	<-closed
 
 	for i := 0; i < 3; i++ {
