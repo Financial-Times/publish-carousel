@@ -34,9 +34,9 @@ func setupHappyMocks() map[string]interface{} {
 	sched.On("IsRunning").Return(true)
 
 	upService1 := new(cluster.MockService)
-	upService1.On("GTG").Return(nil)
+	upService1.On("Check").Return(nil)
 	upService2 := new(cluster.MockService)
-	upService2.On("GTG").Return(nil)
+	upService2.On("Check").Return(nil)
 
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
@@ -48,7 +48,7 @@ func setupHappyMocks() map[string]interface{} {
 	s3RW.On("Ping").Return(nil)
 
 	cmsNotifier := new(cms.MockNotifier)
-	cmsNotifier.On("GTG").Return(nil)
+	cmsNotifier.On("Check").Return(nil)
 
 	mocks := map[string]interface{}{
 		"scheduler":   sched,
@@ -216,7 +216,7 @@ func TestUnhappyCMSNotifierHealthcheck(t *testing.T) {
 	cmsNotifier := mocks["cmsNotifier"].(*cms.MockNotifier)
 	cmsNotifier.ExpectedCalls = make([]*mock.Call, 0)
 
-	cmsNotifier.On("GTG").Return(errors.New("not available"))
+	cmsNotifier.On("Check").Return(errors.New("not available"))
 
 	endpoint(w, req)
 
@@ -299,8 +299,9 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 	upService2 := mocks["service2"].(*cluster.MockService)
 	upService2.ExpectedCalls = make([]*mock.Call, 0)
 
-	upService2.On("GTG").Return(errors.New("not good to go"))
+	upService2.On("Check").Return(errors.New("not good to go"))
 	upService2.On("Name").Return("An UPP service")
+	upService2.On("String").Return("localhost")
 
 	sched := mocks["scheduler"].(*scheduler.MockScheduler)
 	sched.On("Shutdown").Return(nil)

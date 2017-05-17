@@ -110,7 +110,13 @@ func main() {
 			Name:   "toggle-etcd-key",
 			Value:  "/ft/config/publish-carousel/enable",
 			EnvVar: "TOGGLE_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
+			Usage:  "The etcd key that enables or disables the carousel",
+		},
+		cli.StringFlag{
+			Name:   "read-monitoring-etcd-key",
+			Value:  "/ft/config/monitoring/read-urls",
+			EnvVar: "READ_URLS_ETCD_KEY",
+			Usage:  "The etcd key which contains all the read environments",
 		},
 		cli.StringFlag{
 			Name:   "default-throttle",
@@ -145,26 +151,29 @@ func main() {
 			log.WithError(err).Error("Error in CMS Notifier configuration")
 		}
 
-		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"))
+		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"), true) // true so that we check /__health
 		if err != nil {
 			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
 		}
 
-		queueLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"), false)
 		if err != nil {
-			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+			panic(err)
 		}
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
+		if err != nil {
+			panic(err)
+		}
 
+		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 		if err != nil {
 			panic(err)
 		}
 
 		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
-
 		if err != nil {
 			log.WithError(err).Error("Invalid value for default throttle")
 		}
@@ -196,7 +205,7 @@ func main() {
 
 		ticker := checkpoint(sched, checkpointInterval)
 		shutdown(sched, ticker)
-		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
+		serve(mongo, sched, s3rw, notifier, api, configError, pam, publishingLagcheck, deliveryLagcheck)
 	}
 
 	app.Run(os.Args)
