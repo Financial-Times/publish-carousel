@@ -50,7 +50,7 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 
 	copiedTime := startTime // Copy so that we don't change the time for the cycle
 
-	metadata := CycleMetadata{State: []string{runningState}, Iteration: s.CycleMetadata.Iteration + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, state: make(map[string]struct{})}
+	metadata := CycleMetadata{State: []string{runningState}, Attempts: s.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, state: make(map[string]struct{})}
 	s.SetMetadata(metadata)
 
 	startTime = endTime
