@@ -12,9 +12,9 @@ import (
 )
 
 func startEtcd(t *testing.T) (Watcher, error) {
-	// if testing.Short() {
-	// t.Skip("Skipping etcd integration test")
-	// }
+	if testing.Short() {
+		t.Skip("Skipping etcd integration test")
+	}
 
 	etcdURL := os.Getenv("ETCD_TEST_URL")
 	if strings.TrimSpace(etcdURL) == "" {
