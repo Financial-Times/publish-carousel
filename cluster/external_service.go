@@ -65,7 +65,7 @@ func (e *externalService) Check() error {
 			errs = append(errs, err)
 		}
 
-		log.WithField("gtg", gtg).Info("GTG succeeded for external service [code]: %v", resp.StatusCode)
+		log.WithField("gtg", gtg).WithField("status", resp.StatusCode).Info("GTG succeeded for external service.")
 	}
 
 	return compactErrors("Failure occurred while checking GTG for external service.", errs...)
