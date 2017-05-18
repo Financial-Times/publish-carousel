@@ -72,6 +72,6 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 	return 0, true
 }
 
-func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, CoolDown: s.CoolDown, Origin: s.Origin, Throttle: s.throttle.Interval().String()}
+func (s *ThrottledWholeCollectionCycle) TransformToConfig() CycleConfig {
+	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, CoolDown: s.CoolDown, Origin: s.Origin, Throttle: s.throttle.Interval().String()}
 }

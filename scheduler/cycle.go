@@ -22,7 +22,7 @@ type Cycle interface {
 	Reset()
 	Metadata() CycleMetadata
 	SetMetadata(state CycleMetadata)
-	TransformToConfig() *CycleConfig
+	TransformToConfig() CycleConfig
 	State() []string
 }
 

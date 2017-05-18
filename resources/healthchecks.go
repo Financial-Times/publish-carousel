@@ -23,7 +23,7 @@ func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched 
 // GTG returns a handler for a standard GTG endpoint.
 func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...), clusterFailoverHealthcheck(sched)}
 
 		for _, check := range checks {
 			_, err := check()
@@ -86,6 +86,14 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			Severity:         1,
 			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          unhealthyClusters(sched, upServices...),
+		},
+		{
+			Name:             "ActivePublishingCluster",
+			BusinessImpact:   "No Business Impact.",
+			TechnicalSummary: `In case of a failover of the publishing cluster, the Carousel will be automatically disabled.`,
+			Severity:         1,
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			Checker:          clusterFailoverHealthcheck(sched),
 		},
 	}
 }
@@ -180,7 +188,7 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices)), errors.New(msg)
 		}
 
-		if !sched.IsRunning() && sched.IsEnabled() {
+		if !sched.IsRunning() && sched.IsEnabled() && !sched.WasAutomaticallyDisabled() {
 			log.Info("Cluster health back to normal; restarting scheduler.")
 			sched.Start()
 		}
@@ -196,5 +204,20 @@ func configHealthcheck(err error) func() (string, error) {
 		}
 
 		return "OK", nil
+	}
+}
+
+func clusterFailoverHealthcheck(s scheduler.Scheduler) func() (string, error) {
+	return func() (string, error) {
+		if s.IsAutomaticallyDisabled() {
+			return "Detected publishing cluster failover", errors.New("carousel scheduler has been automatically disabled")
+		}
+		if s.WasAutomaticallyDisabled() {
+			return "Detected publishing cluster failback", errors.New("carousel scheduler is enabled but stopped")
+		}
+		if !s.IsEnabled() {
+			return "Carousel scheduler manually disabled", nil
+		}
+		return "No failover issues, carousel scheduler enabled", nil
 	}
 }

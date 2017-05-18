@@ -32,6 +32,9 @@ func setupHappyMocks() map[string]interface{} {
 
 	sched.On("Cycles").Return(mockCycles)
 	sched.On("IsRunning").Return(true)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	upService1 := new(cluster.MockService)
 	upService1.On("Check").Return(nil)
@@ -289,6 +292,7 @@ func TestUnhappyCycleConfigHealthcheck(t *testing.T) {
 	for _, m := range mocks {
 		mock.AssertExpectationsForObjects(t, m)
 	}
+
 }
 
 func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
@@ -305,6 +309,9 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 
 	sched := mocks["scheduler"].(*scheduler.MockScheduler)
 	sched.On("Shutdown").Return(nil)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	endpoint(w, req)
 
@@ -344,6 +351,8 @@ func TestSchedulerRestartWhenClusterReturnHealthy(t *testing.T) {
 
 	sched.On("IsRunning").Return(false)
 	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
 	sched.On("Cycles").Return(map[string]scheduler.Cycle{
 		"c1": c1,
 		"c2": c2,
@@ -358,6 +367,178 @@ func TestSchedulerRestartWhenClusterReturnHealthy(t *testing.T) {
 
 	for _, check := range checks {
 		assert.True(t, check.Ok)
+	}
+
+	for _, m := range mocks {
+		mock.AssertExpectationsForObjects(t, m)
+	}
+}
+
+func TestHappyHealthcheckIfManualToggleIsDisabled(t *testing.T) {
+	endpoint, mocks := setupTestHealthcheckEndpoint(nil)
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	sched := mocks["scheduler"].(*scheduler.MockScheduler)
+	sched.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1 := mocks["cycle1"].(*scheduler.MockCycle)
+	c1.ExpectedCalls = make([]*mock.Call, 0)
+
+	c2 := mocks["cycle2"].(*scheduler.MockCycle)
+	c2.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
+	sched.On("IsRunning").Return(false)
+	sched.On("IsEnabled").Return(false)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(false)
+	sched.On("Cycles").Return(map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	})
+	endpoint(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Healthcheck should return 200")
+	checks, err := parseHealthcheck(w.Body.String())
+	assert.NoError(t, err)
+
+	for _, check := range checks {
+		assert.True(t, check.Ok)
+	}
+
+	for _, m := range mocks {
+		mock.AssertExpectationsForObjects(t, m)
+	}
+}
+
+func TestUnhappyHealthcheckBecauseOfCurrentFailover(t *testing.T) {
+	endpoint, mocks := setupTestHealthcheckEndpoint(nil)
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	sched := mocks["scheduler"].(*scheduler.MockScheduler)
+	sched.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1 := mocks["cycle1"].(*scheduler.MockCycle)
+	c1.ExpectedCalls = make([]*mock.Call, 0)
+
+	c2 := mocks["cycle2"].(*scheduler.MockCycle)
+	c2.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
+	sched.On("IsRunning").Return(false)
+	sched.On("IsEnabled").Return(false)
+	sched.On("IsAutomaticallyDisabled").Return(true)
+	sched.On("Cycles").Return(map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	})
+	endpoint(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Healthcheck should return 200")
+	checks, err := parseHealthcheck(w.Body.String())
+	assert.NoError(t, err)
+
+	for _, check := range checks {
+		if check.Name == "ActivePublishingCluster" {
+			assert.False(t, check.Ok)
+		} else {
+			assert.True(t, check.Ok)
+		}
+	}
+
+	for _, m := range mocks {
+		mock.AssertExpectationsForObjects(t, m)
+	}
+}
+
+func TestUnhappyHealthcheckBecauseOfNotRestartAfterFailback(t *testing.T) {
+	endpoint, mocks := setupTestHealthcheckEndpoint(nil)
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	sched := mocks["scheduler"].(*scheduler.MockScheduler)
+	sched.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1 := mocks["cycle1"].(*scheduler.MockCycle)
+	c1.ExpectedCalls = make([]*mock.Call, 0)
+
+	c2 := mocks["cycle2"].(*scheduler.MockCycle)
+	c2.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
+	sched.On("IsRunning").Return(false)
+	sched.On("IsEnabled").Return(false)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(true)
+	sched.On("Cycles").Return(map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	})
+	endpoint(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Healthcheck should return 200")
+	checks, err := parseHealthcheck(w.Body.String())
+	assert.NoError(t, err)
+
+	for _, check := range checks {
+		if check.Name == "ActivePublishingCluster" {
+			assert.False(t, check.Ok)
+		} else {
+			assert.True(t, check.Ok)
+		}
+	}
+
+	for _, m := range mocks {
+		mock.AssertExpectationsForObjects(t, m)
+	}
+}
+
+func TestSchedulerNotStartAfterFailoverByClusterHeatlhcheck(t *testing.T) {
+	endpoint, mocks := setupTestHealthcheckEndpoint(nil)
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	sched := mocks["scheduler"].(*scheduler.MockScheduler)
+	sched.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1 := mocks["cycle1"].(*scheduler.MockCycle)
+	c1.ExpectedCalls = make([]*mock.Call, 0)
+
+	c2 := mocks["cycle2"].(*scheduler.MockCycle)
+	c2.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
+	sched.On("IsRunning").Return(false)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(true)
+	sched.On("Cycles").Return(map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	})
+
+	endpoint(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Healthcheck should return 200")
+	checks, err := parseHealthcheck(w.Body.String())
+	assert.NoError(t, err)
+
+	for _, check := range checks {
+		if check.Name == "ActivePublishingCluster" {
+			assert.False(t, check.Ok)
+		} else {
+			assert.True(t, check.Ok)
+		}
 	}
 
 	for _, m := range mocks {
