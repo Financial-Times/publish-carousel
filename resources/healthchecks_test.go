@@ -546,6 +546,20 @@ func TestSchedulerNotStartAfterFailoverByClusterHeatlhcheck(t *testing.T) {
 	}
 }
 
+func TestHappyGTG(t *testing.T) {
+	endpoint, mocks := setupTestGTGEndpoint(nil)
+	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
+	w := httptest.NewRecorder()
+
+	endpoint(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	for _, m := range mocks {
+		mock.AssertExpectationsForObjects(t, m)
+	}
+}
+
 func TestUnhappyGTG(t *testing.T) {
 	endpoint, _ := setupTestGTGEndpoint(errors.New("config err"))
 	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
