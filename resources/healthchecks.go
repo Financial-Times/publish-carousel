@@ -188,7 +188,7 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices)), errors.New(msg)
 		}
 
-		if !sched.IsRunning() && sched.IsEnabled() {
+		if !sched.IsRunning() && sched.IsEnabled() && !sched.WasAutomaticallyDisabled() {
 			log.Info("Cluster health back to normal; restarting scheduler.")
 			sched.Start()
 		}

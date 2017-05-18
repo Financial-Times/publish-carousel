@@ -501,14 +501,45 @@ func TestUnhappyHealthcheckBecauseOfNotRestartAfterFailback(t *testing.T) {
 	}
 }
 
-func TestHappyGTG(t *testing.T) {
-	endpoint, mocks := setupTestGTGEndpoint(nil)
+func TestSchedulerNotStartAfterFailoverByClusterHeatlhcheck(t *testing.T) {
+	endpoint, mocks := setupTestHealthcheckEndpoint(nil)
 	req := httptest.NewRequest("GET", "http://example.com/__health", nil)
 	w := httptest.NewRecorder()
 
+	sched := mocks["scheduler"].(*scheduler.MockScheduler)
+	sched.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1 := mocks["cycle1"].(*scheduler.MockCycle)
+	c1.ExpectedCalls = make([]*mock.Call, 0)
+
+	c2 := mocks["cycle2"].(*scheduler.MockCycle)
+	c2.ExpectedCalls = make([]*mock.Call, 0)
+
+	c1.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+	c2.On("Metadata").Return(scheduler.CycleMetadata{State: []string{"stopped"}})
+
+	sched.On("IsRunning").Return(false)
+	sched.On("IsEnabled").Return(true)
+	sched.On("IsAutomaticallyDisabled").Return(false)
+	sched.On("WasAutomaticallyDisabled").Return(true)
+	sched.On("Cycles").Return(map[string]scheduler.Cycle{
+		"c1": c1,
+		"c2": c2,
+	})
+
 	endpoint(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code, "Healthcheck should return 200")
+	checks, err := parseHealthcheck(w.Body.String())
+	assert.NoError(t, err)
+
+	for _, check := range checks {
+		if check.Name == "ActivePublishingCluster" {
+			assert.False(t, check.Ok)
+		} else {
+			assert.True(t, check.Ok)
+		}
+	}
 
 	for _, m := range mocks {
 		mock.AssertExpectationsForObjects(t, m)
