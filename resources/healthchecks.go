@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/publish-carousel/cluster"
@@ -156,20 +157,17 @@ func toJSON(data interface{}) string {
 
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
 	return func() (string, error) {
-		var unhealthyServices []string
+		results := make(chan string, 1)
 
-		for _, service := range upServices {
-			if service.GTG() != nil {
-				if sched.IsRunning() {
-					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
-					sched.Shutdown()
-				}
-				unhealthyServices = append(unhealthyServices, service.Name())
+		checkServicesGTG(upServices, results)
+		unhealthyServices := getUnhealthyServices(len(upServices), results)
+
+		if len(*unhealthyServices) > 0 {
+			if sched.IsRunning() {
+				log.WithFields(log.Fields{"services": *unhealthyServices}).Info("Shutting down scheduler due to unhealthy cluster service(s)")
+				sched.Shutdown()
 			}
-		}
-
-		if len(unhealthyServices) > 0 {
-			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices))
+			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(*unhealthyServices))
 		}
 
 		if !sched.IsRunning() && sched.IsEnabled() {
@@ -179,6 +177,39 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 
 		return "Cluster is healthy", nil
 	}
+}
+
+func checkServicesGTG(upServices []cluster.Service, results chan<- string) {
+	for _, service := range upServices {
+		go func(svc cluster.Service) {
+			if svc.GTG() != nil {
+				results <- svc.Name()
+			} else {
+				results <- ""
+			}
+		}(service)
+	}
+}
+
+func getUnhealthyServices(serviceCount int, results chan string) *[]string {
+	var unhealthyServices []string
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var checkedServices int
+		for serviceName := range results {
+			checkedServices++
+			if serviceName != "" {
+				unhealthyServices = append(unhealthyServices, serviceName)
+			}
+			if checkedServices == serviceCount {
+				close(results)
+			}
+		}
+	}()
+	wg.Wait()
+	return &unhealthyServices
 }
 
 func configHealthcheck(err error) func() (string, error) {
