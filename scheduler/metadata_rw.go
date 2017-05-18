@@ -14,7 +14,7 @@ const defaultContentType = "application/json"
 
 type MetadataReadWriter interface {
 	LoadMetadata(id string) (CycleMetadata, error)
-	WriteMetadata(id string, state Cycle) error
+	WriteMetadata(id string, config CycleConfig, metadata CycleMetadata) error
 }
 
 type s3MetadataReadWriter struct {
@@ -22,7 +22,7 @@ type s3MetadataReadWriter struct {
 }
 
 type s3Metadata struct {
-	Config   *CycleConfig  `json:"config"`
+	Config   CycleConfig   `json:"config"`
 	Metadata CycleMetadata `json:"metadata"`
 }
 
@@ -60,8 +60,8 @@ func (s *s3MetadataReadWriter) LoadMetadata(id string) (CycleMetadata, error) {
 	return fromS3.Metadata, err
 }
 
-func (s *s3MetadataReadWriter) WriteMetadata(id string, cycle Cycle) error {
-	b, err := json.Marshal(&s3Metadata{cycle.TransformToConfig(), cycle.Metadata()})
+func (s *s3MetadataReadWriter) WriteMetadata(id string, config CycleConfig, metadata CycleMetadata) error {
+	b, err := json.Marshal(&s3Metadata{config, metadata})
 	if err != nil {
 		return err
 	}

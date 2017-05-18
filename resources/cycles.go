@@ -74,7 +74,7 @@ func CreateCycle(sched scheduler.Scheduler) func(w http.ResponseWriter, r *http.
 			return
 		}
 
-		cycle, err := createCycle(sched, &cycleConfig, nil)
+		cycle, err := createCycle(sched, cycleConfig, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -242,8 +242,8 @@ func findCycle(sched scheduler.Scheduler, w http.ResponseWriter, r *http.Request
 	return cycle, nil
 }
 
-func createCycle(sched scheduler.Scheduler, cycleConfig *scheduler.CycleConfig, metadata *scheduler.CycleMetadata) (scheduler.Cycle, error) {
-	cycle, err := sched.NewCycle(*cycleConfig)
+func createCycle(sched scheduler.Scheduler, cycleConfig scheduler.CycleConfig, metadata *scheduler.CycleMetadata) (scheduler.Cycle, error) {
+	cycle, err := sched.NewCycle(cycleConfig)
 	if err != nil {
 		log.WithError(err).WithField("cycle", cycleConfig.Name).Warn("Failed to create new cycle.")
 		return nil, err

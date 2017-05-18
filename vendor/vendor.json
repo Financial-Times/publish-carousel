@@ -313,13 +313,27 @@
 			"revisionTime": "2017-02-23T22:22:15Z"
 		},
 		{
-			"checksumSHA1": "KJqRW8jfPoHquMAd6FI7x92JxFs=",
+			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",
+			"path": "github.com/gorilla/context",
+			"revision": "08b5f424b9271eedf6f9f0ce86cb9396ed337a42",
+			"revisionTime": "2016-08-17T18:46:32Z"
+		},
+		{
+			"checksumSHA1": "F5dR3/i70EhSIMZfeIV+H8/PtvM=",
+			"path": "github.com/gorilla/mux",
+			"revision": "392c28fe23e1c45ddba891b0320b3b5df220beea",
+			"revisionTime": "2017-01-18T13:43:44Z",
+			"version": "v1.3.0",
+			"versionExact": "v1.3.0"
+		},
+		{
+			"checksumSHA1": "tUGxc7rfX0cmhOOUDhMuAZ9rWsA=",
 			"path": "github.com/hashicorp/go-version",
 			"revision": "03c5bf6be031b6dd45afec16b1cf94fc8938bc77",
 			"revisionTime": "2017-02-02T08:07:59Z"
 		},
 		{
-			"checksumSHA1": "SMzlemr5ZYGgJTTbl+R9MAVm4ns=",
+			"checksumSHA1": "FEL7pmbDBKhzAuOmcUtO4Jkbtpc=",
 			"path": "github.com/husobee/vestigo",
 			"revision": "9dfd4d2384383143ae77e2dd52fe0cdb71470b98",
 			"revisionTime": "2016-01-28T13:45:06Z",
@@ -399,7 +413,7 @@
 			"versionExact": "v1.1.4"
 		},
 		{
-			"checksumSHA1": "oqDuQM/+8vHvSt7f8w7WJfmHqws=",
+			"checksumSHA1": "2PpOCNkWnshDrXeCVH2kp3VHhIM=",
 			"path": "github.com/stretchr/testify/require",
 			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
 			"revisionTime": "2017-01-30T11:31:45Z",
@@ -407,7 +421,7 @@
 			"versionExact": "v1.1.4"
 		},
 		{
-			"checksumSHA1": "i1oySm1zXP3iDj+031i8F9InUqE=",
+         "checksumSHA1": "i1oySm1zXP3iDj+031i8F9InUqE=",
 			"path": "github.com/ugorji/go/codec",
 			"revision": "c88ee250d0221a57af388746f5cf03768c21d6e2",
 			"revisionTime": "2017-02-15T20:11:44Z"

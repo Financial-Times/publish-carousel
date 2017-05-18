@@ -48,7 +48,12 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 	}
 	defer uuidCollection.Close()
 
-	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: l.CycleMetadata.Iteration + 1, Total: uuidCollection.Length()}
+	iteration := l.CycleMetadata.Iteration
+	if skip == 0 {
+		iteration++
+	}
+
+	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: iteration, Attempts: l.CycleMetadata.Attempts + 1, Total: uuidCollection.Length()}
 	l.SetMetadata(metadata)
 
 	if uuidCollection.Length() == 0 {
@@ -71,14 +76,6 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 	return 0, true
 }
 
-func (s *ThrottledWholeCollectionCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{
-		Name:       s.CycleName,
-		Type:       s.CycleType,
-		Origin:     s.Origin,
-		Collection: s.DBCollection,
-		CoolDown:   s.CoolDown,
-		Throttle:   s.Throttle.Interval().String(),
-		/* TimeWindow, MinimumThrottle, MaximumThrottle omitted	*/
-	}
+func (s *ThrottledWholeCollectionCycle) TransformToConfig() CycleConfig {
+	return CycleConfig{Name: s.CycleName, Type: s.CycleType, Collection: s.DBCollection, CoolDown: s.CoolDown, Origin: s.Origin, Throttle: s.Throttle.Interval().String()}
 }

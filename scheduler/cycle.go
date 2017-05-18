@@ -24,7 +24,7 @@ type Cycle interface {
 	Reset()
 	Metadata() CycleMetadata
 	SetMetadata(state CycleMetadata)
-	TransformToConfig() *CycleConfig
+	TransformToConfig() CycleConfig
 	State() []string
 }
 
@@ -38,6 +38,7 @@ type CycleMetadata struct {
 	Completed           int        `json:"completed"`
 	Total               int        `json:"total"`
 	Iteration           int        `json:"iteration"`
+	Attempts            int        `json:"attempts"`
 	Start               *time.Time `json:"windowStart,omitempty"`
 	End                 *time.Time `json:"windowEnd,omitempty"`
 }
@@ -107,13 +108,15 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 
 		log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
 		content, txId, err := a.publishTask.Prepare(a.DBCollection, uuid)
-		a.updateProgress(uuid, txId, err)
+
 		if err == nil {
 			err = a.publishTask.Execute(uuid, content, a.Origin, txId)
 			if err != nil {
 				log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 			}
 		}
+
+		a.updateProgress(uuid, txId, err)
 	}
 }
 
