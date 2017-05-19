@@ -10,7 +10,7 @@ import (
 func TestInMemoryIterator(t *testing.T) {
 	it := &InMemoryUUIDCollection{collection: "collection"}
 
-	values := []string{"hi", "my name is", "what?"}
+	values := []string{"1", "2", "3"}
 	for _, v := range values {
 		it.append(v)
 	}
@@ -21,7 +21,7 @@ func TestInMemoryIterator(t *testing.T) {
 	finished, val, err := it.Next()
 	assert.NoError(t, err)
 	assert.False(t, finished)
-	assert.Equal(t, "hi", val)
+	assert.Equal(t, "1", val)
 
 	assert.Equal(t, 2, it.Length())
 	assert.False(t, it.Done())
@@ -29,12 +29,12 @@ func TestInMemoryIterator(t *testing.T) {
 	finished, val, err = it.Next()
 	assert.NoError(t, err)
 	assert.False(t, finished)
-	assert.Equal(t, "my name is", val)
+	assert.Equal(t, "2", val)
 
 	finished, val, err = it.Next()
 	assert.NoError(t, err)
 	assert.False(t, finished)
-	assert.Equal(t, "what?", val)
+	assert.Equal(t, "3", val)
 
 	finished, _, err = it.Next()
 	assert.NoError(t, err)
@@ -45,7 +45,7 @@ func TestInMemoryIterator(t *testing.T) {
 }
 
 func TestLoadIntoMemory(t *testing.T) {
-	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
@@ -56,7 +56,7 @@ func TestLoadIntoMemory(t *testing.T) {
 }
 
 func TestLoadIntoMemoryWithSkip(t *testing.T) {
-	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
@@ -67,12 +67,12 @@ func TestLoadIntoMemoryWithSkip(t *testing.T) {
 
 	done, val, err := it.Next()
 	assert.False(t, done)
-	assert.Equal(t, "is", val)
+	assert.Equal(t, "2", val)
 	assert.NoError(t, err)
 }
 
 func TestLoadIntoMemoryIgnoresBlanks(t *testing.T) {
-	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", ""}}
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", " "}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
@@ -83,18 +83,18 @@ func TestLoadIntoMemoryIgnoresBlanks(t *testing.T) {
 
 	done, val, err := it.Next()
 	assert.False(t, done)
-	assert.Equal(t, "is", val)
+	assert.Equal(t, "2", val)
 	assert.NoError(t, err)
 }
 
 func TestLoadIntoMemoryBlacklisted(t *testing.T) {
-	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 0, func(uuid string) (bool, error) {
-		if uuid == "my name" {
+		if uuid == "1" {
 			return true, nil
 		}
 		return false, nil
@@ -105,12 +105,12 @@ func TestLoadIntoMemoryBlacklisted(t *testing.T) {
 
 	done, val, err := it.Next()
 	assert.False(t, done)
-	assert.Equal(t, "is", val)
+	assert.Equal(t, "2", val)
 	assert.NoError(t, err)
 }
 
 func TestLoadIntoMemoryErrors(t *testing.T) {
-	uuidCollection := &MockUUIDCollection{uuids: []string{"my name", "is", "who?"}}
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(errors.New("oh dear"))
 	uuidCollection.On("Length").Return(3)

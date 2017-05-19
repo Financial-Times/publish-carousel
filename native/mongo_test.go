@@ -202,7 +202,7 @@ func TestPing(t *testing.T) {
 	defer tx.Close()
 	assert.NoError(t, err)
 
-	err = tx.Ping(context.TODO())
+	err = tx.Ping(context.Background())
 	assert.NoError(t, err)
 }
 
