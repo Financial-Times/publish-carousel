@@ -36,7 +36,7 @@ func NewScalingWindowCycle(
 }
 
 func (s *ScalingWindowCycle) Start() {
-	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
+	log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.UpdateState(startingState)
@@ -48,5 +48,5 @@ func (s *ScalingWindowCycle) Start() {
 }
 
 func (s *ScalingWindowCycle) TransformToConfig() CycleConfig {
-	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
+	return CycleConfig{Name: s.CycleName, Type: s.CycleType, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
 }

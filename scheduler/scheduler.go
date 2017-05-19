@@ -171,11 +171,10 @@ func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
 	numArchiveCycles := len(archiveCycles)
 
 	if numArchiveCycles > 1 {
-
-		minimumStartInterval := archiveCycles[0].throttle.Interval()
+		minimumStartInterval := archiveCycles[0].Throttle.Interval()
 
 		for _, cycle := range archiveCycles {
-			temp = cycle.throttle.Interval()
+			temp = cycle.Throttle.Interval()
 			if temp < minimumStartInterval {
 				minimumStartInterval = temp
 			}
@@ -335,7 +334,7 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 	case "throttledwholecollection":
 		var throttleInterval time.Duration
 		if config.Throttle == "" {
-			log.WithField("cycleName", config.Name).Info("Throttle configuration not found. Setting default throttle value")
+			log.WithField("cycleName", config.Name).Infof("Throttle configuration not found. Setting default throttle value (%v)", s.defaultThrottle)
 			throttleInterval = s.defaultThrottle
 		} else {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)
