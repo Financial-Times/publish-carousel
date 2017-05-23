@@ -20,7 +20,7 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -29,13 +29,14 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	c2.On("ID").Return("id2")
 	c1.On("Start").Return()
 	c2.On("Start").Return()
-	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
-	c2.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
+	c2.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
 
-	s.ToggleHandler("true")
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("true")
 	err := s.Start()
 	assert.NoError(t, err, "It should not return an error to Start")
 
@@ -53,7 +54,7 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -64,7 +65,8 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 	s.AddCycle(c1)
 	s.AddCycle(c2)
 
-	s.ToggleHandler("false")
+	s.ManualToggleHandler("false")
+	s.AutomaticToggleHandler("true")
 	err := s.Start()
 	assert.EqualError(t, err, "Scheduler is not enabled", "It should not return an error to Start")
 
@@ -77,7 +79,7 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 func TestSchedulerResumeAfterDisable(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -88,13 +90,14 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 	c2.On("Start").Return()
 	c1.On("Stop").Return()
 	c2.On("Stop").Return()
-	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
-	c2.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
+	c2.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
 
-	s.ToggleHandler("true")
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("true")
 	err := s.Start()
 	assert.NoError(t, err, "It should not return an error to Start")
 
@@ -103,14 +106,14 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 	c1.AssertNotCalled(t, "Stop")
 	c2.AssertNotCalled(t, "Stop")
 
-	s.ToggleHandler("false")
+	s.ManualToggleHandler("false")
 
 	c1.AssertNumberOfCalls(t, "Start", 1)
 	c2.AssertNumberOfCalls(t, "Start", 1)
 	c1.AssertNumberOfCalls(t, "Stop", 1)
 	c2.AssertNumberOfCalls(t, "Stop", 1)
 
-	s.ToggleHandler("true")
+	s.ManualToggleHandler("true")
 
 	c1.AssertNumberOfCalls(t, "Start", 1)
 	c2.AssertNumberOfCalls(t, "Start", 1)
@@ -131,7 +134,7 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 	c1.AssertNumberOfCalls(t, "Stop", 2)
 	c2.AssertNumberOfCalls(t, "Stop", 2)
 
-	s.ToggleHandler("true")
+	s.ManualToggleHandler("true")
 
 	c1.AssertNumberOfCalls(t, "Start", 2)
 	c2.AssertNumberOfCalls(t, "Start", 2)
@@ -143,7 +146,7 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 
 func TestSchedulerInvalidToggleValue(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -154,11 +157,268 @@ func TestSchedulerInvalidToggleValue(t *testing.T) {
 	s.AddCycle(c1)
 	s.AddCycle(c2)
 
-	s.ToggleHandler("invalid-value")
+	s.ManualToggleHandler("invalid-value")
 	err := s.Start()
 	assert.EqualError(t, err, "Scheduler is not enabled", "It should return an error to Start")
 	c1.AssertNotCalled(t, "Start")
 	c2.AssertNotCalled(t, "Start")
+}
+
+func TestAutomaticToggleDisabledAndManualToggleEnabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+
+	db := new(native.MockDB)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+	c1.On("Start").Return()
+	c2.On("Start").Return()
+	c1.On("Stop").Return()
+	c2.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{})
+	c2.On("TransformToConfig").Return(CycleConfig{})
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("true")
+	err := s.Start()
+	assert.NoError(t, err, "It should not return an error to Start")
+
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			s.ManualToggleHandler("true")
+		}
+	}()
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.AutomaticToggleHandler("false")
+			} else {
+				s.AutomaticToggleHandler("true")
+			}
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	time.Sleep(2 * time.Second)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	assert.True(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	time.Sleep(1 * time.Second)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.True(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should be autoDisabled state")
+
+	s.Start()
+	time.Sleep(250 * time.Millisecond)
+	c1.AssertNumberOfCalls(t, "Start", 2)
+	c2.AssertNumberOfCalls(t, "Start", 2)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+}
+
+func TestAutomaticToggleEnabledAndManualToggleDisabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+	db := new(native.MockDB)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+	c1.On("Start").Return()
+	c2.On("Start").Return()
+	c1.On("Stop").Return()
+	c2.On("Stop").Return()
+	c1.On("TransformToConfig").Return(CycleConfig{})
+	c2.On("TransformToConfig").Return(CycleConfig{})
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("true")
+	err := s.Start()
+	assert.NoError(t, err, "It should not return an error to Start")
+
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			s.AutomaticToggleHandler("true")
+		}
+	}()
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.ManualToggleHandler("false")
+			} else {
+				s.ManualToggleHandler("true")
+			}
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	time.Sleep(2 * time.Second)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+	assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	time.Sleep(1 * time.Second)
+	c1.AssertNumberOfCalls(t, "Start", 1)
+	c2.AssertNumberOfCalls(t, "Start", 1)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	s.Start()
+	time.Sleep(250 * time.Millisecond)
+	c1.AssertNumberOfCalls(t, "Start", 2)
+	c2.AssertNumberOfCalls(t, "Start", 2)
+	c1.AssertNumberOfCalls(t, "Stop", 1)
+	c2.AssertNumberOfCalls(t, "Stop", 1)
+	assert.True(t, s.IsRunning(), "The scheduler should be in running state")
+	assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+	assert.True(t, s.IsEnabled(), "The scheduler should be in enabled state")
+	assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+
+	c1.AssertExpectations(t)
+	c2.AssertExpectations(t)
+}
+
+func TestAutomaticToggleFlappingAndManualToggleDisabled(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+	db := new(native.MockDB)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("false")
+	s.AutomaticToggleHandler("true")
+	err := s.Start()
+	assert.Error(t, err, "It should return an error to Start")
+
+	go func() {
+		for i := 0; i < 4; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.AutomaticToggleHandler("false")
+			} else {
+				s.AutomaticToggleHandler("true")
+			}
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 4; i++ {
+		assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+		assert.False(t, s.IsAutomaticallyDisabled(), "The scheduler should not be in autoDisabled state")
+		assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+		assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func TestAutomaticToggleDisabledAndManualToggleFlapping(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
+	db := new(native.MockDB)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+
+	c1 := new(MockCycle)
+	c2 := new(MockCycle)
+	c1.On("ID").Return("id1")
+	c2.On("ID").Return("id2")
+
+	s.AddCycle(c1)
+	s.AddCycle(c2)
+	s.ManualToggleHandler("true")
+	s.AutomaticToggleHandler("false")
+	err := s.Start()
+	assert.Error(t, err, "It should return an error to Start")
+
+	go func() {
+		for i := 0; i < 4; i++ {
+			time.Sleep(1 * time.Second)
+			if i%2 == 1 {
+				s.ManualToggleHandler("false")
+			} else {
+				s.ManualToggleHandler("true")
+			}
+		}
+	}()
+
+	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 4; i++ {
+		assert.False(t, s.IsRunning(), "The scheduler should not be in running state")
+		assert.True(t, s.IsAutomaticallyDisabled(), "The scheduler should be in autoDisabled state")
+		assert.False(t, s.IsEnabled(), "The scheduler should not be in enabled state")
+		assert.False(t, s.WasAutomaticallyDisabled(), "The scheduler's previous state should not be autoDisabled state")
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func TestSaveCycleMetadata(t *testing.T) {
@@ -167,7 +427,7 @@ func TestSaveCycleMetadata(t *testing.T) {
 	c1 := new(MockCycle)
 	c1.On("ID").Return(id1)
 	c1.On("Start").Return()
-	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	db := new(native.MockDB)
 	dbCollection := "testCollection"
@@ -178,14 +438,14 @@ func TestSaveCycleMetadata(t *testing.T) {
 	id2 := c2.ID()
 
 	rw := MockMetadataRW{}
-	rw.On("WriteMetadata", id2, c2).Return(nil)
+	rw.On("WriteMetadata", id2, c2.TransformToConfig(), c2.Metadata()).Return(nil)
 
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
 
-	s.SaveCycleMetadata()
+	s.(*defaultScheduler).saveCycleMetadata()
 
 	rw.AssertExpectations(t)
 }
@@ -197,7 +457,7 @@ func TestCalculateArchiveCycleStartInterval(t *testing.T) {
 	c1 := new(MockCycle)
 	c1.On("ID").Return(id1)
 	c1.On("Start").Return()
-	c1.On("TransformToConfig").Return(&CycleConfig{Type: "test"})
+	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
 	db := new(native.MockDB)
 	dbCollection := "testCollection"
@@ -210,7 +470,7 @@ func TestCalculateArchiveCycleStartInterval(t *testing.T) {
 
 	rw := MockMetadataRW{}
 
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)

@@ -14,10 +14,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const running = true
-const stopped = false
-const disabled = false
-
 // Scheduler is the main component of the publish carousel,
 // which handles the publish cycles.
 type Scheduler interface {
@@ -26,12 +22,14 @@ type Scheduler interface {
 	AddCycle(cycle Cycle) error
 	DeleteCycle(cycleID string) error
 	RestorePreviousState()
-	SaveCycleMetadata()
 	Start() error
 	Shutdown() error
-	ToggleHandler(toggleValue string)
+	ManualToggleHandler(toggleValue string)
+	AutomaticToggleHandler(toggleValue string)
 	IsRunning() bool
 	IsEnabled() bool
+	IsAutomaticallyDisabled() bool
+	WasAutomaticallyDisabled() bool
 }
 
 type defaultScheduler struct {
@@ -41,15 +39,15 @@ type defaultScheduler struct {
 	cycles             map[string]Cycle
 	metadataReadWriter MetadataReadWriter
 	cycleLock          *sync.RWMutex
-	executionStateLock *sync.RWMutex
-	toggleLock         *sync.RWMutex
-	executionState     bool
-	toggle             bool
+	state              *schedulerState
+	autoDisabled       bool
+	toggleHandlerLock  *sync.Mutex
 	defaultThrottle    time.Duration
+	checkpointHandler  *checkpointHandler
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration) Scheduler {
+func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
 	return &defaultScheduler{
 		blacklist:          blist,
 		database:           database,
@@ -57,11 +55,10 @@ func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask
 		cycles:             map[string]Cycle{},
 		metadataReadWriter: metadataReadWriter,
 		cycleLock:          &sync.RWMutex{},
-		executionStateLock: &sync.RWMutex{},
-		toggleLock:         &sync.RWMutex{},
-		executionState:     stopped,
-		toggle:             disabled,
+		state:              newSchedulerState(),
+		toggleHandlerLock:  &sync.Mutex{},
 		defaultThrottle:    defaultThrottle,
+		checkpointHandler:  newCheckpointHandler(checkpointInterval),
 	}
 }
 
@@ -72,16 +69,16 @@ func (s *defaultScheduler) Cycles() map[string]Cycle {
 }
 
 func (s *defaultScheduler) AddCycle(c Cycle) error {
+	s.cycleLock.Lock()
+	defer s.cycleLock.Unlock()
 
 	if _, ok := s.cycles[c.ID()]; ok {
 		return fmt.Errorf("Conflicting ID found for cycle %v", c.ID())
 	}
 
-	s.cycleLock.Lock()
-	defer s.cycleLock.Unlock()
 	s.cycles[c.ID()] = c
 
-	if s.IsEnabled() && s.IsRunning() {
+	if s.state.isEnabled() && s.state.isRunning() {
 		c.Start()
 	}
 	return nil
@@ -101,13 +98,16 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 	return nil
 }
 
-func (s *defaultScheduler) SaveCycleMetadata() {
+func (s *defaultScheduler) saveCycleMetadata() {
+	s.cycleLock.RLock()
+	defer s.cycleLock.RUnlock()
+
 	log.Info("Saving cycle metadata to S3.")
 
 	for _, cycle := range s.cycles {
 		switch cycle.(type) {
 		case *ThrottledWholeCollectionCycle:
-			err := s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle)
+			err := s.metadataReadWriter.WriteMetadata(cycle.ID(), cycle.TransformToConfig(), cycle.Metadata())
 			if err != nil {
 				log.WithField("cycle", cycle.ID()).WithError(err).Error("cycle metadata not saved")
 			}
@@ -138,14 +138,15 @@ func (s *defaultScheduler) Start() error {
 	s.cycleLock.RLock()
 	defer s.cycleLock.RUnlock()
 
-	if !s.IsEnabled() {
+	if !s.state.isEnabled() {
 		return errors.New("Scheduler is not enabled")
 	}
 
-	if s.IsRunning() {
+	if s.state.isRunning() {
 		return errors.New("Scheduler is already running")
 	}
-	s.setCurrentExecutionState(running)
+
+	s.state.setState(running)
 
 	startInterval := s.archiveCycleStartInterval()
 
@@ -154,11 +155,13 @@ func (s *defaultScheduler) Start() error {
 		cycle.Start()
 		time.Sleep(startInterval)
 	}
+
+	s.checkpointHandler.start(s.saveCycleMetadata)
+
 	return nil
 }
 
 func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
-
 	var temp time.Duration
 	var archiveCycles []*ThrottledWholeCollectionCycle
 
@@ -170,11 +173,10 @@ func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
 	numArchiveCycles := len(archiveCycles)
 
 	if numArchiveCycles > 1 {
-
-		minimumStartInterval := archiveCycles[0].throttle.Interval()
+		minimumStartInterval := archiveCycles[0].Throttle.Interval()
 
 		for _, cycle := range archiveCycles {
-			temp = cycle.throttle.Interval()
+			temp = cycle.Throttle.Interval()
 			if temp < minimumStartInterval {
 				minimumStartInterval = temp
 			}
@@ -189,7 +191,7 @@ func (s *defaultScheduler) Shutdown() error {
 	defer s.cycleLock.RUnlock()
 	log.Info("Scheduler shutdown initiated.")
 
-	if !s.IsRunning() {
+	if !s.state.isRunning() {
 		return errors.New("Scheduler has already been shut down")
 	}
 
@@ -197,51 +199,128 @@ func (s *defaultScheduler) Shutdown() error {
 		log.WithField("id", id).Info("Stopping cycle.")
 		cycle.Stop()
 	}
-	s.setCurrentExecutionState(stopped)
+
+	s.state.setState(stopped)
+	s.checkpointHandler.stop()
+	s.saveCycleMetadata()
 	return nil
 }
 
-func (s *defaultScheduler) ToggleHandler(toggleValue string) {
+const (
+	automatic = iota
+	manual
+)
+
+func (s *defaultScheduler) AutomaticToggleHandler(toggleValue string) {
+	s.toggleHandler(toggleValue, automatic)
+}
+
+func (s *defaultScheduler) ManualToggleHandler(toggleValue string) {
+	s.toggleHandler(toggleValue, manual)
+}
+
+const (
+	on  = true
+	off = false
+)
+
+func (s *defaultScheduler) toggleHandler(toggleValue string, requestType int) {
+	s.toggleHandlerLock.Lock()
+	defer s.toggleHandlerLock.Unlock()
+
 	toggleState, err := strconv.ParseBool(toggleValue)
 	if err != nil {
 		log.WithError(err).Error("Invalid toggle value for carousel scheduler")
 	}
 
-	if toggleState == disabled && s.IsEnabled() && s.IsRunning() {
-		log.Info("Disabling carousel scheduler...")
-		err := s.Shutdown()
-		if err != nil {
-			log.WithError(err).Error("Error in stopping carousel scheduler")
-			return
+	if toggleState == off && s.state.isEnabled() {
+		if s.state.isRunning() {
+			log.Info("Disabling carousel scheduler...")
+			err := s.Shutdown()
+			if err != nil {
+				log.WithError(err).Error("Error in stopping carousel scheduler")
+				return
+			}
 		}
-		s.SaveCycleMetadata()
+		if requestType == automatic {
+			s.state.setState(autoDisabled)
+		} else {
+			s.state.setState(disabled)
+		}
+	} else if toggleState == on &&
+		!s.state.isRunning() &&
+		((s.state.isAutomaticallyDisabled() && requestType == automatic) ||
+			(!s.state.isAutomaticallyDisabled() && requestType == manual)) {
+		s.state.setState(stopped)
 	}
 
-	s.setToggleState(toggleState)
 }
 
 func (s *defaultScheduler) IsEnabled() bool {
-	s.toggleLock.RLock()
-	defer s.toggleLock.RUnlock()
-	return s.toggle
-}
-
-func (s *defaultScheduler) setToggleState(state bool) {
-	s.toggleLock.Lock()
-	defer s.toggleLock.Unlock()
-	s.toggle = state
+	return s.state.isEnabled()
 }
 
 func (s *defaultScheduler) IsRunning() bool {
-	s.executionStateLock.RLock()
-	defer s.executionStateLock.RUnlock()
-	return s.executionState
+	return s.state.isRunning()
 }
 
-func (s *defaultScheduler) setCurrentExecutionState(state bool) {
-	s.executionStateLock.Lock()
-	defer s.executionStateLock.Unlock()
-	s.executionState = state
+func (s *defaultScheduler) IsAutomaticallyDisabled() bool {
+	return s.state.isAutomaticallyDisabled()
+}
+
+func (s *defaultScheduler) WasAutomaticallyDisabled() bool {
+	return s.state.wasAutomaticallyDisabled()
+}
+
+const (
+	unknown = iota
+	running
+	stopped
+	disabled
+	autoDisabled
+)
+
+type schedulerState struct {
+	sync.RWMutex
+	currentState  int
+	previousState int
+}
+
+func newSchedulerState() *schedulerState {
+	return &schedulerState{currentState: disabled, previousState: unknown}
+}
+
+func (s *schedulerState) setState(stateValue int) {
+	s.Lock()
+	defer s.Unlock()
+	if s.currentState != stateValue {
+		s.previousState = s.currentState
+		s.currentState = stateValue
+	}
+}
+
+func (s *schedulerState) isEnabled() bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.currentState != disabled && s.currentState != autoDisabled
+}
+
+func (s *schedulerState) isRunning() bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.currentState == running
+}
+
+func (s *schedulerState) isAutomaticallyDisabled() bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.currentState == autoDisabled
+}
+
+func (s *schedulerState) wasAutomaticallyDisabled() bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.previousState == autoDisabled
 }
 
 func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
@@ -257,7 +336,7 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 	case "throttledwholecollection":
 		var throttleInterval time.Duration
 		if config.Throttle == "" {
-			log.WithField("cycleName", config.Name).Info("Throttle configuration not found. Setting default throttle value")
+			log.WithField("cycleName", config.Name).Infof("Throttle configuration not found. Setting default throttle value (%v)", s.defaultThrottle)
 			throttleInterval = s.defaultThrottle
 		} else {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)

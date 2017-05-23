@@ -22,7 +22,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
@@ -111,7 +111,19 @@ func main() {
 			Name:   "toggle-etcd-key",
 			Value:  "/ft/config/publish-carousel/enable",
 			EnvVar: "TOGGLE_ETCD_KEY",
-			Usage:  "The ETCD key that enables or disables the carousel",
+			Usage:  "The etcd key that enables or disables the carousel",
+		},
+		cli.StringFlag{
+			Name:   "read-monitoring-etcd-key",
+			Value:  "/ft/config/monitoring/read-urls",
+			EnvVar: "READ_URLS_ETCD_KEY",
+			Usage:  "The etcd key which contains all the read environments",
+		},
+		cli.StringFlag{
+			Name:   "active-cluster-etcd-key",
+			Value:  "/ft/healthcheck-categories/publish/enabled",
+			EnvVar: "ACTIVE_CLUSTER_ETCD_KEY",
+			Usage:  "The ETCD key that specifies if the cluster is active",
 		},
 		cli.StringFlag{
 			Name:   "default-throttle",
@@ -147,48 +159,32 @@ func main() {
 			log.WithError(err).Error("Error in CMS Notifier configuration")
 		}
 
-		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"))
+		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"), true) // true so that we check /__health
 		if err != nil {
 			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
 		}
 
-		queueLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"), false)
 		if err != nil {
-			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+			panic(err)
 		}
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, isImage)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
+		if err != nil {
+			panic(err)
+		}
 
+		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 		if err != nil {
 			panic(err)
 		}
 
 		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
-
 		if err != nil {
 			log.WithError(err).Error("Invalid value for default throttle")
 		}
-
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle)
-		if err != nil {
-			log.WithError(configError).Error("Failed to load cycles configuration file")
-		}
-
-		toggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
-		if err != nil {
-			panic(err)
-		}
-
-		sched.ToggleHandler(toggle)
-
-		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ToggleHandler)
-
-		sched.RestorePreviousState()
-		sched.Start()
-
-		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
 
 		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
 		if err != nil {
@@ -196,79 +192,86 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		ticker := checkpoint(sched, checkpointInterval)
-		shutdown(sched, ticker)
-		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		if configError != nil {
+			log.WithError(configError).Error("Failed to load cycles configuration file")
+		}
+
+		manualToggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
+		if err != nil {
+			panic(err)
+		}
+		autoToggle, err := etcdWatcher.Read(ctx.String("active-cluster-etcd-key"))
+		if err != nil {
+			panic(err)
+		}
+
+		sched.ManualToggleHandler(manualToggle)
+		sched.AutomaticToggleHandler(autoToggle)
+
+		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ManualToggleHandler)
+		go etcdWatcher.Watch(context.Background(), ctx.String("active-cluster-etcd-key"), sched.AutomaticToggleHandler)
+
+		sched.RestorePreviousState()
+		sched.Start()
+
+		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
+
+		shutdown(sched)
+		serve(mongo, sched, s3rw, notifier, api, configError, pam, publishingLagcheck, deliveryLagcheck)
 	}
 
 	app.Run(os.Args)
 }
 
-func shutdown(sched scheduler.Scheduler, ticker *time.Ticker) {
+func shutdown(sched scheduler.Scheduler) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		<-signals
-		ticker.Stop()
-		sched.SaveCycleMetadata()
+		signal := <-signals
+		log.WithField("signal", signal).Info("Stopping scheduler after receiving OS signal")
+		err := sched.Shutdown()
+		if err != nil {
+			log.WithError(err).Error("Error in stopping scheduler")
+		}
 		os.Exit(0)
 	}()
 }
 
-func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker {
-	t := time.NewTicker(interval)
-
-	go func() {
-		for range t.C {
-			sched.SaveCycleMetadata()
-		}
-	}()
-
-	return t
-}
-
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
-	r := mux.NewRouter()
-	methodNotAllowed := resources.MethodNotAllowed()
+	r := vestigo.NewRouter()
 
-	r.HandleFunc("/__api", resources.API(api)).Methods("GET")
+	r.Get("/__api", resources.API(api))
 
-	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
-	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
+	r.Get(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler)
+	r.Get(httphandlers.PingPath, httphandlers.PingHandler)
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
+	r.Get(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...))
+	r.Get("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...))
 
-	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
-	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles", methodNotAllowed).Methods("PUT", "DELETE")
+	r.Get("/cycles", resources.GetCycles(sched))
+	r.Post("/cycles", resources.CreateCycle(sched))
 
-	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
-	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", methodNotAllowed).Methods("PUT", "POST")
+	r.Get("/cycles/:id", resources.GetCycleForID(sched))
+	r.Delete("/cycles/:id", resources.DeleteCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/resume", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Get("/cycles/:id/throttle", resources.GetCycleThrottle(sched))
+	r.Put("/cycles/:id/throttle", resources.SetCycleThrottle(sched))
 
-	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/stop", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/resume", resources.ResumeCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/reset", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/stop", resources.StopCycle(sched))
 
-	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
+	r.Post("/cycles/:id/reset", resources.ResetCycle(sched))
 
-	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/start", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/start", resources.StartScheduler(sched))
 
-	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/shutdown", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/shutdown", resources.ShutdownScheduler(sched))
 
 	box := ui.UI()
 	dist := http.FileServer(box.HTTPBox())
-	r.PathPrefix("/").Handler(dist)
+	r.Get("/*", dist.ServeHTTP)
 
 	http.Handle("/", r)
 	log.Info("Publish Carousel Started!")

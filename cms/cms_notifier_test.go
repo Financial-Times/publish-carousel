@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/Financial-Times/publish-carousel/native"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func (m *mockNotifierServer) startMockNotifierServer(t *testing.T) *httptest.Server {
-	r := mux.NewRouter()
-	r.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
+	r := vestigo.NewRouter()
+	r.Post("/notify", func(w http.ResponseWriter, r *http.Request) {
 		tid := r.Header.Get("X-Request-Id")
 		hash := r.Header.Get("X-Native-Hash")
 		origin := r.Header.Get("X-Origin-System-Id")
@@ -31,9 +31,9 @@ func (m *mockNotifierServer) startMockNotifierServer(t *testing.T) *httptest.Ser
 		assert.True(t, ok)
 
 		w.WriteHeader(m.Notify(origin, tid, hash, contentType))
-	}).Methods("POST")
+	})
 
-	r.HandleFunc("/__gtg", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/__gtg", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(m.GTG())
 	})
 
@@ -109,7 +109,7 @@ func TestOKGTG(t *testing.T) {
 	notifier, err := NewNotifier(server.URL, &http.Client{})
 	assert.NoError(t, err)
 
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.NoError(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -123,7 +123,7 @@ func TestFailingGTG(t *testing.T) {
 	notifier, err := NewNotifier(server.URL, &http.Client{})
 	assert.NoError(t, err)
 
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.Error(t, err)
 	mockNotifier.AssertExpectations(t)
 }
@@ -131,6 +131,12 @@ func TestFailingGTG(t *testing.T) {
 func TestNoServer(t *testing.T) {
 	notifier, err := NewNotifier("http://localhost", &http.Client{})
 	assert.NoError(t, err)
-	err = notifier.GTG()
+	err = notifier.Check()
 	assert.Error(t, err)
+}
+
+func TestInvalidURL(t *testing.T) {
+	notifier, err := NewNotifier(":#", &http.Client{})
+	assert.Error(t, err)
+	assert.Nil(t, notifier)
 }

@@ -42,7 +42,7 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, startTime time.Time, endTime time.Time, throttle func(publishes int) (Throttle, context.CancelFunc)) (time.Time, bool) {
 	uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
 	if err != nil {
-		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
+		log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
 		s.UpdateState(stoppedState, unhealthyState)
 		return endTime, false
 	}
@@ -50,7 +50,7 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 
 	copiedTime := startTime // Copy so that we don't change the time for the cycle
 
-	metadata := CycleMetadata{State: []string{runningState}, Attempts: s.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime, state: make(map[string]struct{})}
+	metadata := CycleMetadata{State: []string{runningState}, Attempts: s.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime}
 	s.SetMetadata(metadata)
 
 	startTime = endTime
@@ -70,7 +70,7 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 	}
 
 	if err != nil {
-		log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
+		log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithError(err).Warn("Unexpected error occurred while publishing collection.")
 		s.UpdateState(stoppedState, unhealthyState)
 		return endTime, false
 	}

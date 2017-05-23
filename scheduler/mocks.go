@@ -16,8 +16,8 @@ func (m *MockMetadataRW) LoadMetadata(id string) (CycleMetadata, error) {
 	return args.Get(0).(CycleMetadata), args.Error(1)
 }
 
-func (m *MockMetadataRW) WriteMetadata(id string, state Cycle) error {
-	args := m.Called(id, state)
+func (m *MockMetadataRW) WriteMetadata(id string, config CycleConfig, metadata CycleMetadata) error {
+	args := m.Called(id, config, metadata)
 	return args.Error(0)
 }
 
@@ -63,10 +63,6 @@ func (m *MockScheduler) RestorePreviousState() {
 	m.Called()
 }
 
-func (m *MockScheduler) SaveCycleMetadata() {
-	m.Called()
-}
-
 func (m *MockScheduler) Start() error {
 	args := m.Called()
 	return args.Error(0)
@@ -77,7 +73,11 @@ func (m *MockScheduler) Shutdown() error {
 	return args.Error(0)
 }
 
-func (m *MockScheduler) ToggleHandler(toggleValue string) {
+func (m *MockScheduler) ManualToggleHandler(toggleValue string) {
+	m.Called(toggleValue)
+}
+
+func (m *MockScheduler) AutomaticToggleHandler(toggleValue string) {
 	m.Called(toggleValue)
 }
 
@@ -91,11 +91,31 @@ func (m *MockScheduler) IsRunning() bool {
 	return args.Bool(0)
 }
 
+func (m *MockScheduler) IsAutomaticallyDisabled() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockScheduler) WasAutomaticallyDisabled() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
 type MockCycle struct {
 	mock.Mock
 }
 
 func (m *MockCycle) ID() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockCycle) Name() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockCycle) Type() string {
 	args := m.Called()
 	return args.String(0)
 }
@@ -121,9 +141,9 @@ func (m *MockCycle) SetMetadata(state CycleMetadata) {
 	m.Called(state)
 }
 
-func (m *MockCycle) TransformToConfig() *CycleConfig {
+func (m *MockCycle) TransformToConfig() CycleConfig {
 	args := m.Called()
-	return args.Get(0).(*CycleConfig)
+	return args.Get(0).(CycleConfig)
 }
 
 func (m *MockCycle) State() []string {
