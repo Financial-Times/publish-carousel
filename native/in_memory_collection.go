@@ -25,6 +25,7 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	log.WithField("collection", collection).WithField("skip", skip).Info("Loading collection into memory...")
 
 	i := 0
+	overallStart := time.Now()
 	start := time.Now()
 	var end time.Time
 
@@ -41,10 +42,10 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 			break
 		}
 
-		if i%1000 == 0 {
+		if i%10000 == 0 {
 			end = time.Now()
 			diff := end.Sub(start)
-			log.WithField("duration", diff.String()).Infof("Loaded %v records", i)
+			log.WithField("collection", collection).WithField("duration", diff.String()).Infof("Loaded %v records", i)
 			start = end
 		}
 
@@ -64,8 +65,8 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	}
 
 	end = time.Now()
-	diff := end.Sub(start)
-	log.WithField("duration", diff.String()).Infof("Loaded %v records", it.Length())
+	diff := end.Sub(overallStart)
+	log.WithField("collection", collection).WithField("duration", diff.String()).Infof("Finished loading %v records from DB", it.Length())
 
 	return it, nil
 }
