@@ -32,10 +32,12 @@ func init() {
 		TimestampFormat: time.RFC3339Nano,
 	}
 
+	log.SetLevel(log.InfoLevel)
 	log.SetFormatter(f)
 }
 
 func main() {
+	log.Debug("hi")
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
 	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."
@@ -243,6 +245,7 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	r := vestigo.NewRouter()
 
 	r.Get("/__api", resources.API(api))
+	r.Post("/__log", resources.LogLevel)
 
 	r.Get(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler)
 	r.Get(httphandlers.PingPath, httphandlers.PingHandler)

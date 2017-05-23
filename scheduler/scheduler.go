@@ -139,12 +139,16 @@ func (s *defaultScheduler) Start() error {
 	defer s.cycleLock.RUnlock()
 
 	if !s.state.isEnabled() {
+		log.Info("Interrupted scheduler startup, as the carousel is not enabled.")
 		return errors.New("Scheduler is not enabled")
 	}
 
 	if s.state.isRunning() {
+		log.Info("Interrupted scheduler startup, as it is already running.")
 		return errors.New("Scheduler is already running")
 	}
+
+	log.Info("Initialising scheduler.")
 
 	s.state.setState(running)
 

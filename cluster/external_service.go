@@ -43,7 +43,7 @@ func (e *externalService) Check() error {
 	errs := make([]error, 0)
 	for _, env := range envs {
 		gtg := gtgURLFor(env, e.ServiceName())
-		log.WithField("gtg", gtg).Info("Calling GTG for external service.")
+		log.WithField("gtg", gtg).Debug("Calling GTG for external service.")
 
 		req, err := http.NewRequest("GET", gtg, nil)
 		if err != nil {
@@ -54,7 +54,7 @@ func (e *externalService) Check() error {
 		resp, err := http.DefaultClient.Do(req)
 
 		if err != nil {
-			log.WithError(err).WithField("service", e.ServiceName()).Error("Failed to call the GTG endpoint of the service")
+			log.WithError(err).WithField("service", e.ServiceName()).Warn("Failed to call the GTG endpoint of the service")
 			errs = append(errs, err)
 			continue
 		}
@@ -63,9 +63,10 @@ func (e *externalService) Check() error {
 			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.ServiceName(), gtg, resp.StatusCode)
 			log.WithError(err).Warn("GTG failed for external dependency.")
 			errs = append(errs, err)
+			continue
 		}
 
-		log.WithField("gtg", gtg).WithField("status", resp.StatusCode).Info("GTG succeeded for external service.")
+		log.WithField("gtg", gtg).WithField("status", resp.StatusCode).Debug("GTG succeeded for external service.")
 	}
 
 	return compactErrors("Failure occurred while checking GTG for external service.", errs...)
