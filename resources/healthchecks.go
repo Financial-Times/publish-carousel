@@ -24,7 +24,7 @@ func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched 
 // GTG returns a handler for a standard GTG endpoint.
 func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...)}
+		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...), clusterFailoverHealthcheck(sched)}
 
 		for _, check := range checks {
 			_, err := check()
@@ -88,6 +88,14 @@ func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifie
 			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
 			Checker:          unhealthyClusters(sched, upServices...),
 		},
+		{
+			Name:             "ActivePublishingCluster",
+			BusinessImpact:   "No Business Impact.",
+			TechnicalSummary: `In case of a failover of the publishing cluster, the Carousel will be automatically disabled.`,
+			Severity:         1,
+			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			Checker:          clusterFailoverHealthcheck(sched),
+		},
 	}
 }
 
@@ -141,7 +149,7 @@ func unhealthyCycles(sched scheduler.Scheduler) func() (string, error) {
 
 func cmsNotifierGTG(notifier cms.Notifier) func() (string, error) {
 	return func() (string, error) {
-		err := notifier.GTG()
+		err := notifier.Check()
 		if err != nil {
 			return "", err
 		}
@@ -155,22 +163,27 @@ func toJSON(data interface{}) string {
 	return string(b)
 }
 
+type checkResult struct {
+	serviceName string
+	err error
+}
+
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
 	return func() (string, error) {
-		results := make(chan string, 1)
+		results := make(chan checkResult, 1)
 
 		checkServicesGTG(upServices, results)
-		unhealthyServices := getUnhealthyServices(len(upServices), results)
+		unhealthyServices, msg := getUnhealthyServices(len(upServices), results)
 
 		if len(*unhealthyServices) > 0 {
 			if sched.IsRunning() {
 				log.WithFields(log.Fields{"services": *unhealthyServices}).Info("Shutting down scheduler due to unhealthy cluster service(s)")
 				sched.Shutdown()
 			}
-			return "Cluster is unhealthy", fmt.Errorf("One or more dependent services are unhealthy: %v", toJSON(*unhealthyServices))
+			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(*unhealthyServices)), errors.New(msg)
 		}
 
-		if !sched.IsRunning() && sched.IsEnabled() {
+		if !sched.IsRunning() && sched.IsEnabled() && !sched.WasAutomaticallyDisabled() {
 			log.Info("Cluster health back to normal; restarting scheduler.")
 			sched.Start()
 		}
@@ -179,29 +192,32 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 	}
 }
 
-func checkServicesGTG(upServices []cluster.Service, results chan<- string) {
+func checkServicesGTG(upServices []cluster.Service, results chan<- checkResult) {
 	for _, service := range upServices {
 		go func(svc cluster.Service) {
-			if svc.GTG() != nil {
-				results <- svc.Name()
+			err := svc.Check()
+			if err != nil {
+				results <- checkResult{serviceName: svc.Name(), err : err }
 			} else {
-				results <- ""
+				results <- checkResult{}
 			}
 		}(service)
 	}
 }
 
-func getUnhealthyServices(serviceCount int, results chan string) *[]string {
+func getUnhealthyServices(serviceCount int, results chan checkResult) (*[]string, string) {
 	var unhealthyServices []string
+	var errMsg string
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		var checkedServices int
-		for serviceName := range results {
+		for result := range results {
 			checkedServices++
-			if serviceName != "" {
-				unhealthyServices = append(unhealthyServices, serviceName)
+			if result.serviceName != "" {
+				unhealthyServices = append(unhealthyServices, result.serviceName)
+				errMsg += result.err.Error() + ". "
 			}
 			if checkedServices == serviceCount {
 				close(results)
@@ -209,7 +225,7 @@ func getUnhealthyServices(serviceCount int, results chan string) *[]string {
 		}
 	}()
 	wg.Wait()
-	return &unhealthyServices
+	return &unhealthyServices, errMsg
 }
 
 func configHealthcheck(err error) func() (string, error) {
@@ -219,5 +235,20 @@ func configHealthcheck(err error) func() (string, error) {
 		}
 
 		return "OK", nil
+	}
+}
+
+func clusterFailoverHealthcheck(s scheduler.Scheduler) func() (string, error) {
+	return func() (string, error) {
+		if s.IsAutomaticallyDisabled() {
+			return "Detected publishing cluster failover", errors.New("carousel scheduler has been automatically disabled")
+		}
+		if s.WasAutomaticallyDisabled() {
+			return "Detected publishing cluster failback", errors.New("carousel scheduler is enabled but stopped")
+		}
+		if !s.IsEnabled() {
+			return "Carousel scheduler manually disabled", nil
+		}
+		return "No failover issues, carousel scheduler enabled", nil
 	}
 }

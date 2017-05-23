@@ -100,9 +100,26 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "toggle",
-			Value:  "false",
+			Value:  "true",
 			EnvVar: "TOGGLE",
 			Usage:  "Enable or disable the application",
+		},
+		cli.StringFlag{
+			Name:   "delivery-lagcheck-urls",
+			Value:  "localhost:http://localhost:8080/__kafka-lagcheck",
+			EnvVar: "DELIVERY_LAGCHECK_URLS",
+			Usage:  "The list of delivery queue lagcheck service urls used to verify the health of the cluster. Example: environment1:user:password,environment2:user:password.",
+		},
+		cli.StringFlag{
+			Name:   "delivery-lagcheck-credentials",
+			EnvVar: "DELIVERY_LAGCHECK_CREDENTIALS",
+			Usage:  "The list of delivery lagcheck credentials. Example: environment1:user:password,environment2:user:password.",
+		},
+		cli.StringFlag{
+			Name:   "active-cluster",
+			Value:  "true",
+			EnvVar: "ACTIVE_CLUSTER",
+			Usage:  "Specifies if the cluster is active",
 		},
 		cli.StringFlag{
 			Name:   "default-throttle",
@@ -137,34 +154,27 @@ func main() {
 			log.WithError(err).Error("Error in CMS Notifier configuration")
 		}
 
-		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"))
+		pam, err := cluster.NewService("publish-availability-monitor", ctx.String("pam-url"), true) // true so that we check /__health
 		if err != nil {
 			log.WithError(err).Error("Error in Publish Availability Monitor configuration")
 		}
 
-		queueLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"))
+		publishingLagcheck, err := cluster.NewService("kafka-lagcheck", ctx.String("lagcheck-url"), false)
 		if err != nil {
-			log.WithError(err).Error("Error in Kafka lagcheck configuration")
+			panic(err)
 		}
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
 
-		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
+		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("delivery-lagcheck-urls"), ctx.String("delivery-lagcheck-credentials"))
+		if err != nil {
+			panic(err)
+		}
 
+		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
 		if err != nil {
 			log.WithError(err).Error("Invalid value for default throttle")
 		}
-
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle)
-		if err != nil {
-			log.WithError(configError).Error("Failed to load cycles configuration file")
-		}
-
-		sched.ToggleHandler(ctx.String("toggle"))
-		sched.RestorePreviousState()
-		sched.Start()
-
-		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
 
 		checkpointInterval, err := time.ParseDuration(ctx.String("checkpoint-interval"))
 		if err != nil {
@@ -172,36 +182,41 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		ticker := checkpoint(sched, checkpointInterval)
-		shutdown(sched, ticker)
-		serve(mongo, sched, s3rw, notifier, api, configError, pam, queueLagcheck)
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		if configError != nil {
+			log.WithError(configError).Error("Failed to load cycles configuration file")
+		}
+
+		manualToggle := ctx.String("toggle")
+		autoToggle := ctx.String("active-cluster")
+
+		sched.ManualToggleHandler(manualToggle)
+		sched.AutomaticToggleHandler(autoToggle)
+		sched.RestorePreviousState()
+		sched.Start()
+
+		api, _ := ioutil.ReadFile(ctx.String("api-yml"))
+
+		shutdown(sched)
+		serve(mongo, sched, s3rw, notifier, api, configError, pam, publishingLagcheck, deliveryLagcheck)
 	}
 
 	app.Run(os.Args)
 }
 
-func shutdown(sched scheduler.Scheduler, ticker *time.Ticker) {
+func shutdown(sched scheduler.Scheduler) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		<-signals
-		ticker.Stop()
-		sched.SaveCycleMetadata()
+		signal := <-signals
+		log.WithField("signal", signal).Info("Stopping scheduler after receiving OS signal")
+		err := sched.Shutdown()
+		if err != nil {
+			log.WithError(err).Error("Error in stopping scheduler")
+		}
 		os.Exit(0)
 	}()
-}
-
-func checkpoint(sched scheduler.Scheduler, interval time.Duration) *time.Ticker {
-	t := time.NewTicker(interval)
-
-	go func() {
-		for range t.C {
-			sched.SaveCycleMetadata()
-		}
-	}()
-
-	return t
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {

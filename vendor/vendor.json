@@ -297,6 +297,14 @@
 			"revisionTime": "2017-02-02T08:07:59Z"
 		},
 		{
+			"checksumSHA1": "FEL7pmbDBKhzAuOmcUtO4Jkbtpc=",
+			"path": "github.com/husobee/vestigo",
+			"revision": "9dfd4d2384383143ae77e2dd52fe0cdb71470b98",
+			"revisionTime": "2016-01-28T13:45:06Z",
+			"version": "v1.0.1",
+			"versionExact": "v1.0.1"
+		},
+		{
 			"checksumSHA1": "0ZrwvB6KoGPj2PoDNSEJwxQ6Mog=",
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d",

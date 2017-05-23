@@ -36,7 +36,7 @@ func TestWriteMetadata(t *testing.T) {
 
 	id := "test-cycle-id"
 	cycle := new(MockCycle)
-	cycle.On("TransformToConfig").Return(&cfg)
+	cycle.On("TransformToConfig").Return(cfg)
 	cycle.On("Metadata").Return(md)
 
 	s3rw := new(s3.MockReadWriter)
@@ -47,7 +47,7 @@ func TestWriteMetadata(t *testing.T) {
 		"application/json").Return(nil)
 
 	rw := s3MetadataReadWriter{s3rw}
-	err := rw.WriteMetadata(id, cycle)
+	err := rw.WriteMetadata(id, cycle.TransformToConfig(), cycle.Metadata())
 
 	assert.NoError(t, err)
 	s3rw.AssertExpectations(t)

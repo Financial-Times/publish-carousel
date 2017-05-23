@@ -47,6 +47,6 @@ func (s *ScalingWindowCycle) Start() {
 	go s.start(ctx, throttle)
 }
 
-func (s *ScalingWindowCycle) TransformToConfig() *CycleConfig {
-	return &CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
+func (s *ScalingWindowCycle) TransformToConfig() CycleConfig {
+	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
 }
