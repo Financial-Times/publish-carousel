@@ -155,7 +155,9 @@ func (a *abstractCycle) Type() string {
 }
 
 func (a *abstractCycle) Stop() {
-	a.cancel()
+	if a.cancel != nil {
+		a.cancel()
+	}
 	log.WithField("id", a.CycleID).WithField("name", a.CycleName).WithField("collection", a.DBCollection).Info("Cycle stopped.")
 	a.UpdateState(stoppedState)
 }
