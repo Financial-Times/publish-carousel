@@ -41,6 +41,9 @@ func (e *externalService) Check() error {
 			errs = append(errs, err)
 			continue
 		}
+		if env.credentials != nil {
+			req.SetBasicAuth(env.credentials.username, env.credentials.password)
+		}
 
 		resp, err := client.Do(req)
 

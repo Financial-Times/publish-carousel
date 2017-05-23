@@ -9,9 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupFakeServer(t *testing.T, status int, path string, body string, isJSON bool, called func()) *httptest.Server {
+func setupFakeServer(t *testing.T, status int, path string, body string, isJSON bool, usingBasicAuth bool, called func()) *httptest.Server {
 	r := vestigo.NewRouter()
 	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
+		username, password, basicAuthHeaderPresent := r.BasicAuth()
+		if usingBasicAuth {
+			assert.True(t, basicAuthHeaderPresent)
+			assert.NotEmpty(t, username)
+			assert.NotEmpty(t, password)
+		} else {
+			assert.False(t, basicAuthHeaderPresent)
+		}
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, path, r.URL.Path)
 		called()
@@ -27,9 +35,9 @@ func setupFakeServer(t *testing.T, status int, path string, body string, isJSON 
 	return httptest.NewServer(r)
 }
 
-func TestExternalService(t *testing.T) {
+func TestExternalServiceWithoutBasicAuth(t *testing.T) {
 	called := false
-	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {
+	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {
 		called = true
 	})
 	defer server.Close()
@@ -45,9 +53,27 @@ func TestExternalService(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestExternalServiceWithBasicAuth(t *testing.T) {
+	called := false
+	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, true, func() {
+		called = true
+	})
+	defer server.Close()
+
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server.URL, "environment:user:pass")
+	assert.NoError(t, err)
+
+	name := kafkaLagcheck.ServiceName()
+	assert.Equal(t, "kafka-lagcheck", name)
+
+	err = kafkaLagcheck.Check()
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
 func TestExternalServiceFails(t *testing.T) {
 	called := false
-	server := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {
+	server := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {
 		called = true
 	})
 	defer server.Close()
@@ -64,7 +90,7 @@ func TestExternalServiceFails(t *testing.T) {
 }
 
 func TestExternalServiceCloses(t *testing.T) {
-	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
 
 	server.Close()
 
@@ -79,8 +105,8 @@ func TestExternalServiceCloses(t *testing.T) {
 }
 
 func TestSomeExternalServicesFail(t *testing.T) {
-	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
-	server2 := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server2 := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()
@@ -103,8 +129,8 @@ func TestSomeExternalServicesFail(t *testing.T) {
 }
 
 func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
-	server1 := setupFakeServer(t, 401, "/__kafka-lagcheck/__gtg", "", false, func() {})
-	server2 := setupFakeServer(t, 504, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server1 := setupFakeServer(t, 401, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server2 := setupFakeServer(t, 504, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()
@@ -127,8 +153,8 @@ func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
 }
 
 func TestMultipleExternalServicesFail(t *testing.T) {
-	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
-	server2 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server2 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()
