@@ -25,6 +25,9 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	log.WithField("collection", collection).WithField("skip", skip).Info("Loading collection into memory...")
 
 	i := 0
+	blank := 0
+	blacklisted := 0
+
 	overallStart := time.Now()
 	start := time.Now()
 	var end time.Time
@@ -54,10 +57,12 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 		}
 
 		if strings.TrimSpace(uuid) == "" {
+			blank++
 			continue
 		}
 
 		if ok, err := blist(uuid); err != nil || ok {
+			blacklisted++
 			continue
 		}
 
@@ -66,7 +71,9 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 
 	end = time.Now()
 	diff := end.Sub(overallStart)
+
 	log.WithField("collection", collection).WithField("duration", diff.String()).Infof("Finished loading %v records from DB", it.Length())
+	log.WithField("collection", collection).WithField("blacklisted", blacklisted).WithField("blank", blank).Info("Number of records blacklisted or blank.")
 
 	return it, nil
 }
