@@ -150,7 +150,8 @@ The Carousel, however, will **not** be automatically started during a failover s
 
 ## Configuration
 
-* `toggle`: Boolean value that enables or disables the carousel. Set to 'false' by default.
+* `toggle`: Boolean value that enables or disables the carousel. Set to 'true' by default.
+* `active-cluster`: Boolean value that tell the service if it's running in an active or inactive cluster. Set to 'true' by default.
 
 On startup, the Carousel will read cycle configuration from a provided YAML file, add them to the Scheduler, attempt to restore the previous state from S3, and start them up. To configure cycles, the following fields are **required** for all cycle types:
 
