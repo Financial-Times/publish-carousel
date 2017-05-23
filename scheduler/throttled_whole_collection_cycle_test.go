@@ -184,6 +184,7 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	}
 
 	c.Stop()
+	time.Sleep(50 * time.Millisecond)
 
 	assert.Len(t, c.State(), 1)
 	assert.Contains(t, c.State(), stoppedState)
