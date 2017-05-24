@@ -35,11 +35,11 @@ func NewFileBasedBlacklist(file string) (IsBlacklisted, error) {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			if bytes.Contains(scanner.Bytes(), uuidAsBytes) {
-				return false, nil
+				return true, nil
 			}
 		}
 
 		err = scanner.Err()
-		return true, err
+		return false, err
 	}, nil
 }
