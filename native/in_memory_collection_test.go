@@ -63,7 +63,7 @@ func TestLoadIntoMemoryWithSkip(t *testing.T) {
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, it.Length())
+	assert.Equal(t, 3, it.Length())
 
 	done, val, err := it.Next()
 	assert.False(t, done)
@@ -79,7 +79,7 @@ func TestLoadIntoMemoryIgnoresBlanks(t *testing.T) {
 
 	it, err := LoadIntoMemory(uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, it.Length())
+	assert.Equal(t, 2, it.Length())
 
 	done, val, err := it.Next()
 	assert.False(t, done)

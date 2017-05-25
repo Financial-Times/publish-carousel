@@ -11,12 +11,13 @@ import (
 type InMemoryUUIDCollection struct {
 	uuids      []string
 	collection string
+	skip       int
 }
 
 func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
 	defer uuidCollection.Close()
 
-	it := &InMemoryUUIDCollection{collection: collection, uuids: make([]string, 0)}
+	it := &InMemoryUUIDCollection{collection: collection, skip: skip, uuids: make([]string, 0)}
 	if uuidCollection.Length() == 0 {
 		log.WithField("collection", collection).Warn("No data in mongo cursor for this collection.")
 		return it, nil
@@ -72,7 +73,7 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	end = time.Now()
 	diff := end.Sub(overallStart)
 
-	log.WithField("collection", collection).WithField("duration", diff.String()).Infof("Finished loading %v records from DB", it.Length())
+	log.WithField("collection", collection).WithField("duration", diff.String()).Infof("Finished loading %v records from DB", len(it.uuids))
 	log.WithField("collection", collection).WithField("blacklisted", blacklisted).WithField("blank", blank).Info("Number of records blacklisted or blank.")
 
 	return it, nil
@@ -86,7 +87,7 @@ func (i *InMemoryUUIDCollection) Next() (bool, string, error) {
 }
 
 func (i *InMemoryUUIDCollection) Length() int {
-	return len(i.uuids)
+	return len(i.uuids) + i.skip
 }
 
 func (i *InMemoryUUIDCollection) Done() bool {
