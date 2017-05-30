@@ -103,12 +103,6 @@ func (i *InMemoryUUIDCollection) append(uuid string) {
 }
 
 func (i *InMemoryUUIDCollection) shift() (x string) {
-	if len(i.uuids) == 1 {
-		x = i.uuids[0]
-		i.uuids = make([]string, 0)
-		return
-	}
-
 	x, i.uuids = i.uuids[0], i.uuids[1:]
 	return
 }
