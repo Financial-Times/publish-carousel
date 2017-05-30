@@ -15,7 +15,7 @@ func TestInMemoryIterator(t *testing.T) {
 		it.append(v)
 	}
 
-	assert.Equal(t, 3, it.Length())
+	assert.Len(t, it.uuids, 3)
 	assert.False(t, it.Done())
 
 	finished, val, err := it.Next()
@@ -23,7 +23,7 @@ func TestInMemoryIterator(t *testing.T) {
 	assert.False(t, finished)
 	assert.Equal(t, "1", val)
 
-	assert.Equal(t, 2, it.Length())
+	assert.Len(t, it.uuids, 2)
 	assert.False(t, it.Done())
 
 	finished, val, err = it.Next()

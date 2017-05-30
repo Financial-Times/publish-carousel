@@ -80,7 +80,7 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 }
 
 func (i *InMemoryUUIDCollection) Next() (bool, string, error) {
-	if i.Length() == 0 {
+	if i.Done() {
 		return true, "", nil
 	}
 	return false, i.shift(), nil
@@ -91,7 +91,7 @@ func (i *InMemoryUUIDCollection) Length() int {
 }
 
 func (i *InMemoryUUIDCollection) Done() bool {
-	return i.Length() == 0
+	return len(i.uuids) == 0
 }
 
 func (i *InMemoryUUIDCollection) Close() error {
@@ -103,6 +103,12 @@ func (i *InMemoryUUIDCollection) append(uuid string) {
 }
 
 func (i *InMemoryUUIDCollection) shift() (x string) {
+	if len(i.uuids) == 1 {
+		x = i.uuids[0]
+		i.uuids = make([]string, 0)
+		return
+	}
+
 	x, i.uuids = i.uuids[0], i.uuids[1:]
 	return
 }
