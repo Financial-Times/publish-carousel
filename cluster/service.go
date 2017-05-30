@@ -62,7 +62,7 @@ func (s *clusterService) Check() error {
 }
 
 func (s *clusterService) health() error {
-	resp, err := http.Get(s.healthURL.String())
+	resp, err := s.doGet(s.healthURL.String())
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (s *clusterService) health() error {
 }
 
 func (s *clusterService) gtg() error {
-	resp, err := http.Get(s.gtgURL.String())
+	resp, err := s.doGet(s.gtgURL.String())
 	if err != nil {
 		log.WithError(err).WithField("service", s.serviceName).Error("Failed to call the GTG endpoint of the service")
 		return err
@@ -99,4 +99,14 @@ func (s *clusterService) gtg() error {
 		return err
 	}
 	return nil
+}
+
+func (s *clusterService) doGet(serviceUrl string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", serviceUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("User-Agent", "UPP Publish Carousel")
+	return http.DefaultClient.Do(req)
 }

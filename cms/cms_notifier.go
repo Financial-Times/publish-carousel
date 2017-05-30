@@ -45,6 +45,7 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 	}
 
 	req, err := http.NewRequest("POST", c.notifierURL+notifyPath, b)
+	req.Header.Add("User-Agent", "UPP Publish Carousel")
 	req.Header.Add("Content-Type", content.ContentType)
 	req.Header.Add("X-Request-Id", tid)
 	req.Header.Add("X-Native-Hash", hash)

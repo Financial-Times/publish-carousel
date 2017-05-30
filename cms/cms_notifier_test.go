@@ -15,6 +15,9 @@ import (
 func (m *mockNotifierServer) startMockNotifierServer(t *testing.T) *httptest.Server {
 	r := vestigo.NewRouter()
 	r.Post("/notify", func(w http.ResponseWriter, r *http.Request) {
+		ua := r.Header.Get("User-Agent")
+		assert.Equal(t, "UPP Publish Carousel", ua, "user-agent header")
+
 		tid := r.Header.Get("X-Request-Id")
 		hash := r.Header.Get("X-Native-Hash")
 		origin := r.Header.Get("X-Origin-System-Id")
