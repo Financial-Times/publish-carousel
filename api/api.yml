@@ -297,6 +297,40 @@ paths:
                description: We return pong in plaintext only.
                examples:
                   text/plain; charset=utf-8: pong
+   /__log:
+      post:
+         summary: Log Level Update
+         description: Updates the log level for the service. Only supports levels "debug" and "info".
+         produces:
+            - text/plain
+         tags:
+            - Admin
+         consumes:
+            - application/json
+         parameters:
+            -  name: body
+               in: body
+               required: true
+               description: The log level to update to.
+               schema:
+                  type: object
+                  properties:
+                     level:
+                        type: string
+                        enum: [debug, info]
+                  required:
+                     - level
+                  example:
+                     level: info
+         responses:
+            200:
+               description: We have updated the log level as required.
+               examples:
+                  text/plain; charset=utf-8: Updated log level to "info"
+            400:
+               description: Invalid log level, or invalid json request.
+               examples:
+                  text/plain; charset=utf-8: Failed to parse log level update request
    /__health:
       get:
          summary: Healthchecks

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -50,7 +51,7 @@ func newCycleID(name string, dbcollection string) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-func newAbstractCycle(name string, cycleType string, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
+func newAbstractCycle(name string, cycleType string, blist blacklist.IsBlacklisted, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
 	cycle := &abstractCycle{
 		CycleID:       newCycleID(name, dbCollection),
 		CycleName:     name,
@@ -63,6 +64,7 @@ func newAbstractCycle(name string, cycleType string, database native.DB, dbColle
 		CoolDown:      coolDown.String(),
 		coolDown:      coolDown,
 		publishTask:   task,
+		blacklist:     blist,
 	}
 	cycle.UpdateState(stoppedState)
 
@@ -83,6 +85,7 @@ type abstractCycle struct {
 	cancel       context.CancelFunc
 	db           native.DB
 	publishTask  tasks.Task
+	blacklist    blacklist.IsBlacklisted
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) (bool, error) {
@@ -100,23 +103,23 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 			return false, err
 		}
 
-		if strings.TrimSpace(uuid) == "" {
+		if strings.TrimSpace(uuid) == "" { // N.B. UUID cannot be empty for the in memory collection
 			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
 			a.updateProgress(uuid, "", errors.New("Empty uuid"))
 			continue
 		}
 
 		log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
-		content, txId, err := a.publishTask.Prepare(a.DBCollection, uuid)
+		content, txID, err := a.publishTask.Prepare(a.DBCollection, uuid)
 
 		if err == nil {
-			err = a.publishTask.Execute(uuid, content, a.Origin, txId)
+			err = a.publishTask.Execute(uuid, content, a.Origin, txID)
 			if err != nil {
 				log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 			}
 		}
 
-		a.updateProgress(uuid, txId, err)
+		a.updateProgress(uuid, txID, err)
 	}
 }
 

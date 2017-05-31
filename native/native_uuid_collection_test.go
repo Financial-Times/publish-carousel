@@ -7,7 +7,10 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
+
+var noopBlacklist = func(uuid string) (bool, error) { return false, nil }
 
 func TestComputeBatchSize(t *testing.T) {
 	tests := []struct {
@@ -63,13 +66,17 @@ func TestNewNativeUUIDCollection(t *testing.T) {
 	testCollection := "testing-123"
 	iter := new(MockDBIter)
 
-	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, nil)
+	iter.On("Next", mock.AnythingOfType("*map[string]interface {}")).Return(false, "", nil)
+	iter.On("Close").Return(nil)
+	iter.On("Timeout").Return(false)
+	iter.On("Err").Return(nil)
 
-	actual, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
+	mockDb.On("Open").Return(mockTx, nil)
+	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, nil)
+
+	actual, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
 	assert.NoError(t, err)
-	assert.Equal(t, iter, actual.(*NativeUUIDCollection).iter)
-	assert.Equal(t, 11234, actual.Length())
+	assert.Equal(t, 0, actual.Length())
 
 	mockDb.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
@@ -82,7 +89,7 @@ func TestNewNativeUUIDCollectionOpenFails(t *testing.T) {
 	testCollection := "testing-123"
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
+	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -95,11 +102,13 @@ func TestNewNativeUUIDCollectionFindFails(t *testing.T) {
 
 	testCollection := "testing-123"
 	iter := new(MockDBIter)
+	iter.On("Next").Return(true, "", nil)
+	iter.On("Close").Return(nil)
 
 	mockDb.On("Open").Return(mockTx, nil)
-	mockTx.On("FindUUIDs", testCollection, 0, 39).Return(iter, 11234, errors.New("fail"))
+	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, 15*time.Second)
+	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -166,6 +175,10 @@ func TestNewNativeUUIDCollectionForTimeWindowFindFails(t *testing.T) {
 }
 
 func TestNativeUUIDCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("mongo integration test")
+	}
+
 	db := startMongo(t)
 	db.Open()
 	defer db.Close()
@@ -173,7 +186,9 @@ func TestNativeUUIDCollection(t *testing.T) {
 	testUUID := uuid.New()
 	insertTestContent(t, db, testUUID, time.Now())
 
-	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0, 15*time.Second)
+	t.Log(testUUID)
+
+	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0, noopBlacklist)
 	assert.NoError(t, err)
 
 	found := false

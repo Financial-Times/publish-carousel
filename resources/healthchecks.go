@@ -1,10 +1,12 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/publish-carousel/cluster"
@@ -105,9 +107,12 @@ func pingMongo(db native.DB) func() (string, error) {
 			return "", err
 		}
 
-		defer tx.Close()
-		err = tx.Ping()
+		defer func() { go tx.Close() }()
 
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		err = tx.Ping(ctx)
 		if err != nil {
 			return "", err
 		}
