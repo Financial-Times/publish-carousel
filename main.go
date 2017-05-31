@@ -23,6 +23,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
+	"errors"
+	"strings"
+	"fmt"
 )
 
 func init() {
@@ -54,25 +57,27 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "mongo-db",
-			Value:  "localhost:27017",
 			EnvVar: "MONGO_DB_URL",
 			Usage:  "The Mongo DB connection url string (comma delimited).",
 		},
+		cli.IntFlag{
+			Name:   "mongo-node-count",
+			Value:  3,
+			EnvVar: "MONGO_NODE_COUNT",
+			Usage:  "The number of Mongo DB instances.",
+		},
 		cli.StringFlag{
 			Name:   "cms-notifier-url",
-			Value:  "http://localhost:8080/__cms-notifier",
 			EnvVar: "CMS_NOTIFIER_URL",
 			Usage:  "The CMS Notifier instance to POST publishes to.",
 		},
 		cli.StringFlag{
 			Name:   "pam-url",
-			Value:  "http://localhost:8080/__publish-availability-monitor",
 			EnvVar: "PAM_URL",
 			Usage:  "The URL of the publish availability monitor to check the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "lagcheck-url",
-			Value:  "http://localhost:8080/__kafka-lagcheck",
 			EnvVar: "LAGCHECK_URL",
 			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
 		},
@@ -102,7 +107,6 @@ func main() {
 		},
 		cli.StringSliceFlag{
 			Name:   "etcd-peers",
-			Value:  &cli.StringSlice{"http://localhost:2379"},
 			EnvVar: "ETCD_PEERS",
 			Usage:  `The list of ETCD peers (e,g. "http://localhost:2379")`,
 		},
@@ -140,6 +144,11 @@ func main() {
 
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
+
+		err := validateMandatoryParams(ctx)
+		if err != nil {
+			panic(err)
+		}
 
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
@@ -235,6 +244,49 @@ func shutdown(sched scheduler.Scheduler) {
 		}
 		os.Exit(0)
 	}()
+}
+
+func validateMandatoryParams(ctx *cli.Context) error {
+	if ctx.String("cms-notifier-url") == "" {
+		return errors.New("CMS-Notifier-URL is missing")
+	}
+
+	if ctx.String("pam-url") == "" {
+		return errors.New("PAM URL is missing")
+	}
+
+	if ctx.String("lagcheck-url") == "" {
+		return errors.New("Lagcheck URL is missing")
+	}
+
+	if err := checkMongoUrls(ctx.String("mongo-db"), ctx.String("mongo-node-count")); err != nil {
+		return fmt.Errorf("Provided MongoDB URLs are invalid: %s", err.Error())
+	}
+
+	return nil
+}
+
+func checkMongoUrls(providedMongoUrls string, expectedMongoNodeCount int) error {
+	if providedMongoUrls == "" {
+		return errors.New("MongoDB urls are missing")
+	}
+
+	mongoUrls := strings.Split(providedMongoUrls, ",")
+	actualMongoNodeCount := len(mongoUrls)
+	if actualMongoNodeCount != expectedMongoNodeCount {
+		return fmt.Errorf("The provided list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
+	}
+
+	for _, mongoUrl := range mongoUrls {
+		urlComponents := strings.Split(mongoUrl, ":")
+		noOfUrlComponents := len(urlComponents)
+
+		if noOfUrlComponents != 2 || urlComponents[0] == "" || urlComponents[1] == "" {
+			return fmt.Errorf("One of the MongoDB URLs is invalid: %s. It should have host and port.", mongoUrl)
+		}
+	}
+
+	return nil
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
