@@ -259,7 +259,7 @@ func validateMandatoryParams(ctx *cli.Context) error {
 		return errors.New("Lagcheck URL is missing")
 	}
 
-	if err := checkMongoUrls(ctx.String("mongo-db"), ctx.String("mongo-node-count")); err != nil {
+	if err := checkMongoUrls(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
 		return fmt.Errorf("Provided MongoDB URLs are invalid: %s", err.Error())
 	}
 
