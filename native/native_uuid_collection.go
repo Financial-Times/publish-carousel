@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
 
@@ -66,23 +67,21 @@ func computeBatchsize(interval time.Duration) (int, error) {
 	return int(size - 1), nil
 }
 
-func NewNativeUUIDCollection(mongo DB, collection string, skip int, maximumThrottle time.Duration) (UUIDCollection, error) {
+func NewNativeUUIDCollection(mongo DB, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
 	tx, err := mongo.Open()
 	if err != nil {
 		return nil, err
 	}
 
-	batchsize, err := computeBatchsize(maximumThrottle)
+	iter, length, err := tx.FindUUIDs(collection, 0, 100)
 	if err != nil {
 		return nil, err
 	}
 
-	iter, length, err := tx.FindUUIDs(collection, skip, batchsize)
-	if err != nil {
-		return nil, err
-	}
+	cursor := &NativeUUIDCollection{collection: collection, iter: iter, length: length}
 
-	return &NativeUUIDCollection{collection: collection, iter: iter, length: length}, nil
+	inMemory, err := LoadIntoMemory(cursor, collection, skip, blist)
+	return inMemory, err
 }
 
 func (n *NativeUUIDCollection) Next() (bool, string, error) {
@@ -90,7 +89,7 @@ func (n *NativeUUIDCollection) Next() (bool, string, error) {
 
 	success := n.iter.Next(&result)
 
-	if !success && n.iter.Err() != nil {
+	if !success || n.iter.Err() != nil {
 		return true, "", n.iter.Err()
 	}
 

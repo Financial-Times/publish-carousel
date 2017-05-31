@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/stretchr/testify/assert"
@@ -11,10 +12,10 @@ import (
 )
 
 func TestCheckpointSaveCycleMetadata(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip("Skipping - this test can take several seconds.")
-	// 	return
-	// }
+	if testing.Short() {
+		t.Skip("Skipping - this test can take several seconds.")
+		return
+	}
 
 	dbCollection := "testCollection"
 	origin := "testOrigin"
@@ -24,10 +25,10 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 	mockTx := new(native.MockTX)
 	iter := new(native.MockDBIter)
 	db.On("Open").Return(mockTx, nil).After(1 * time.Second)
-	mockTx.On("FindUUIDs", "testCollection", 0, 80).Return(iter, 12, nil)
+	mockTx.On("FindUUIDs", "testCollection", 0, 100).Return(iter, 12, nil)
 	iter.On("Next", mock.Anything).Return(true)
 	iter.On("Close").Return(nil)
-	iter.On("Timeout").Return(false)
+	happyIter(iter)
 
 	throttle := new(MockThrottle)
 	throttle.On("Interval").Return(1 * time.Second)
@@ -40,13 +41,13 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 	c1.On("Stop").Return()
 	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
-	c2 := NewThrottledWholeCollectionCycle("test", db, dbCollection, origin, coolDown, throttle, nil)
+	c2 := NewThrottledWholeCollectionCycle("test", blacklist.NoOpBlacklist, db, dbCollection, origin, coolDown, throttle, nil)
 	id2 := c2.ID()
 
 	rw := MockMetadataRW{}
 	rw.On("WriteMetadata", id2, c2.TransformToConfig(), mock.AnythingOfType("CycleMetadata")).Return(nil).Times(12)
 
-	s := NewScheduler(db, &tasks.MockTask{}, &rw, 1*time.Second, 1*time.Second)
+	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Second, 1*time.Second)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)

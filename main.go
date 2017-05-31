@@ -14,6 +14,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/etcd"
+	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/s3"
@@ -31,10 +32,12 @@ func init() {
 		TimestampFormat: time.RFC3339Nano,
 	}
 
+	log.SetLevel(log.InfoLevel)
 	log.SetFormatter(f)
 }
 
 func main() {
+	log.Debug("hi")
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
 	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."
@@ -144,7 +147,8 @@ func main() {
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
-		blist, err := blacklist.NewBuilder().FilterImages().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		isImage := image.NewFilter()
+		blacklist, err := blacklist.NewFileBasedBlacklist(ctx.String("blacklist"))
 		if err != nil {
 			panic(err)
 		}
@@ -167,7 +171,7 @@ func main() {
 			panic(err)
 		}
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
+		task := tasks.NewNativeContentPublishTask(reader, notifier, isImage)
 
 		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 		if err != nil {
@@ -190,7 +194,7 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle, checkpointInterval)
 		if configError != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
@@ -241,6 +245,7 @@ func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notif
 	r := vestigo.NewRouter()
 
 	r.Get("/__api", resources.API(api))
+	r.Post("/__log", resources.LogLevel)
 
 	r.Get(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler)
 	r.Get(httphandlers.PingPath, httphandlers.PingHandler)

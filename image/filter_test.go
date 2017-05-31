@@ -1,4 +1,4 @@
-package blacklist
+package image
 
 import (
 	"testing"
@@ -8,49 +8,59 @@ import (
 )
 
 func TestFilterImages(t *testing.T) {
-	blacklist, err := NewBuilder().FilterImages().Build()
-	assert.NoError(t, err)
+	filter := NewFilter()
 
 	body := make(map[string]interface{})
 	body["type"] = "Image"
 	content := &native.Content{Body: body}
 
-	valid, err := blacklist.ValidForPublish("fake-uuid", content)
+	isImage, err := filter("fake-uuid", content)
 	assert.NoError(t, err)
-	assert.False(t, valid)
+	assert.True(t, isImage)
 }
 
 func TestImageFilterAllowsContent(t *testing.T) {
-	blacklist, err := NewBuilder().FilterImages().Build()
-	assert.NoError(t, err)
+	filter := NewFilter()
 
 	body := make(map[string]interface{})
 	body["type"] = "Content"
 	content := &native.Content{Body: body}
 
-	valid, err := blacklist.ValidForPublish("fake-uuid", content)
+	isImage, err := filter("fake-uuid", content)
 	assert.NoError(t, err)
-	assert.True(t, valid)
+	assert.False(t, isImage)
 }
 
 func TestImageFilterAllowsNoType(t *testing.T) {
-	blacklist, err := NewBuilder().FilterImages().Build()
-	assert.NoError(t, err)
+	filter := NewFilter()
 
 	body := make(map[string]interface{})
 	content := &native.Content{Body: body}
 
-	valid, err := blacklist.ValidForPublish("fake-uuid", content)
+	isImage, err := filter("fake-uuid", content)
 	assert.NoError(t, err)
-	assert.True(t, valid)
+	assert.False(t, isImage)
 }
 
 func TestImageFilterFailsMissingBody(t *testing.T) {
-	blacklist, err := NewBuilder().FilterImages().Build()
-	assert.NoError(t, err)
+	filter := NewFilter()
 
 	content := &native.Content{}
 
-	_, err = blacklist.ValidForPublish("fake-uuid", content)
+	_, err := filter("fake-uuid", content)
 	assert.Error(t, err)
+}
+
+func TestImageFilterFailsNilContent(t *testing.T) {
+	filter := NewFilter()
+
+	_, err := filter("fake-uuid", nil)
+	assert.Error(t, err)
+}
+
+// pointless test for 100% coverage (vanity)
+func TestNoOp(t *testing.T) {
+	isImage, err := NoOpImageFilter("", nil)
+	assert.False(t, isImage)
+	assert.NoError(t, err)
 }

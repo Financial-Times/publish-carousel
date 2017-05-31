@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cms"
+	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	tid "github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
@@ -22,12 +22,12 @@ type Task interface {
 type nativeContentTask struct {
 	nativeReader native.Reader
 	cmsNotifier  cms.Notifier
-	blacklist    blacklist.Blacklist
+	isImage      image.Filter
 }
 
 // NewNativeContentPublishTask publishes the native content from mongo to the cms notifier, if the uuid has not been blacklisted.
-func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier, blist blacklist.Blacklist) Task {
-	return &nativeContentTask{nativeReader: reader, cmsNotifier: notifier, blacklist: blist}
+func NewNativeContentPublishTask(reader native.Reader, notifier cms.Notifier, isImage image.Filter) Task {
+	return &nativeContentTask{nativeReader: reader, cmsNotifier: notifier, isImage: isImage}
 }
 
 const publishReferenceAttr = "publishReference"
@@ -44,15 +44,15 @@ func (t *nativeContentTask) Prepare(collection string, uuid string) (*native.Con
 		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it has no content`, uuid)
 	}
 
-	valid, err := t.blacklist.ValidForPublish(uuid, content)
+	invalid, err := t.isImage(uuid, content)
 	if err != nil {
 		log.WithField("uuid", uuid).WithField("collection", collection).WithError(err).Warn("Blacklist check failed.")
 		return nil, "", err
 	}
 
-	if !valid {
-		log.WithField("uuid", uuid).WithField("collection", collection).Info("This UUID has been blacklisted. Skipping republish.")
-		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it is blacklisted`, uuid)
+	if invalid {
+		log.WithField("uuid", uuid).WithField("collection", collection).Info("This UUID contains an image. Skipping republish.")
+		return nil, "", fmt.Errorf(`Skipping uuid "%v" as it is an image`, uuid)
 	}
 
 	tid, ok := content.Body[publishReferenceAttr].(string)

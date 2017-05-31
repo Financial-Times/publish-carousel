@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -18,8 +19,8 @@ type ThrottledWholeCollectionCycle struct {
 	Throttle Throttle `json:"throttle"`
 }
 
-func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
-	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, ThrottledWholeCollectionType, db, dbCollection, origin, coolDown, publishTask), throttle}
+func NewThrottledWholeCollectionCycle(name string, blist blacklist.IsBlacklisted, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
+	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, ThrottledWholeCollectionType, blist, db, dbCollection, origin, coolDown, publishTask), throttle}
 }
 
 func (l *ThrottledWholeCollectionCycle) Start() {
@@ -40,13 +41,12 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 }
 
 func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Context, skip int) (int, bool) {
-	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.Throttle.Interval())
+	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.blacklist)
 	if err != nil {
 		log.WithField("id", l.CycleID).WithField("name", l.CycleName).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
 		l.UpdateState(stoppedState, unhealthyState)
 		return skip, false
 	}
-	defer uuidCollection.Close()
 
 	iteration := l.CycleMetadata.Iteration
 	if skip == 0 {
