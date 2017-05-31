@@ -410,7 +410,7 @@ func TestWholeCollectionCycleCanBeStoppedEvenIfNotStarted(t *testing.T) {
 	task := new(tasks.MockTask)
 	throttle := new(MockThrottle)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Stop()
 
 	mock.AssertExpectationsForObjects(t, db, task, throttle)
