@@ -37,7 +37,7 @@ func LoadIntoMemory(ctx context.Context, uuidCollection UUIDCollection, collecti
 	for {
 		if ctx.Err() != nil {
 			log.WithError(ctx.Err()).Warn("Interrupting cursor load due to cycle stop.")
-			return it, ctx.Err()
+			return it, nil
 		}
 
 		finished, uuid, err := uuidCollection.Next()

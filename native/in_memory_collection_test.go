@@ -131,8 +131,7 @@ func TestLoadIntoMemoryWithContextInterrupt(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		_, err := LoadIntoMemory(ctx, uuidCollection, "collection", 0, noopBlacklist)
-		assert.Error(t, err)
-		assert.Equal(t, "context canceled", err.Error())
+		assert.NoError(t, err)
 
 		completed = true
 	}()
