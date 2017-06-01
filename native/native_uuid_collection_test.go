@@ -1,6 +1,7 @@
 package native
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func TestNewNativeUUIDCollection(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, nil)
 
-	actual, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
+	actual, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, actual.Length())
 
@@ -89,7 +90,7 @@ func TestNewNativeUUIDCollectionOpenFails(t *testing.T) {
 	testCollection := "testing-123"
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
+	_, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -108,7 +109,7 @@ func TestNewNativeUUIDCollectionFindFails(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(mockDb, testCollection, 0, noopBlacklist)
+	_, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -188,7 +189,7 @@ func TestNativeUUIDCollection(t *testing.T) {
 
 	t.Log(testUUID)
 
-	uuidCollection, err := NewNativeUUIDCollection(db, "methode", 0, noopBlacklist)
+	uuidCollection, err := NewNativeUUIDCollection(context.Background(), db, "methode", 0, noopBlacklist)
 	assert.NoError(t, err)
 
 	found := false

@@ -1,6 +1,7 @@
 package native
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -14,7 +15,7 @@ type InMemoryUUIDCollection struct {
 	skip       int
 }
 
-func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
+func LoadIntoMemory(ctx context.Context, uuidCollection UUIDCollection, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
 	defer uuidCollection.Close()
 
 	it := &InMemoryUUIDCollection{collection: collection, skip: skip, uuids: make([]string, 0)}
@@ -34,6 +35,11 @@ func LoadIntoMemory(uuidCollection UUIDCollection, collection string, skip int, 
 	var end time.Time
 
 	for {
+		if ctx.Err() != nil {
+			log.WithError(ctx.Err()).Warn("Interrupting cursor load due to cycle stop.")
+			return it, ctx.Err()
+		}
+
 		finished, uuid, err := uuidCollection.Next()
 		i++
 

@@ -41,7 +41,8 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 }
 
 func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Context, skip int) (int, bool) {
-	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.blacklist)
+	uuidCollection, err := native.NewNativeUUIDCollection(ctx, l.db, l.DBCollection, skip, l.blacklist)
+
 	if err != nil {
 		log.WithField("id", l.CycleID).WithField("name", l.CycleName).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
 		l.UpdateState(stoppedState, unhealthyState)
