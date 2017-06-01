@@ -99,9 +99,6 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 }
 
 func (s *defaultScheduler) saveCycleMetadata() {
-	s.cycleLock.RLock()
-	defer s.cycleLock.RUnlock()
-
 	log.Info("Saving cycle metadata to S3.")
 
 	for _, cycle := range s.cycles {
@@ -160,7 +157,12 @@ func (s *defaultScheduler) Start() error {
 		time.Sleep(startInterval)
 	}
 
-	s.checkpointHandler.start(s.saveCycleMetadata)
+	s.checkpointHandler.start(func() {
+		s.cycleLock.RLock()
+		defer s.cycleLock.RUnlock()
+
+		s.saveCycleMetadata()
+	})
 
 	return nil
 }
@@ -246,6 +248,7 @@ func (s *defaultScheduler) toggleHandler(toggleValue string, requestType int) {
 				return
 			}
 		}
+
 		if requestType == automatic {
 			s.state.setState(autoDisabled)
 		} else {
