@@ -108,9 +108,9 @@ func TestFindUUIDsDateSort(t *testing.T) {
 	testUUID3 := uuid.NewUUID().String()
 	testUUIDs := []string{testUUID1, testUUID2, testUUID3}
 
-	insertTestContent(t, db, testUUID2, time.Now().Add(-10*time.Second))
+	insertTestContent(t, db, testUUID2, time.Now().Add(-10 * time.Second))
 	insertTestContent(t, db, testUUID1, time.Now())
-	insertTestContent(t, db, testUUID3, time.Now().Add(-20*time.Second))
+	insertTestContent(t, db, testUUID3, time.Now().Add(-20 * time.Second))
 
 	iter, count, err := tx.FindUUIDs("methode", 0, 10)
 	assert.NoError(t, err)
@@ -142,8 +142,8 @@ func TestFindByTimeWindow(t *testing.T) {
 	testUUID2 := uuid.NewUUID().String()
 	t.Log("Test uuids to use", testUUID, testUUID2)
 
-	insertTestContent(t, db, testUUID, time.Now().Add(time.Second*-1))
-	insertTestContent(t, db, testUUID2, time.Now().Add(time.Minute*-2))
+	insertTestContent(t, db, testUUID, time.Now().Add(time.Second * -1))
+	insertTestContent(t, db, testUUID2, time.Now().Add(time.Minute * -2))
 
 	end := time.Now()
 	start := end.Add(time.Minute * -1)
@@ -189,7 +189,7 @@ func TestReadNativeContent(t *testing.T) {
 	assert.NotNil(t, content)
 
 	assert.Equal(t, testUUID, content.Body["uuid"])
-	assert.Equal(t, "tid_"+testUUID, content.Body["publishReference"])
+	assert.Equal(t, "tid_" + testUUID, content.Body["publishReference"])
 	cleanupTestContent(t, db, testUUID)
 }
 
@@ -228,4 +228,30 @@ func TestDBCloses(t *testing.T) {
 	assert.Panics(t, func() {
 		db.(*MongoDB).session.Ping()
 	})
+}
+
+func TestCheckMongoUrlsValidUrls(t *testing.T) {
+	err := CheckMongoUrls("valid-url.com:1234", 1)
+	assert.Nil(t, err)
+}
+
+func TestCheckMongoUrlsMissingUrls(t *testing.T) {
+	err := CheckMongoUrls("", 1)
+	assert.NotNil(t, err)
+}
+
+func TestCheckMongoUrlsSmallerNumberOfUrls(t *testing.T) {
+	err := CheckMongoUrls("valid-url.com:1234", 2)
+	assert.NotNil(t, err)
+}
+
+func TestCheckMongoUrlsMissingPort(t *testing.T) {
+	err := CheckMongoUrls("valid-url.com:", 1)
+	assert.NotNil(t, err)
+}
+
+
+func TestCheckMongoUrlsMissingHost(t *testing.T) {
+	err := CheckMongoUrls(":1234", 1)
+	assert.NotNil(t, err)
 }

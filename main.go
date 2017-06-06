@@ -24,7 +24,6 @@ import (
 	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
 	"errors"
-	"strings"
 	"fmt"
 )
 
@@ -259,31 +258,8 @@ func validateMandatoryParams(ctx *cli.Context) error {
 		return errors.New("Lagcheck URL is missing")
 	}
 
-	if err := checkMongoUrls(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
+	if err := native.CheckMongoUrls(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
 		return fmt.Errorf("Provided MongoDB URLs are invalid: %s", err.Error())
-	}
-
-	return nil
-}
-
-func checkMongoUrls(providedMongoUrls string, expectedMongoNodeCount int) error {
-	if providedMongoUrls == "" {
-		return errors.New("MongoDB urls are missing")
-	}
-
-	mongoUrls := strings.Split(providedMongoUrls, ",")
-	actualMongoNodeCount := len(mongoUrls)
-	if actualMongoNodeCount != expectedMongoNodeCount {
-		return fmt.Errorf("The provided list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
-	}
-
-	for _, mongoUrl := range mongoUrls {
-		urlComponents := strings.Split(mongoUrl, ":")
-		noOfUrlComponents := len(urlComponents)
-
-		if noOfUrlComponents != 2 || urlComponents[0] == "" || urlComponents[1] == "" {
-			return fmt.Errorf("One of the MongoDB URLs is invalid: %s. It should have host and port.", mongoUrl)
-		}
 	}
 
 	return nil
