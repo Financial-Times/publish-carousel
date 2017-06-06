@@ -133,10 +133,10 @@ func CheckMongoUrls(providedMongoUrls string, expectedMongoNodeCount int) error 
 	for _, mongoUrl := range mongoUrls {
 		host, port, err := net.SplitHostPort(mongoUrl);
 		if err != nil {
-			return fmt.Errorf("One of the MongoDB URLs is invalid. Error is: %s", err.Error())
+			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s",mongoUrl, err.Error())
 		}
 		if host == "" || port == "" {
-			return fmt.Errorf("One of the MongoDB URLs is invalid: %s. It should have host and port.", mongoUrl)
+			return fmt.Errorf("One of the MongoDB URLs is incomplete: %s. It should have host and port.", mongoUrl)
 		}
 	}
 
