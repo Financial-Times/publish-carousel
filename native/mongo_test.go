@@ -232,26 +232,26 @@ func TestDBCloses(t *testing.T) {
 
 func TestCheckMongoURLsValidUrls(t *testing.T) {
 	err := CheckMongoURLs("valid-url.com:1234", 1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestCheckMongoURLsMissingUrls(t *testing.T) {
 	err := CheckMongoURLs("", 1)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestCheckMongoURLsSmallerNumberOfUrls(t *testing.T) {
 	err := CheckMongoURLs("valid-url.com:1234", 2)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestCheckMongoURLsMissingPort(t *testing.T) {
 	err := CheckMongoURLs("valid-url.com:", 1)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 
 func TestCheckMongoURLsMissingHost(t *testing.T) {
 	err := CheckMongoURLs(":1234", 1)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
