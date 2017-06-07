@@ -7,6 +7,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	mgo "gopkg.in/mgo.v2"
+	"errors"
+	"strings"
+	"fmt"
+	"net"
 )
 
 var expectedConnections = 1
@@ -114,6 +118,30 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	}
 
 	return result, nil
+}
+
+func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error {
+	if providedMongoUrls == "" {
+		return errors.New("MongoDB urls are missing")
+	}
+
+	mongoUrls := strings.Split(providedMongoUrls, ",")
+	actualMongoNodeCount := len(mongoUrls)
+	if actualMongoNodeCount < expectedMongoNodeCount {
+		return fmt.Errorf("The list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
+	}
+
+	for _, mongoUrl := range mongoUrls {
+		host, port, err := net.SplitHostPort(mongoUrl);
+		if err != nil {
+			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s",mongoUrl, err.Error())
+		}
+		if host == "" || port == "" {
+			return fmt.Errorf("One of the MongoDB URLs is incomplete: %s. It should have host and port.", mongoUrl)
+		}
+	}
+
+	return nil
 }
 
 // Ping returns a mongo ping response
