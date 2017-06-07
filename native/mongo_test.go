@@ -245,11 +245,15 @@ func TestCheckMongoURLsSmallerNumberOfUrls(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestCheckMongoURLsGreaterNumberOfUrls(t *testing.T) {
+	err := CheckMongoURLs("valid-url.com:1234,second-valid-url.com:1234", 1)
+	assert.NoError(t, err)
+}
+
 func TestCheckMongoURLsMissingPort(t *testing.T) {
 	err := CheckMongoURLs("valid-url.com:", 1)
 	assert.Error(t, err)
 }
-
 
 func TestCheckMongoURLsMissingHost(t *testing.T) {
 	err := CheckMongoURLs(":1234", 1)
