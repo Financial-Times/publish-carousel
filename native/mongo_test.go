@@ -231,7 +231,7 @@ func TestDBCloses(t *testing.T) {
 }
 
 func TestCheckMongoURLsValidUrls(t *testing.T) {
-	err := CheckMongoURLs("valid-url.com:1234", 1)
+	err := CheckMongoURLs("valid-url.com:1234,second-valid-url.com:1234,third-valid-url.com:1234", 3)
 	assert.NoError(t, err)
 }
 
