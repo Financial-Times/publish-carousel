@@ -23,7 +23,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
-	"errors"
 	"fmt"
 )
 
@@ -150,7 +149,7 @@ func main() {
 		log.Info("Starting the Publish Carousel.")
 
 		if err := native.CheckMongoURLs(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
-			panic(fmt.Sprintf("Provided MongoDB URLs are invalid: %s",err))
+			panic(fmt.Sprintf("Provided MongoDB URLs are invalid: %s", err))
 		}
 
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
