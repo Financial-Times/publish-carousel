@@ -56,27 +56,31 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "mongo-db",
+			Value:  "localhost:27017",
 			EnvVar: "MONGO_DB_URL",
 			Usage:  "The Mongo DB connection url string (comma delimited).",
 		},
 		cli.IntFlag{
 			Name:   "mongo-node-count",
-			Value:  3,
+			Value:  1,
 			EnvVar: "MONGO_NODE_COUNT",
 			Usage:  "The number of Mongo DB instances.",
 		},
 		cli.StringFlag{
 			Name:   "cms-notifier-url",
+			Value:  "http://localhost:8080/__cms-notifier",
 			EnvVar: "CMS_NOTIFIER_URL",
 			Usage:  "The CMS Notifier instance to POST publishes to.",
 		},
 		cli.StringFlag{
 			Name:   "pam-url",
+			Value:  "http://localhost:8080/__publish-availability-monitor",
 			EnvVar: "PAM_URL",
 			Usage:  "The URL of the publish availability monitor to check the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "lagcheck-url",
+			Value:  "http://localhost:8080/__kafka-lagcheck",
 			EnvVar: "LAGCHECK_URL",
 			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
 		},
@@ -106,6 +110,7 @@ func main() {
 		},
 		cli.StringSliceFlag{
 			Name:   "etcd-peers",
+			Value:  &cli.StringSlice{"http://localhost:2379"},
 			EnvVar: "ETCD_PEERS",
 			Usage:  `The list of ETCD peers (e,g. "http://localhost:2379")`,
 		},
@@ -144,9 +149,8 @@ func main() {
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
 
-		err := validateMandatoryParams(ctx)
-		if err != nil {
-			panic(err)
+		if err := native.CheckMongoURLs(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
+			panic(fmt.Sprintf("Provided MongoDB URLs are invalid: %s",err))
 		}
 
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
@@ -243,26 +247,6 @@ func shutdown(sched scheduler.Scheduler) {
 		}
 		os.Exit(0)
 	}()
-}
-
-func validateMandatoryParams(ctx *cli.Context) error {
-	if ctx.String("cms-notifier-url") == "" {
-		return errors.New("CMS-Notifier-URL is missing")
-	}
-
-	if ctx.String("pam-url") == "" {
-		return errors.New("PAM URL is missing")
-	}
-
-	if ctx.String("lagcheck-url") == "" {
-		return errors.New("Lagcheck URL is missing")
-	}
-
-	if err := native.CheckMongoUrls(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
-		return fmt.Errorf("Provided MongoDB URLs are invalid: %s", err.Error())
-	}
-
-	return nil
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {

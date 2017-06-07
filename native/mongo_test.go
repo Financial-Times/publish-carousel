@@ -230,28 +230,28 @@ func TestDBCloses(t *testing.T) {
 	})
 }
 
-func TestCheckMongoUrlsValidUrls(t *testing.T) {
-	err := CheckMongoUrls("valid-url.com:1234", 1)
+func TestCheckMongoURLsValidUrls(t *testing.T) {
+	err := CheckMongoURLs("valid-url.com:1234", 1)
 	assert.Nil(t, err)
 }
 
-func TestCheckMongoUrlsMissingUrls(t *testing.T) {
-	err := CheckMongoUrls("", 1)
+func TestCheckMongoURLsMissingUrls(t *testing.T) {
+	err := CheckMongoURLs("", 1)
 	assert.NotNil(t, err)
 }
 
-func TestCheckMongoUrlsSmallerNumberOfUrls(t *testing.T) {
-	err := CheckMongoUrls("valid-url.com:1234", 2)
+func TestCheckMongoURLsSmallerNumberOfUrls(t *testing.T) {
+	err := CheckMongoURLs("valid-url.com:1234", 2)
 	assert.NotNil(t, err)
 }
 
-func TestCheckMongoUrlsMissingPort(t *testing.T) {
-	err := CheckMongoUrls("valid-url.com:", 1)
+func TestCheckMongoURLsMissingPort(t *testing.T) {
+	err := CheckMongoURLs("valid-url.com:", 1)
 	assert.NotNil(t, err)
 }
 
 
-func TestCheckMongoUrlsMissingHost(t *testing.T) {
-	err := CheckMongoUrls(":1234", 1)
+func TestCheckMongoURLsMissingHost(t *testing.T) {
+	err := CheckMongoURLs(":1234", 1)
 	assert.NotNil(t, err)
 }

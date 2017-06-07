@@ -119,7 +119,7 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	return result, nil
 }
 
-func CheckMongoUrls(providedMongoUrls string, expectedMongoNodeCount int) error {
+func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error {
 	if providedMongoUrls == "" {
 		return errors.New("MongoDB urls are missing")
 	}
@@ -127,7 +127,7 @@ func CheckMongoUrls(providedMongoUrls string, expectedMongoNodeCount int) error 
 	mongoUrls := strings.Split(providedMongoUrls, ",")
 	actualMongoNodeCount := len(mongoUrls)
 	if actualMongoNodeCount < expectedMongoNodeCount {
-		return fmt.Errorf("The provided list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
+		return fmt.Errorf("The list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
 	}
 
 	for _, mongoUrl := range mongoUrls {
