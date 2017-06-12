@@ -24,6 +24,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
+	"fmt"
 )
 
 func init() {
@@ -60,6 +61,12 @@ func main() {
 			Value:  "localhost:27017",
 			EnvVar: "MONGO_DB_URL",
 			Usage:  "The Mongo DB connection url string (comma delimited).",
+		},
+		cli.IntFlag{
+			Name:   "mongo-node-count",
+			Value:  1,
+			EnvVar: "MONGO_NODE_COUNT",
+			Usage:  "The number of Mongo DB instances.",
 		},
 		cli.StringFlag{
 			Name:   "cms-notifier-url",
@@ -143,6 +150,10 @@ func main() {
 
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
+
+		if err := native.CheckMongoURLs(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
+			panic(fmt.Sprintf("Provided MongoDB URLs are invalid: %s", err))
+		}
 
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)

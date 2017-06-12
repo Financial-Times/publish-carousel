@@ -1,6 +1,7 @@
 package native
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -67,7 +68,7 @@ func computeBatchsize(interval time.Duration) (int, error) {
 	return int(size - 1), nil
 }
 
-func NewNativeUUIDCollection(mongo DB, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
+func NewNativeUUIDCollection(ctx context.Context, mongo DB, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
 	tx, err := mongo.Open()
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func NewNativeUUIDCollection(mongo DB, collection string, skip int, blist blackl
 
 	cursor := &NativeUUIDCollection{collection: collection, iter: iter, length: length}
 
-	inMemory, err := LoadIntoMemory(cursor, collection, skip, blist)
+	inMemory, err := LoadIntoMemory(ctx, cursor, collection, skip, blist)
 	return inMemory, err
 }
 
