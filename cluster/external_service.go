@@ -51,6 +51,7 @@ func (e *externalService) Check() error {
 			continue
 		}
 
+		req.Header.Add("User-Agent", "UPP Publish Carousel")
 		resp, err := http.DefaultClient.Do(req)
 
 		if err != nil {

@@ -16,6 +16,8 @@ func setupFakeServer(t *testing.T, status int, path string, body string, isJSON 
 	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, path, r.URL.Path)
+		assert.Equal(t, "UPP Publish Carousel", r.Header.Get("User-Agent"), "user-agent header")
+
 		called()
 
 		if isJSON {
