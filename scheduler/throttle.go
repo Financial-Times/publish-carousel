@@ -1,7 +1,10 @@
 package scheduler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -32,6 +35,30 @@ func (d *DefaultThrottle) Stop() {
 
 func (d *DefaultThrottle) Interval() time.Duration {
 	return d.interval
+}
+
+func (d *DefaultThrottle) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{"interval": d.interval.String()}
+	w := bytes.NewBuffer(make([]byte, 0, 1024))
+	json.NewEncoder(w).Encode(m)
+
+	return w.Bytes(), nil
+}
+
+func (d *DefaultThrottle) UnmarshalJSON(in []byte) error {
+	m := make(map[string]string)
+	err := json.NewDecoder(bytes.NewReader(in)).Decode(&m)
+	if interval, ok := m["interval"]; ok {
+		var duration time.Duration
+		duration, err = time.ParseDuration(interval)
+		if err == nil {
+			d.interval = duration
+		}
+	} else {
+		err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
+	}
+
+	return err
 }
 
 func NewCappedDynamicThrottle(interval time.Duration, minThrottle time.Duration, maxThrottle time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {

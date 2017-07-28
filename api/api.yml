@@ -158,6 +158,46 @@ paths:
                description: The cycle has been deleted successfully.
             404:
                description: We couldn't find a cycle with the provided ID.
+   /cycles/{id}/throttle:
+      get:
+         summary: Get cycle throttle
+         description: Displays current throttle for the cycle with the given ID
+         tags:
+            - Internal API
+         parameters:
+            -  name: id
+               in: path
+               required: true
+               description: The ID of the cycle you would like to view the state for.
+               x-example: 5118842b62670d2b
+               type: string
+         responses:
+            200:
+               description: Shows the throttle of the cycle with the provided ID
+               examples:
+                  application/json:
+                     throttle: 30s
+            404:
+               description: The cycle does not exist, or has no throttle
+            500:
+               description: An error occurred while processing the cycle into json.
+      put:
+         summary: Set cycle throttle
+         description: Updates the throttle for the cycle with the given ID
+         tags:
+            - Internal API
+         parameters:
+            -  name: id
+               in: path
+               required: true
+               description: The ID of the cycle you would like to view the state for.
+               x-example: 5118842b62670d2b
+               type: string
+         responses:
+            303:
+               description: Provides a URL from which the current state of the cycle can be retrieved.
+            400:
+               description: The cycle has no throttle, and therefore it cannot be set.
    /cycles/{id}/stop:
       post:
          summary: Stop Cycle
@@ -257,6 +297,40 @@ paths:
                description: We return pong in plaintext only.
                examples:
                   text/plain; charset=utf-8: pong
+   /__log:
+      post:
+         summary: Log Level Update
+         description: Updates the log level for the service. Only supports levels "debug" and "info".
+         produces:
+            - text/plain
+         tags:
+            - Admin
+         consumes:
+            - application/json
+         parameters:
+            -  name: body
+               in: body
+               required: true
+               description: The log level to update to.
+               schema:
+                  type: object
+                  properties:
+                     level:
+                        type: string
+                        enum: [debug, info]
+                  required:
+                     - level
+                  example:
+                     level: info
+         responses:
+            200:
+               description: We have updated the log level as required.
+               examples:
+                  text/plain; charset=utf-8: Updated log level to "info"
+            400:
+               description: Invalid log level, or invalid json request.
+               examples:
+                  text/plain; charset=utf-8: Failed to parse log level update request
    /__health:
       get:
          summary: Healthchecks

@@ -17,6 +17,7 @@ govendor sync
 
 before building and running the project locally.
 
+## Testing
 To test the project, use:
 
 ```
@@ -31,6 +32,9 @@ govendor test -v -race -short +local
 
 To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`.
 
+## Running locally
+`etcd` is required.
+
 For running the Carousel locally, please see the command line arguments that need to be set using:
 
 ```
@@ -38,6 +42,12 @@ For running the Carousel locally, please see the command line arguments that nee
 ```
 
 Please note that you must connect to the **Primary** Mongo instance if you are connecting to one of our UPP clusters.
+
+## Developers on Windows
+
+The Publish Carousel writes a metadata file to S3 on a graceful shutdown. Unfortunately, this functionality (executing a shutdown hook) does not work on Windows using Git Bash, but does work when using the Command Prompt.
+
+It works as expected on a Mac.
 
 # Code Structure
 
@@ -173,9 +183,3 @@ The ScalingWindow and FixedWindow types require the following additional fields:
 And finally, the ScalingWindow requires one extra field:
 
 * `maximumThrottle`: The upper bound for the computed throttle.
-
-# Developers on Windows
-
-The Publish Carousel writes a metadata file to S3 on a graceful shutdown. Unfortunately, this functionality does not work on Windows using Git Bash, but does work when using the Command Prompt.
-
-It works as expected on a Mac.

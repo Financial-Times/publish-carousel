@@ -1,11 +1,13 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/publish-carousel/cluster"
@@ -106,9 +108,12 @@ func pingMongo(db native.DB) func() (string, error) {
 			return "", err
 		}
 
-		defer tx.Close()
-		err = tx.Ping()
+		defer func() { go tx.Close() }()
 
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		err = tx.Ping(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -165,7 +170,7 @@ func toJSON(data interface{}) string {
 
 type checkResult struct {
 	serviceName string
-	err error
+	err         error
 }
 
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
@@ -197,7 +202,7 @@ func checkServicesGTG(upServices []cluster.Service, results chan<- checkResult) 
 		go func(svc cluster.Service) {
 			err := svc.Check()
 			if err != nil {
-				results <- checkResult{serviceName: svc.Name(), err : err }
+				results <- checkResult{serviceName: svc.Name(), err: err}
 			} else {
 				results <- checkResult{}
 			}

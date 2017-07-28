@@ -9,6 +9,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -53,10 +54,6 @@ func (c CycleConfig) Validate() error {
 		if err := checkDurations(c.Name, c.Throttle); c.Throttle != "" && err != nil {
 			return err
 		}
-	case "fixedwindow":
-		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle); err != nil {
-			return err
-		}
 	case "scalingwindow":
 		if err := checkDurations(c.Name, c.TimeWindow, c.MinimumThrottle, c.MaximumThrottle); err != nil {
 			return err
@@ -78,9 +75,8 @@ func checkDurations(name string, durations ...string) error {
 }
 
 // LoadSchedulerFromFile loads cycles and throttles from the provided yaml config file
-func LoadSchedulerFromFile(configFile string, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) (Scheduler, error) {
-	scheduler := NewScheduler(mongo, publishTask, rw, defaultThrottle, checkpointInterval)
-
+func LoadSchedulerFromFile(configFile string, blist blacklist.IsBlacklisted, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) (Scheduler, error) {
+	scheduler := NewScheduler(blist, mongo, publishTask, rw, defaultThrottle, checkpointInterval)
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return scheduler, err

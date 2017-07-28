@@ -8,10 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	"fmt"
+
 	ui "github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
+	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
 	"github.com/Financial-Times/publish-carousel/s3"
@@ -19,7 +22,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
-	"github.com/gorilla/mux"
+	"github.com/husobee/vestigo"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
@@ -29,10 +32,12 @@ func init() {
 		TimestampFormat: time.RFC3339Nano,
 	}
 
+	log.SetLevel(log.InfoLevel)
 	log.SetFormatter(f)
 }
 
 func main() {
+	log.Debug("hi")
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
 	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."
@@ -55,6 +60,12 @@ func main() {
 			Value:  "localhost:27017",
 			EnvVar: "MONGO_DB_URL",
 			Usage:  "The Mongo DB connection url string (comma delimited).",
+		},
+		cli.IntFlag{
+			Name:   "mongo-node-count",
+			Value:  1,
+			EnvVar: "MONGO_NODE_COUNT",
+			Usage:  "The number of Mongo DB instances.",
 		},
 		cli.StringFlag{
 			Name:   "cms-notifier-url",
@@ -138,10 +149,15 @@ func main() {
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
 
+		if err := native.CheckMongoURLs(ctx.String("mongo-db"), ctx.Int("mongo-node-count")); err != nil {
+			panic(fmt.Sprintf("Provided MongoDB URLs are invalid: %s", err))
+		}
+
 		s3rw := s3.NewReadWriter(ctx.String("aws-region"), ctx.String("s3-bucket"))
 		stateRw := scheduler.NewS3MetadataReadWriter(s3rw)
 
-		blist, err := blacklist.NewBuilder().FilterImages().FileBasedBlacklist(ctx.String("blacklist")).Build()
+		isImage := image.NewFilter()
+		blacklist, err := blacklist.NewFileBasedBlacklist(ctx.String("blacklist"))
 		if err != nil {
 			panic(err)
 		}
@@ -164,7 +180,7 @@ func main() {
 			panic(err)
 		}
 
-		task := tasks.NewNativeContentPublishTask(reader, notifier, blist)
+		task := tasks.NewNativeContentPublishTask(reader, notifier, isImage)
 
 		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("delivery-lagcheck-urls"), ctx.String("delivery-lagcheck-credentials"))
 		if err != nil {
@@ -182,7 +198,7 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle, checkpointInterval)
 		if configError != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
@@ -220,46 +236,39 @@ func shutdown(sched scheduler.Scheduler) {
 }
 
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
-	r := mux.NewRouter()
-	methodNotAllowed := resources.MethodNotAllowed()
+	r := vestigo.NewRouter()
 
-	r.HandleFunc("/__api", resources.API(api)).Methods("GET")
+	r.Get("/__api", resources.API(api))
+	r.Post("/__log", resources.LogLevel)
 
-	r.HandleFunc(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler).Methods("GET")
-	r.HandleFunc(httphandlers.PingPath, httphandlers.PingHandler).Methods("GET")
+	r.Get(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler)
+	r.Get(httphandlers.PingPath, httphandlers.PingHandler)
 
-	r.HandleFunc(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
-	r.HandleFunc("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...)).Methods("GET")
+	r.Get(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...))
+	r.Get("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...))
 
-	r.HandleFunc("/cycles", resources.GetCycles(sched)).Methods("GET")
-	r.HandleFunc("/cycles", resources.CreateCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles", methodNotAllowed).Methods("PUT", "DELETE")
+	r.Get("/cycles", resources.GetCycles(sched))
+	r.Post("/cycles", resources.CreateCycle(sched))
 
-	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
-	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", methodNotAllowed).Methods("PUT", "POST")
+	r.Get("/cycles/:id", resources.GetCycleForID(sched))
+	r.Delete("/cycles/:id", resources.DeleteCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/resume", resources.ResumeCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/resume", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Get("/cycles/:id/throttle", resources.GetCycleThrottle(sched))
+	r.Put("/cycles/:id/throttle", resources.SetCycleThrottle(sched))
 
-	r.HandleFunc("/cycles/{id}/stop", resources.StopCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/stop", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/resume", resources.ResumeCycle(sched))
 
-	r.HandleFunc("/cycles/{id}/reset", resources.ResetCycle(sched)).Methods("POST")
-	r.HandleFunc("/cycles/{id}/reset", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/cycles/:id/stop", resources.StopCycle(sched))
 
-	r.HandleFunc("/cycles/{id}", resources.DeleteCycle(sched)).Methods("DELETE")
-	r.HandleFunc("/cycles/{id}", resources.GetCycleForID(sched)).Methods("GET")
+	r.Post("/cycles/:id/reset", resources.ResetCycle(sched))
 
-	r.HandleFunc("/scheduler/start", resources.StartScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/start", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/start", resources.StartScheduler(sched))
 
-	r.HandleFunc("/scheduler/shutdown", resources.ShutdownScheduler(sched)).Methods("POST")
-	r.HandleFunc("/scheduler/shutdown", methodNotAllowed).Methods("GET", "PUT", "DELETE")
+	r.Post("/scheduler/shutdown", resources.ShutdownScheduler(sched))
 
 	box := ui.UI()
 	dist := http.FileServer(box.HTTPBox())
-	r.PathPrefix("/").Handler(dist)
+	r.Get("/*", dist.ServeHTTP)
 
 	http.Handle("/", r)
 	log.Info("Publish Carousel Started!")

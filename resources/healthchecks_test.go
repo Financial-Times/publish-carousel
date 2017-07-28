@@ -44,7 +44,7 @@ func setupHappyMocks() map[string]interface{} {
 	db := new(native.MockDB)
 	mockTx := new(native.MockTX)
 	db.On("Open").Return(mockTx, nil)
-	mockTx.On("Ping").Return(nil)
+	mockTx.On("Ping", mock.AnythingOfType("*context.timerCtx")).Return(nil)
 	mockTx.On("Close").Return()
 
 	s3RW := new(s3.MockReadWriter)
@@ -160,7 +160,7 @@ func TestMongoDBFailsToPingHealthcheck(t *testing.T) {
 	tx := mocks["tx"].(*native.MockTX)
 	tx.ExpectedCalls = make([]*mock.Call, 0)
 
-	tx.On("Ping").Return(errors.New("no ping 4 u"))
+	tx.On("Ping", mock.AnythingOfType("*context.timerCtx")).Return(errors.New("no ping 4 u"))
 	tx.On("Close")
 
 	endpoint(w, req)

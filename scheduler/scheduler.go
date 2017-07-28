@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -33,6 +34,7 @@ type Scheduler interface {
 
 type defaultScheduler struct {
 	publishTask        tasks.Task
+	blacklist          blacklist.IsBlacklisted
 	database           native.DB
 	cycles             map[string]Cycle
 	metadataReadWriter MetadataReadWriter
@@ -45,9 +47,9 @@ type defaultScheduler struct {
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
-
+func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
 	return &defaultScheduler{
+		blacklist:          blist,
 		database:           database,
 		publishTask:        publishTask,
 		cycles:             map[string]Cycle{},
@@ -97,9 +99,6 @@ func (s *defaultScheduler) DeleteCycle(cycleID string) error {
 }
 
 func (s *defaultScheduler) saveCycleMetadata() {
-	s.cycleLock.RLock()
-	defer s.cycleLock.RUnlock()
-
 	log.Info("Saving cycle metadata to S3.")
 
 	for _, cycle := range s.cycles {
@@ -137,12 +136,16 @@ func (s *defaultScheduler) Start() error {
 	defer s.cycleLock.RUnlock()
 
 	if !s.state.isEnabled() {
+		log.Info("Interrupted scheduler startup, as the carousel is not enabled.")
 		return errors.New("Scheduler is not enabled")
 	}
 
 	if s.state.isRunning() {
+		log.Info("Interrupted scheduler startup, as it is already running.")
 		return errors.New("Scheduler is already running")
 	}
+
+	log.Info("Initialising scheduler.")
 
 	s.state.setState(running)
 
@@ -154,7 +157,12 @@ func (s *defaultScheduler) Start() error {
 		time.Sleep(startInterval)
 	}
 
-	s.checkpointHandler.start(s.saveCycleMetadata)
+	s.checkpointHandler.start(func() {
+		s.cycleLock.RLock()
+		defer s.cycleLock.RUnlock()
+
+		s.saveCycleMetadata()
+	})
 
 	return nil
 }
@@ -171,11 +179,10 @@ func (s *defaultScheduler) archiveCycleStartInterval() time.Duration {
 	numArchiveCycles := len(archiveCycles)
 
 	if numArchiveCycles > 1 {
-
-		minimumStartInterval := archiveCycles[0].throttle.Interval()
+		minimumStartInterval := archiveCycles[0].Throttle.Interval()
 
 		for _, cycle := range archiveCycles {
-			temp = cycle.throttle.Interval()
+			temp = cycle.Throttle.Interval()
 			if temp < minimumStartInterval {
 				minimumStartInterval = temp
 			}
@@ -241,6 +248,7 @@ func (s *defaultScheduler) toggleHandler(toggleValue string, requestType int) {
 				return
 			}
 		}
+
 		if requestType == automatic {
 			s.state.setState(autoDisabled)
 		} else {
@@ -335,24 +343,19 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 	case "throttledwholecollection":
 		var throttleInterval time.Duration
 		if config.Throttle == "" {
-			log.WithField("cycleName", config.Name).Info("Throttle configuration not found. Setting default throttle value")
+			log.WithField("cycleName", config.Name).Infof("Throttle configuration not found. Setting default throttle value (%v)", s.defaultThrottle)
 			throttleInterval = s.defaultThrottle
 		} else {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)
 		}
 		t, _ := NewThrottle(throttleInterval, 1)
-		c = NewThrottledWholeCollectionCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
-
-	case "fixedwindow":
-		interval, _ := time.ParseDuration(config.TimeWindow)
-		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
-		c = NewFixedWindowCycle(config.Name, s.database, config.Collection, config.Origin, coolDown, interval, minimumThrottle, s.publishTask)
+		c = NewThrottledWholeCollectionCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
 		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
-		c = NewScalingWindowCycle(config.Name, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
+		c = NewScalingWindowCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
 	}
 
 	return c, nil

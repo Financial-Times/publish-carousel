@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -17,6 +18,7 @@ type ScalingWindowCycle struct {
 
 func NewScalingWindowCycle(
 	name string,
+	blist blacklist.IsBlacklisted,
 	db native.DB,
 	dbCollection string,
 	origin string,
@@ -27,7 +29,7 @@ func NewScalingWindowCycle(
 	publishTask tasks.Task,
 ) Cycle {
 
-	base := newAbstractCycle(name, "ScalingWindow", db, dbCollection, origin, coolDown, publishTask)
+	base := newAbstractCycle(name, "ScalingWindow", blist, db, dbCollection, origin, coolDown, publishTask)
 	return &ScalingWindowCycle{
 		newAbstractTimeWindowedCycle(base, timeWindow, minimumThrottle, maximumThrottle),
 		maximumThrottle,
@@ -36,7 +38,7 @@ func NewScalingWindowCycle(
 }
 
 func (s *ScalingWindowCycle) Start() {
-	log.WithField("id", s.CycleID).WithField("name", s.Name).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
+	log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithField("coolDown", s.CoolDown).WithField("timeWindow", s.TimeWindow).Info("Starting scaling window cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.UpdateState(startingState)
@@ -48,5 +50,5 @@ func (s *ScalingWindowCycle) Start() {
 }
 
 func (s *ScalingWindowCycle) TransformToConfig() CycleConfig {
-	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
+	return CycleConfig{Name: s.CycleName, Type: s.CycleType, Collection: s.DBCollection, TimeWindow: s.TimeWindow, CoolDown: s.CoolDown, MinimumThrottle: s.MinimumThrottle, MaximumThrottle: s.MaximumThrottle}
 }

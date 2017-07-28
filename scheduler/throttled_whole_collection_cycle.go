@@ -4,22 +4,27 @@ import (
 	"context"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	ThrottledWholeCollectionType = "ThrottledWholeCollection"
+)
+
 type ThrottledWholeCollectionCycle struct {
 	*abstractCycle
-	throttle Throttle
+	Throttle Throttle `json:"throttle"`
 }
 
-func NewThrottledWholeCollectionCycle(name string, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
-	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, "ThrottledWholeCollection", db, dbCollection, origin, coolDown, publishTask), throttle}
+func NewThrottledWholeCollectionCycle(name string, blist blacklist.IsBlacklisted, db native.DB, dbCollection string, origin string, coolDown time.Duration, throttle Throttle, publishTask tasks.Task) Cycle {
+	return &ThrottledWholeCollectionCycle{newAbstractCycle(name, ThrottledWholeCollectionType, blist, db, dbCollection, origin, coolDown, publishTask), throttle}
 }
 
 func (l *ThrottledWholeCollectionCycle) Start() {
-	log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).Info("Starting throttled whole collection cycle.")
+	log.WithField("id", l.CycleID).WithField("name", l.CycleName).WithField("collection", l.DBCollection).Info("Starting throttled whole collection cycle.")
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
 	l.UpdateState(startingState)
@@ -36,20 +41,20 @@ func (l *ThrottledWholeCollectionCycle) start(ctx context.Context) {
 }
 
 func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Context, skip int) (int, bool) {
-	uuidCollection, err := native.NewNativeUUIDCollection(l.db, l.DBCollection, skip, l.throttle.Interval())
+	uuidCollection, err := native.NewNativeUUIDCollection(ctx, l.db, l.DBCollection, skip, l.blacklist)
+
 	if err != nil {
-		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
+		log.WithField("id", l.CycleID).WithField("name", l.CycleName).WithField("collection", l.DBCollection).WithError(err).Warn("Failed to consume UUIDs from the Native UUID Collection.")
 		l.UpdateState(stoppedState, unhealthyState)
 		return skip, false
 	}
-	defer uuidCollection.Close()
 
 	iteration := l.CycleMetadata.Iteration
 	if skip == 0 {
 		iteration++
 	}
 
-	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: iteration, Attempts: l.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), state: make(map[string]struct{})}
+	metadata := CycleMetadata{Completed: skip, State: []string{runningState}, Iteration: iteration, Attempts: l.CycleMetadata.Attempts + 1, Total: uuidCollection.Length()}
 	l.SetMetadata(metadata)
 
 	if uuidCollection.Length() == 0 {
@@ -57,14 +62,14 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 		return skip, false
 	}
 
-	stopped, err := l.publishCollection(ctx, uuidCollection, l.throttle)
+	stopped, err := l.publishCollection(ctx, uuidCollection, l.Throttle)
 	if stopped {
 		l.UpdateState(stoppedState)
 		return skip, false
 	}
 
 	if err != nil {
-		log.WithField("id", l.CycleID).WithField("name", l.Name).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
+		log.WithField("id", l.CycleID).WithField("name", l.CycleName).WithField("collection", l.DBCollection).WithError(err).Error("Unexpected error occurred while publishing collection.")
 		l.UpdateState(stoppedState, unhealthyState)
 		return skip, false
 	}
@@ -73,5 +78,5 @@ func (l *ThrottledWholeCollectionCycle) publishCollectionCycle(ctx context.Conte
 }
 
 func (s *ThrottledWholeCollectionCycle) TransformToConfig() CycleConfig {
-	return CycleConfig{Name: s.Name, Type: s.Type, Collection: s.DBCollection, CoolDown: s.CoolDown, Origin: s.Origin, Throttle: s.throttle.Interval().String()}
+	return CycleConfig{Name: s.CycleName, Type: s.CycleType, Collection: s.DBCollection, CoolDown: s.CoolDown, Origin: s.Origin, Throttle: s.Throttle.Interval().String()}
 }
