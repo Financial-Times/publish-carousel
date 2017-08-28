@@ -1,4 +1,4 @@
-package cluster
+package file
 
 import (
 	"fmt"

@@ -1,45 +1,15 @@
-package cluster
+package file
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
+	"github.com/Financial-Times/publish-carousel/cluster"
 )
-
-func setupFakeServer(t *testing.T, status int, path string, body string, isJSON bool, usingBasicAuth bool, called func()) *httptest.Server {
-	r := vestigo.NewRouter()
-	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
-		username, password, basicAuthHeaderPresent := r.BasicAuth()
-		if usingBasicAuth {
-			assert.True(t, basicAuthHeaderPresent)
-			assert.NotEmpty(t, username)
-			assert.NotEmpty(t, password)
-		} else {
-			assert.False(t, basicAuthHeaderPresent)
-		}
-		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, path, r.URL.Path)
-		assert.Equal(t, "UPP Publish Carousel", r.Header.Get("User-Agent"), "user-agent header")
-
-		called()
-
-		if isJSON {
-			w.Header().Add("Content-Type", "application/json")
-		}
-
-		w.WriteHeader(status)
-		w.Write([]byte(body))
-	})
-
-	return httptest.NewServer(r)
-}
 
 func TestExternalServiceWithoutBasicAuth(t *testing.T) {
 	called := false
-	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {
+	server := cluster.SetupFakeServerNoAuth(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {
 		called = true
 	})
 	defer server.Close()
@@ -57,7 +27,7 @@ func TestExternalServiceWithoutBasicAuth(t *testing.T) {
 
 func TestExternalServiceWithBasicAuth(t *testing.T) {
 	called := false
-	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, true, func() {
+	server := cluster.SetupFakeServerBasicAuth(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {
 		called = true
 	})
 	defer server.Close()
@@ -75,7 +45,7 @@ func TestExternalServiceWithBasicAuth(t *testing.T) {
 
 func TestExternalServiceFails(t *testing.T) {
 	called := false
-	server := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {
+	server := cluster.SetupFakeServerNoAuth(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {
 		called = true
 	})
 	defer server.Close()
@@ -92,7 +62,7 @@ func TestExternalServiceFails(t *testing.T) {
 }
 
 func TestExternalServiceCloses(t *testing.T) {
-	server := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server := cluster.SetupFakeServerNoAuth(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {})
 
 	server.Close()
 
@@ -107,8 +77,8 @@ func TestExternalServiceCloses(t *testing.T) {
 }
 
 func TestSomeExternalServicesFail(t *testing.T) {
-	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
-	server2 := setupFakeServer(t, 200, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server1 := cluster.SetupFakeServerNoAuth(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server2 := cluster.SetupFakeServerNoAuth(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()
@@ -131,8 +101,8 @@ func TestSomeExternalServicesFail(t *testing.T) {
 }
 
 func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
-	server1 := setupFakeServer(t, 401, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
-	server2 := setupFakeServer(t, 504, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server1 := cluster.SetupFakeServerNoAuth(t, 401, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server2 := cluster.SetupFakeServerNoAuth(t, 504, "/__kafka-lagcheck/__gtg", "", false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()
@@ -155,8 +125,8 @@ func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
 }
 
 func TestMultipleExternalServicesFail(t *testing.T) {
-	server1 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
-	server2 := setupFakeServer(t, 503, "/__kafka-lagcheck/__gtg", "", false, false, func() {})
+	server1 := cluster.SetupFakeServerNoAuth(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
+	server2 := cluster.SetupFakeServerNoAuth(t, 503, "/__kafka-lagcheck/__gtg", "", false, func() {})
 
 	defer server1.Close()
 	defer server2.Close()

@@ -1,22 +1,29 @@
-package cluster
+package etcd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 
+	"github.com/Financial-Times/publish-carousel/etcd"
 	log "github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/publish-carousel/cluster"
 )
 
 type externalService struct {
+	sync.RWMutex
 	name               string
 	serviceName        string
 	environmentService *environmentService
 }
 
 // NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
-func NewExternalService(name string, serviceName string, readURLs string, credentials string) (Service, error) {
-	environmentService, err := newEnvironmentService(readURLs, credentials)
+func NewExternalService(name string, serviceName string, watcher etcd.Watcher, readURLsKey string) (cluster.Service, error) {
+	environmentService, err := newEnvironmentService(watcher, readURLsKey)
+	environmentService.startWatcher(context.Background())
+
 	return &externalService{name: name, serviceName: serviceName, environmentService: environmentService}, err
 }
 
@@ -29,6 +36,9 @@ func (e *externalService) ServiceName() string {
 }
 
 func (e *externalService) Check() error {
+	e.RLock()
+	defer e.RUnlock()
+
 	envs := e.environmentService.GetEnvironments()
 
 	errs := make([]error, 0)
@@ -40,9 +50,6 @@ func (e *externalService) Check() error {
 		if err != nil {
 			errs = append(errs, err)
 			continue
-		}
-		if env.credentials != nil {
-			req.SetBasicAuth(env.credentials.username, env.credentials.password)
 		}
 
 		req.Header.Add("User-Agent", "UPP Publish Carousel")

@@ -24,7 +24,7 @@ func TestUnhappyNewService(t *testing.T) {
 
 func TestHappyGTG(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusOK, "/__gtg", "", false, false, func() {
+	mockService := SetupFakeServerNoAuth(t, http.StatusOK, "/__gtg", "", false, func() {
 		called = true
 	})
 	defer mockService.Close()
