@@ -259,6 +259,42 @@
 			"revisionTime": "2017-03-08T00:55:36Z"
 		},
 		{
+			"checksumSHA1": "SnTUzwYa4snkJ/HQWcvxCnbw2eY=",
+			"path": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
+		},
+		{
+			"checksumSHA1": "xp3o8iG8/WloqNClTPgaExgWYrU=",
+			"path": "github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context",
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
+		},
+		{
+			"checksumSHA1": "jDu8F90MBsfYcFGs4YTdcgKpl3A=",
+			"path": "github.com/coreos/etcd/client",
+			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
+			"revisionTime": "2017-02-16T03:25:01Z",
+			"version": "v2.3",
+			"versionExact": "v2.3.8"
+		},
+		{
+			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",
+			"path": "github.com/coreos/etcd/pkg/pathutil",
+			"revision": "85c22f45626fb48fabedd353e88bd9f68cb67f26",
+			"revisionTime": "2017-03-03T00:53:01Z"
+		},
+		{
+			"checksumSHA1": "gx1gJIMU6T0UNQ0bPZ/drQ8cpCI=",
+			"path": "github.com/coreos/etcd/pkg/types",
+			"revision": "85c22f45626fb48fabedd353e88bd9f68cb67f26",
+			"revisionTime": "2017-03-03T00:53:01Z"
+		},
+		{
 			"checksumSHA1": "8i+beEgcVf0q/I7lTqo2ERZM/OU=",
 			"path": "github.com/daaku/go.zipexe",
 			"revision": "a5fe2436ffcb3236e175e5149162b41cd28bd27d",
@@ -393,6 +429,12 @@
 		{
 			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",
 			"path": "golang.org/x/net/context",
+			"revision": "906cda9512f77671ab44f8c8563b13a8e707b230",
+			"revisionTime": "2017-02-18T20:36:51Z"
+		},
+		{
+			"checksumSHA1": "fjMK2G5arnjllpoeBYeyf9Y2Iok=",
+			"path": "golang.org/x/net/proxy",
 			"revision": "906cda9512f77671ab44f8c8563b13a8e707b230",
 			"revisionTime": "2017-02-18T20:36:51Z"
 		},
