@@ -1,6 +1,7 @@
 package native
 
 import (
+	"context"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -38,8 +39,8 @@ func (t *MockTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIter
 	return args.Get(0).(DBIter), args.Int(1), args.Error(2)
 }
 
-func (t *MockTX) Ping() error {
-	args := t.Called()
+func (t *MockTX) Ping(ctx context.Context) error {
+	args := t.Called(ctx)
 	return args.Error(0)
 }
 
@@ -83,4 +84,38 @@ func (m *MockDBIter) Timeout() bool {
 func (m *MockDBIter) Close() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+type MockUUIDCollection struct {
+	mock.Mock
+	uuids []string
+	count int
+}
+
+func (m *MockUUIDCollection) Next() (bool, string, error) {
+	args := m.Called()
+
+	done := m.count == len(m.uuids)
+	if done {
+		return done, "", args.Error(0)
+	}
+
+	val := m.uuids[m.count]
+	m.count++
+
+	return false, val, args.Error(0)
+}
+
+func (m *MockUUIDCollection) Length() int {
+	m.Called()
+	return len(m.uuids) - m.count
+}
+
+func (m *MockUUIDCollection) Done() bool {
+	m.Called()
+	return m.count == len(m.uuids)
+}
+
+func (m *MockUUIDCollection) Close() error {
+	return m.Called().Error(0)
 }

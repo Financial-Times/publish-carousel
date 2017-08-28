@@ -1,11 +1,16 @@
 package native
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	mgo "gopkg.in/mgo.v2"
+	"errors"
+	"strings"
+	"fmt"
+	"net"
 )
 
 var expectedConnections = 1
@@ -29,7 +34,7 @@ type TX interface {
 	ReadNativeContent(collectionId string, uuid string) (*Content, error)
 	FindUUIDsInTimeWindow(collectionId string, start time.Time, end time.Time, batchsize int) (DBIter, int, error)
 	FindUUIDs(collectionId string, skip int, batchsize int) (DBIter, int, error)
-	Ping() error
+	Ping(ctx context.Context) error
 	Close()
 }
 
@@ -83,7 +88,7 @@ func (tx *MongoTX) FindUUIDsInTimeWindow(collectionID string, start time.Time, e
 	return find.Iter(), count, err
 }
 
-//returns all uuids for a collection sorted by lastodified date, if no lastmodified exists records are returned at the end of the list
+// FindUUIDs returns all uuids for a collection sorted by lastodified date, if no lastmodified exists records are returned at the end of the list
 func (tx *MongoTX) FindUUIDs(collectionID string, skip int, batchsize int) (DBIter, int, error) {
 	collection := tx.session.DB("native-store").C(collectionID)
 
@@ -115,9 +120,43 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	return result, nil
 }
 
+func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error {
+	if providedMongoUrls == "" {
+		return errors.New("MongoDB urls are missing")
+	}
+
+	mongoUrls := strings.Split(providedMongoUrls, ",")
+	actualMongoNodeCount := len(mongoUrls)
+	if actualMongoNodeCount < expectedMongoNodeCount {
+		return fmt.Errorf("The list of MongoDB URLs should have %d instances, but it has %d instead. Provided MongoDB URLs are: %s", expectedMongoNodeCount, actualMongoNodeCount, providedMongoUrls)
+	}
+
+	for _, mongoUrl := range mongoUrls {
+		host, port, err := net.SplitHostPort(mongoUrl);
+		if err != nil {
+			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s",mongoUrl, err.Error())
+		}
+		if host == "" || port == "" {
+			return fmt.Errorf("One of the MongoDB URLs is incomplete: %s. It should have host and port.", mongoUrl)
+		}
+	}
+
+	return nil
+}
+
 // Ping returns a mongo ping response
-func (tx *MongoTX) Ping() error {
-	return tx.session.Ping()
+func (tx *MongoTX) Ping(ctx context.Context) error {
+	ping := make(chan error, 1)
+	go func() {
+		ping <- tx.session.Ping()
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-ping:
+		return err
+	}
 }
 
 // Close closes the transaction
