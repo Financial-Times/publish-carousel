@@ -5,8 +5,8 @@ metadata:
   namespace: default
 data:
   read.environments: "{{ .Values.target_env }}-delivery-upp-eu:https://{{ .Values.target_env }}-delivery-upp-eu.ft.com/"
-  toggle: true
-  active-cluster: true
+  toggle: "true"
+  active-cluster: "true"
 
 # corresponding secret template
 # kind: Secret
