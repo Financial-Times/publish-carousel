@@ -26,8 +26,9 @@ import (
 	"fmt"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"context"
-	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+//	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
 	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
+	"path/filepath"
 )
 
 func init() {
@@ -149,33 +150,17 @@ func main() {
 			EnvVar: "CHECKPOINT_INTERVAL",
 			Usage:  "Interval for saving metadata checkpoints",
 		},
-		// configs sourced and updated dynamically from files
 		cli.StringFlag{
-			// file-based equivalent of "toggle-etcd-key"
-			Name:   "toggle",
-			Value:  "true",
-			EnvVar: "TOGGLE",
-			Usage:  "Enable or disable the application",
+			Name:   "configs-dir",
+			Value:  "/configs",
+			EnvVar: "CONFIGS_DIR",
+			Usage:  "Directory containing the files with read environment, toggle and active-cluster values",
 		},
 		cli.StringFlag{
-			// file-based equivalent of "read-monitoring-etcd-key"
-			Name:   "read-envs",
-			Value:  "localhost:http://localhost:8080",
-			EnvVar: "READ_URLS",
-			Usage:  "The list of read environments. Example: environment1:url1,environment2:url2.",
-		},
-		cli.StringFlag{
-			// K8S-specific configuration, as the __gtg and __health endpoints need auth, unlike the current stack
-			Name:   "read-credentials",
-			EnvVar: "READ_CREDENTIALS",
-			Usage:  "The read environment credentials. Example: environment1:user:password,environment2:user:password.",
-		},
-		cli.StringFlag{
-			// file-based equivalent of "active-cluster-etcd-key"
-			Name:   "active-cluster",
-			Value:  "true",
-			EnvVar: "ACTIVE_CLUSTER",
-			Usage:  "Specifies if the cluster is active",
+			Name:   "credentials-dir",
+			Value:  "/configs/credentials",
+			EnvVar: "CREDENTIALS_DIR",
+			Usage:  "Directory containing the file with read environment credentials",
 		},
 	}
 
@@ -235,12 +220,28 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.String("etcd-peers") == "NOT_AVAILABLE" {
-			deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
-			if err != nil {
-				panic(err)
-			}
-			manualToggle = ctx.String("toggle")
-			autoToggle = ctx.String("active-cluster")
+			log.Info("Dir: [%s]",ctx.String("configs-dir"))
+			filepath.Walk(ctx.String("configs-dir"), func(path string, info os.FileInfo, err error) error {
+				log.Info("\tFile: [%s]",info.Name())
+				contents, _ := ioutil.ReadFile(path)
+				fmt.Print(string(contents))
+				return nil
+			})
+			log.Info("Dir: [%s]",ctx.String("credentials-dir"))
+			filepath.Walk(ctx.String("credentials-dir"), func(path string, info os.FileInfo, err error) error {
+				log.Info("\tFile: [%s]",info.Name())
+				contents, _ := ioutil.ReadFile(path)
+				fmt.Print(string(contents))
+				return nil
+			})
+			//TODO implement file watchers
+			//deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
+			//if err != nil {
+			//	panic(err)
+			//}
+			//manualToggle = ctx.String("toggle")
+			//autoToggle = ctx.String("active-cluster")
+
 		} else {
 			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 			if err != nil {
