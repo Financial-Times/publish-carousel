@@ -219,7 +219,8 @@ func main() {
 		var deliveryLagcheck cluster.Service
 		var manualToggle, autoToggle string
 
-		if ctx.String("etcd-peers") == "NOT_AVAILABLE" {
+		log.Info("ETCD_PEERS: [%s]",ctx.String("etcd-peers"))
+		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
 			log.Info("Dir: [%s]",ctx.String("configs-dir"))
 			filepath.Walk(ctx.String("configs-dir"), func(path string, info os.FileInfo, err error) error {
 				log.Info("\tFile: [%s]",info.Name())
