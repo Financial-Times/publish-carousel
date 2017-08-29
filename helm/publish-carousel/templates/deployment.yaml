@@ -58,12 +58,12 @@ spec:
         - name: CONFIGS_DIR
           value: "/configs"
         - name: CREDENTIALS_DIR
-          value: "/configs/credentials"
+          value: "/credentials"
         volumeMounts:
           - name: configs-volume
             mountPath: /configs
           - name: secrets-volume
-            mountPath: /configs/credentials
+            mountPath: /credentials
         ports:
         - containerPort: 8080
         - containerPort: 8081
