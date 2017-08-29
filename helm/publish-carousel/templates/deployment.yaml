@@ -60,9 +60,9 @@ spec:
         - name: CREDENTIALS_DIR
           value: "/configs/credentials"
         volumeMounts:
-          - name: read-environments-volume
+          - name: configs-volume
             mountPath: /configs
-          - name: read-credentials-volume
+          - name: secrets-volume
             mountPath: /configs/credentials
         ports:
         - containerPort: 8080
