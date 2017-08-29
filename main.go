@@ -87,7 +87,7 @@ func main() {
 			Name:   "lagcheck-url",
 			Value:  "http://localhost:8080/__kafka-lagcheck",
 			EnvVar: "LAGCHECK_URL",
-			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
+			Usage:  "The URL of the queue lagcheck service from the publishing cluster to verify the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "aws-region",
@@ -112,29 +112,6 @@ func main() {
 			Value:  10000,
 			EnvVar: "MONGO_DB_TIMEOUT",
 			Usage:  "The timeout (in milliseconds) for Mongo DB connections.",
-		},
-		cli.StringFlag{
-			Name:   "toggle",
-			Value:  "true",
-			EnvVar: "TOGGLE",
-			Usage:  "Enable or disable the application",
-		},
-		cli.StringFlag{
-			Name:   "delivery-lagcheck-urls",
-			Value:  "localhost:http://localhost:8080/__kafka-lagcheck",
-			EnvVar: "DELIVERY_LAGCHECK_URLS",
-			Usage:  "The list of delivery queue lagcheck service urls used to verify the health of the cluster. Example: environment1:user:password,environment2:user:password.",
-		},
-		cli.StringFlag{
-			Name:   "delivery-lagcheck-credentials",
-			EnvVar: "DELIVERY_LAGCHECK_CREDENTIALS",
-			Usage:  "The list of delivery lagcheck credentials. Example: environment1:user:password,environment2:user:password.",
-		},
-		cli.StringFlag{
-			Name:   "active-cluster",
-			Value:  "true",
-			EnvVar: "ACTIVE_CLUSTER",
-			Usage:  "Specifies if the cluster is active",
 		},
 		cli.StringSliceFlag{
 			Name:   "etcd-peers",
@@ -171,6 +148,34 @@ func main() {
 			Value:  "1h",
 			EnvVar: "CHECKPOINT_INTERVAL",
 			Usage:  "Interval for saving metadata checkpoints",
+		},
+		// configs sourced and updated dynamically from files
+		cli.StringFlag{
+			// file-based equivalent of "toggle-etcd-key"
+			Name:   "toggle",
+			Value:  "true",
+			EnvVar: "TOGGLE",
+			Usage:  "Enable or disable the application",
+		},
+		cli.StringFlag{
+			// file-based equivalent of "read-monitoring-etcd-key"
+			Name:   "read-envs",
+			Value:  "localhost:http://localhost:8080",
+			EnvVar: "READ_URLS",
+			Usage:  "The list of read environments. Example: environment1:url1,environment2:url2.",
+		},
+		cli.StringFlag{
+			// K8S-specific configuration, as the __gtg and __health endpoints need auth, unlike the current stack
+			Name:   "read-credentials",
+			EnvVar: "READ_CREDENTIALS",
+			Usage:  "The read environment credentials. Example: environment1:user:password,environment2:user:password.",
+		},
+		cli.StringFlag{
+			// file-based equivalent of "active-cluster-etcd-key"
+			Name:   "active-cluster",
+			Value:  "true",
+			EnvVar: "ACTIVE_CLUSTER",
+			Usage:  "Specifies if the cluster is active",
 		},
 	}
 
@@ -230,7 +235,7 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.String("etcd-peers") == "NOT_AVAILABLE" {
-			deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("delivery-lagcheck-urls"), ctx.String("delivery-lagcheck-credentials"))
+			deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
 			if err != nil {
 				panic(err)
 			}

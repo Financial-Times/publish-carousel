@@ -19,6 +19,7 @@ env:
     url: http://cms-notifier:8080
   pam: 
     url: http://publish-availability-monitor:8080
+  # publishing cluster lagcheck
   lagcheck: 
     url: http://kafka-lagcheck:8080
   s3: 
