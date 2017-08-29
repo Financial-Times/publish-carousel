@@ -23,9 +23,13 @@ spec:
       - name: {{ .Values.service.name }} 
         image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        env: 
+        env:
+        - name: ETCD_PEERS
+          value: {{ .Values.env.etcd_peers }}
         - name: MONGO_DB_URL
           value: {{ .Values.env.mongodb.url }}
+        - name: MONGO_NODE_COUNT
+          value: "{{ .Values.env.mongodb.node_count }}"
         - name: CMS_NOTIFIER_URL
           value: {{ .Values.env.cmsnotifier.url }}
         - name: PAM_URL

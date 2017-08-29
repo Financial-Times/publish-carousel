@@ -8,10 +8,13 @@ replicaCount: 1
 image:
   repository: coco/publish-carousel
   pullPolicy: Always
-env: 
+env:
+  etcd_peers: NOT_AVAILABLE
   mongodb: 
-    url: mongodb-0.mongodb:27017
-    timeout: "30000" 
+    url: mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017
+    # timeout in milliseconds
+    timeout: "30000"
+    node_count: 3
   cmsnotifier: 
     url: http://cms-notifier:8080
   pam: 
@@ -21,7 +24,7 @@ env:
   s3: 
     bucket: com.ft.universalpublishing.publish-carousel.k8s-eu
   toggle: "true"
-  throttle: "1m" 
+  throttle: "6s"
 resources:
   limits:
     memory: 256Mi
