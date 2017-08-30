@@ -232,8 +232,8 @@ func main() {
 
 			log.WithField("manualToggle", manualToggle).WithField("autoToggle", autoToggle).Info("Read configs!")
 
-			go fileWatcher.Watch(context.Background(), ctx.String("toggle"), sched.ManualToggleHandler)
-			go fileWatcher.Watch(context.Background(), ctx.String("active-cluster"), sched.AutomaticToggleHandler)
+			go fileWatcher.Watch(context.Background(), "toggle", sched.ManualToggleHandler)
+			go fileWatcher.Watch(context.Background(), "active-cluster", sched.AutomaticToggleHandler)
 		} else {
 			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 			if err != nil {
