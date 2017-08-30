@@ -220,7 +220,6 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
-			log.WithField("configs-dir", ctx.String("configs-dir"))
 			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")})
 			fileWatcher.Read("bla")
 			//TODO implement file watchers

@@ -20,10 +20,9 @@ type fileWatcher struct {
 
 // NewFileWatcher returns a new etcd watcher
 func NewFileWatcher(folders []string) (Watcher, error) {
-	var filePaths map[string]string
+	filePaths :=  make(map[string]string)
 	for _, folder := range folders {
 		filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
-			log.Info("\tFile: [%s]", info.Name())
 			if !info.IsDir() && !strings.HasPrefix(info.Name(), ".") {
 				filePaths[info.Name()] = path
 			}
