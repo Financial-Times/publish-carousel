@@ -220,7 +220,7 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
-			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")})
+			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
 			fileWatcher.Read("bla")
 			//TODO implement file watchers
 			//deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
@@ -230,7 +230,10 @@ func main() {
 			manualToggle, _ = fileWatcher.Read("toggle")
 			autoToggle, _ = fileWatcher.Read("active-cluster")
 
-			log.WithField("manualToggle",manualToggle).WithField("autoToggle",autoToggle).Info("Read configs!")
+			log.WithField("manualToggle", manualToggle).WithField("autoToggle", autoToggle).Info("Read configs!")
+
+			go fileWatcher.Watch(context.Background(), ctx.String("toggle"), sched.ManualToggleHandler)
+			go fileWatcher.Watch(context.Background(), ctx.String("active-cluster"), sched.AutomaticToggleHandler)
 		} else {
 			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 			if err != nil {

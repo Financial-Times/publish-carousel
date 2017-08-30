@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"github.com/pkg/errors"
 	"fmt"
+	"time"
 )
 
 // Watcher see Watch func for details
@@ -18,11 +19,13 @@ type Watcher interface {
 }
 
 type watcher struct {
-	filePaths map[string]string
+	filePaths       map[string]string
+	fileContents    map[string]string
+	refreshInterval time.Duration
 }
 
 // NewFileWatcher returns a new file watcher
-func NewFileWatcher(folders []string) (Watcher, error) {
+func NewFileWatcher(folders []string, refreshInterval time.Duration) (Watcher, error) {
 	log.WithField("folders", folders).Info("Reading file listing from given folders.")
 	if len(folders) == 0 {
 		return nil, errors.New("No folders were provided!")
@@ -49,7 +52,8 @@ func NewFileWatcher(folders []string) (Watcher, error) {
 	}
 
 	log.WithField("filePaths", paths).Info("Collected list of files we can watch.")
-	return &watcher{paths}, nil
+	log.WithField("refreshInterval", refreshInterval).Info("Configured refresh interval.")
+	return &watcher{paths, make(map[string]string), refreshInterval}, nil
 }
 
 func (e *watcher) Read(fileName string) (string, error) {
@@ -65,16 +69,35 @@ func (e *watcher) Read(fileName string) (string, error) {
 	return string(data), nil
 }
 
-// Watch starts an etcd watch on a given key, and triggers the callback when found
-func (e *watcher) Watch(ctx context.Context, key string, callback func(val string)) {
-	//TODO implement
+// Watch starts an file watch on a given file, and triggers the callback when found
+func (e *watcher) Watch(ctx context.Context, fileName string, callback func(val string)) {
+	log.WithField("fileName", fileName).Info("My file watch begins.")
+	ticker := time.NewTicker(e.refreshInterval)
+
+	for range ticker.C {
+		if ctx.Err() != nil {
+			log.WithField("fileName", fileName).Info("File watcher cancelled.")
+			break
+		}
+		newValue, err := e.Read(fileName)
+		if err != nil {
+			log.WithField("fileName", fileName).Warn("Cannot update value from file.")
+			continue
+		}
+		if newValue != e.fileContents[fileName] {
+			e.fileContents[fileName] = newValue
+			log.WithField("newValue", newValue).Info("New value found in file, calling callback")
+			runCallback(newValue, callback)
+		}
+	}
+	log.WithField("fileName", fileName).Info("My file watch has ended.")
 }
 
-//func runCallback(resp *etcdClient.Response, callback func(val string)) {
-//	defer func() {
-//		if r := recover(); r != nil {
-//			log.WithField("panic", r).Error("Watcher callback panicked! This should not happen, and indicates there is a bug.")
-//		}
-//	}()
-//	callback(resp.Node.Value)
-//}
+func runCallback(resp string, callback func(val string)) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithField("panic", r).Error("Watcher callback panicked! This should not happen, and indicates there is a bug.")
+		}
+	}()
+	callback(resp)
+}
