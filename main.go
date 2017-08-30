@@ -28,7 +28,7 @@ import (
 	"context"
 	//	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
 	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
-	"path/filepath"
+	"github.com/Financial-Times/publish-carousel/file"
 )
 
 func init() {
@@ -220,21 +220,9 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
-			log.WithField("configs-dir",ctx.String("configs-dir"))
-			filepath.Walk(ctx.String("configs-dir"), func(path string, info os.FileInfo, err error) error {
-				log.WithField("file", info.Name()).Info("\t")
-				log.Info("\tFile: [%s]", info.Name())
-				contents, _ := ioutil.ReadFile(path)
-				fmt.Print(string(contents))
-				return nil
-			})
-			log.WithField("credentials-dir",ctx.String("credentials-dir"))
-			filepath.Walk(ctx.String("credentials-dir"), func(path string, info os.FileInfo, err error) error {
-				log.WithField("file", info.Name()).Info("\t")
-				contents, _ := ioutil.ReadFile(path)
-				fmt.Print(string(contents))
-				return nil
-			})
+			log.WithField("configs-dir", ctx.String("configs-dir"))
+			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")})
+			fileWatcher.Read("bla")
 			//TODO implement file watchers
 			//deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
 			//if err != nil {
