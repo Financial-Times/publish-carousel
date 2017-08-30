@@ -227,9 +227,10 @@ func main() {
 			//if err != nil {
 			//	panic(err)
 			//}
-			//manualToggle = ctx.String("toggle")
-			//autoToggle = ctx.String("active-cluster")
+			manualToggle, _ = fileWatcher.Read("toggle")
+			autoToggle, _ = fileWatcher.Read("active-cluster")
 
+			log.WithField("manualToggle",manualToggle).WithField("autoToggle",autoToggle).Info("Read configs!")
 		} else {
 			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 			if err != nil {

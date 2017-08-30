@@ -6,9 +6,10 @@ import (
 	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"path/filepath"
 )
 
-func TestWatch(t *testing.T) {
+func TestWatchInit(t *testing.T) {
 
 	tempDir, err := ioutil.TempDir(os.TempDir(), "testDir")
 	tempFile, err := ioutil.TempFile(tempDir, "testFile")
@@ -19,6 +20,19 @@ func TestWatch(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, watcher)
+}
+
+func TestRead(t *testing.T) {
+	tempDir, err := ioutil.TempDir(os.TempDir(), "testDir")
+	tempFile, err := ioutil.TempFile(tempDir, "read-environments")
+	tempFile.WriteString("env1:url,env2:url")
+	tempFile.Close()
+	defer cleanupDir(tempDir)
+	watcher, err := NewFileWatcher([]string{tempDir})
+	environments, err := Watcher(watcher).Read(filepath.Base(tempFile.Name()))
+
+	assert.NoError(t, err)
+	assert.Equal(t, "env1:url,env2:url", environments)
 }
 
 func cleanupDir(tempDir string) {

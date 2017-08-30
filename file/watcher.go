@@ -6,40 +6,41 @@ import (
 	"path/filepath"
 	"os"
 	"strings"
+	"io/ioutil"
 )
 
 // Watcher see Watch func for details
 type Watcher interface {
 	Watch(ctx context.Context, key string, callback func(val string))
-	Read(key string) (string, error)
+	Read(fileName string) (string, error)
 }
 
-type fileWatcher struct {
+type watcher struct {
 	filePaths map[string]string
 }
 
-// NewFileWatcher returns a new etcd watcher
+// NewFileWatcher returns a new file watcher
 func NewFileWatcher(folders []string) (Watcher, error) {
-	filePaths :=  make(map[string]string)
+	paths := make(map[string]string)
 	for _, folder := range folders {
 		filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() && !strings.HasPrefix(info.Name(), ".") {
-				filePaths[info.Name()] = path
+				paths[info.Name()] = path
 			}
 			return nil
 		})
 	}
-	log.WithField("filepaths", filePaths).Info("Gathered filepaths.")
-	return &fileWatcher{filePaths}, nil
+	log.WithField("filepaths", paths).Info("Gathered filepaths.")
+	return &watcher{paths}, nil
 }
 
-func (e *fileWatcher) Read(key string) (string, error) {
-	//TODO implement
-	return "", nil
+func (e *watcher) Read(fileName string) (string, error) {
+	data, _ := ioutil.ReadFile(e.filePaths[fileName])
+	return string(data), nil
 }
 
 // Watch starts an etcd watch on a given key, and triggers the callback when found
-func (e *fileWatcher) Watch(ctx context.Context, key string, callback func(val string)) {
+func (e *watcher) Watch(ctx context.Context, key string, callback func(val string)) {
 	//TODO implement
 }
 
