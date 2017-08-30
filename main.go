@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"context"
-//	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+	//	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
 	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
 	"path/filepath"
 )
@@ -219,18 +219,18 @@ func main() {
 		var deliveryLagcheck cluster.Service
 		var manualToggle, autoToggle string
 
-		log.Info("ETCD_PEERS: [%s]",ctx.String("etcd-peers"))
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
-			log.Info("Dir: [%s]",ctx.String("configs-dir"))
+			log.WithField("configs-dir",ctx.String("configs-dir"))
 			filepath.Walk(ctx.String("configs-dir"), func(path string, info os.FileInfo, err error) error {
-				log.Info("\tFile: [%s]",info.Name())
+				log.WithField("file", info.Name()).Info("\t")
+				log.Info("\tFile: [%s]", info.Name())
 				contents, _ := ioutil.ReadFile(path)
 				fmt.Print(string(contents))
 				return nil
 			})
-			log.Info("Dir: [%s]",ctx.String("credentials-dir"))
+			log.WithField("credentials-dir",ctx.String("credentials-dir"))
 			filepath.Walk(ctx.String("credentials-dir"), func(path string, info os.FileInfo, err error) error {
-				log.Info("\tFile: [%s]",info.Name())
+				log.WithField("file", info.Name()).Info("\t")
 				contents, _ := ioutil.ReadFile(path)
 				fmt.Print(string(contents))
 				return nil
