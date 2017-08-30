@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"io/ioutil"
+	"github.com/pkg/errors"
+	"fmt"
 )
 
 // Watcher see Watch func for details
@@ -21,21 +23,45 @@ type watcher struct {
 
 // NewFileWatcher returns a new file watcher
 func NewFileWatcher(folders []string) (Watcher, error) {
+	log.WithField("folders", folders).Info("Reading file listing from given folders.")
+	if len(folders) == 0 {
+		return nil, errors.New("No folders were provided!")
+	}
+
 	paths := make(map[string]string)
 	for _, folder := range folders {
-		filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("Error walking file in folder [%s], or the folder itself.", folder))
+			}
 			if !info.IsDir() && !strings.HasPrefix(info.Name(), ".") {
 				paths[info.Name()] = path
 			}
 			return nil
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	log.WithField("filepaths", paths).Info("Gathered filepaths.")
+
+	if len(paths) == 0 {
+		return nil, errors.New("Didn't find any files to watch!")
+	}
+
+	log.WithField("filePaths", paths).Info("Collected list of files we can watch.")
 	return &watcher{paths}, nil
 }
 
 func (e *watcher) Read(fileName string) (string, error) {
-	data, _ := ioutil.ReadFile(e.filePaths[fileName])
+	path := e.filePaths[fileName]
+	if path == "" {
+		return "", errors.Errorf("File [%s] doesn't exist!", fileName)
+	}
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", errors.Wrapf(err, "Error reading contents of file [%s]", fileName)
+	}
 	return string(data), nil
 }
 
