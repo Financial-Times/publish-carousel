@@ -220,8 +220,10 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
-			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
-			fileWatcher.Read("bla")
+			fileWatcher, err := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
+			if err != nil {
+				panic(err)
+			}
 			deliveryLagcheck, err = cluster_file.NewExternalService(
 				"kafka-lagcheck-delivery", "kafka-lagcheck",
 				fileWatcher, "read.environments", "read.credentials")
