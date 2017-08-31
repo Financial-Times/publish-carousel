@@ -22,6 +22,9 @@ type externalService struct {
 // NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
 func NewExternalService(name string, serviceName string, watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (cluster.Service, error) {
 	environmentService, err := newEnvironmentService(watcher, readEnvironmentsFile, credentialsFile)
+	if err != nil {
+		return nil, err
+	}
 	environmentService.startWatcher(context.Background(),readEnvironmentsFile, credentialsFile)
 	return &externalService{name: name, serviceName: serviceName, environmentService: environmentService}, err
 }
