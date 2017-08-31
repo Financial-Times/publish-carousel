@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"context"
-	//	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
 	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
 	"github.com/Financial-Times/publish-carousel/file"
 )
@@ -222,11 +222,12 @@ func main() {
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
 			fileWatcher, _ := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
 			fileWatcher.Read("bla")
-			//TODO implement file watchers
-			//deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", ctx.String("read-envs"), ctx.String("read-credentials"))
-			//if err != nil {
-			//	panic(err)
-			//}
+			deliveryLagcheck, err = cluster_file.NewExternalService(
+				"kafka-lagcheck-delivery", "kafka-lagcheck",
+				fileWatcher, "read.environments", "read.credentials")
+			if err != nil {
+				panic(err)
+			}
 			manualToggle, _ = fileWatcher.Read("toggle")
 			autoToggle, _ = fileWatcher.Read("active-cluster")
 
@@ -240,7 +241,8 @@ func main() {
 				panic(err)
 			}
 
-			deliveryLagcheck, err = cluster_etcd.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
+			deliveryLagcheck, err = cluster_etcd.NewExternalService("kafka-lagcheck-delivery",
+				"kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 			if err != nil {
 				panic(err)
 			}

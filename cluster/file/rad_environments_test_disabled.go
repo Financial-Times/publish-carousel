@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/Financial-Times/publish-carousel/cluster"
 )
 
 func TestParseEnvironmentsSuccessfully(t *testing.T) {
@@ -205,11 +206,13 @@ func TestGetEnvironments(t *testing.T) {
 			}},
 	}
 
-	envSrv := environmentService{map[string]readEnvironment{
-		"environment1": expectedReadEnvs[0],
-		"environment2": expectedReadEnvs[1],
-	},
-	}
+	watcher := new(cluster.MockWatcher)
+	envSrv, _ := newEnvironmentService(watcher, "file1", "file2")
+	//envSrv := environmentService{watcher, map[string]readEnvironment{
+	//	"environment1": expectedReadEnvs[0],
+	//	"environment2": expectedReadEnvs[1],
+	//},
+	//}
 
 	envs := envSrv.GetEnvironments()
 
@@ -256,7 +259,6 @@ func TestNewEnvironmentService(t *testing.T) {
 						},
 					},
 				},
-
 			},
 		},
 		{
@@ -268,7 +270,8 @@ func TestNewEnvironmentService(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
-			envSvc, err := newEnvironmentService(tc.readURLs, tc.credentials)
+			watcher := new(cluster.MockWatcher)
+			envSvc, err := newEnvironmentService(watcher, tc.readURLs, tc.credentials)
 			if tc.expectError {
 				assert.Error(t, err)
 			} else {

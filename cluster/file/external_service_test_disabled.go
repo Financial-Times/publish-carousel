@@ -13,8 +13,8 @@ func TestExternalServiceWithoutBasicAuth(t *testing.T) {
 		called = true
 	})
 	defer server.Close()
-
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -32,7 +32,8 @@ func TestExternalServiceWithBasicAuth(t *testing.T) {
 	})
 	defer server.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server.URL, "environment:user:pass")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server.URL, "environment:user:pass")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -50,7 +51,8 @@ func TestExternalServiceFails(t *testing.T) {
 	})
 	defer server.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -66,7 +68,8 @@ func TestExternalServiceCloses(t *testing.T) {
 
 	server.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -83,7 +86,8 @@ func TestSomeExternalServicesFail(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server1.URL+",environment2:"+server2.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server1.URL+",environment2:"+server2.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -107,7 +111,8 @@ func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server1.URL+",environment2:"+server2.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server1.URL+",environment2:"+server2.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -131,7 +136,8 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:"+server1.URL+",environment2:"+server2.URL, "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:"+server1.URL+",environment2:"+server2.URL, "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -149,7 +155,8 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 }
 
 func TestExternalServiceNameAndString(t *testing.T) {
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", "environment:localhost", "")
+	watcher := new(cluster.MockWatcher)
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "environment:localhost", "")
 	assert.NoError(t, err)
 	assert.Equal(t, "kafka-lagcheck-delivery", kafkaLagcheck.Name())
 	assert.Equal(t, "kafka-lagcheck-delivery - environment: localhost,", kafkaLagcheck.String())

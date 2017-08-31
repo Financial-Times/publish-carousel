@@ -7,6 +7,7 @@ import (
 	"testing"
 	"net/http/httptest"
 	"net/http"
+	"context"
 )
 
 type MockService struct {
@@ -72,4 +73,16 @@ func SetupFakeServerNoAuth(t *testing.T, status int, path string, body string, i
 
 func SetupFakeServerBasicAuth(t *testing.T, status int, path string, body string, isJSON bool, called func()) *httptest.Server {
 	return setupFakeServer(t, status, path, body, isJSON, true, called)
+}
+
+type MockWatcher struct {
+	mock.Mock
+}
+
+func (m *MockWatcher) Watch(ctx context.Context, key string, callback func(val string)) {
+	m.Called(ctx, key, callback)
+}
+func (m *MockWatcher) Read(key string) (string, error) {
+	args := m.Called(key)
+	return args.String(0), args.Error(1)
 }
