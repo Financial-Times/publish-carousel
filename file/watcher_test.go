@@ -89,11 +89,9 @@ func TestSuccessfulWatch(t *testing.T) {
 	go func() {
 		time.Sleep(2 * time.Second)
 		ioutil.WriteFile(tempFile.Name(), []byte(expectedValues[1]), 0600)
-		tempFile.Sync()
 
 		time.Sleep(2 * time.Second)
 		ioutil.WriteFile(tempFile.Name(), []byte(expectedValues[2]), 0600)
-		tempFile.Sync()
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -118,11 +116,9 @@ func TestWatchCallbackPanics(t *testing.T) {
 	go func() {
 		time.Sleep(2 * time.Second)
 		ioutil.WriteFile(tempFile.Name(), []byte("panic"), 0600)
-		tempFile.Sync()
 
 		time.Sleep(2 * time.Second)
 		ioutil.WriteFile(tempFile.Name(), []byte("don't panic"), 0600)
-		tempFile.Sync()
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
