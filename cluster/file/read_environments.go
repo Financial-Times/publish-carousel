@@ -50,10 +50,14 @@ func (r *environmentService) GetEnvironments() []readEnvironment {
 }
 
 func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsFile string, credentialsFile string) {
+	log.WithField("context",ctx).WithField("envsFile", readEnvironmentsFile).
+		WithField("credFile",credentialsFile).WithField("watcher", r.watcher).Info("Debugging a npe")
 	//we have to watch both environments and credentials as we don't know which ones will change
 	go r.watcher.Watch(ctx, readEnvironmentsFile, func(readEnvironments string) {
+		log.Info("In callback")
 		r.Lock()
 		defer r.Unlock()
+		log.Info("Acquired lock")
 
 		credentials, err := r.watcher.Read(credentialsFile)
 		if err != nil {
