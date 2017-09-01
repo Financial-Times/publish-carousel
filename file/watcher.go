@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"fmt"
 	"time"
+	"sync"
 )
 
 // Watcher see Watch func for details
@@ -19,6 +20,7 @@ type Watcher interface {
 }
 
 type watcher struct {
+	sync.RWMutex
 	filePaths       map[string]string
 	fileContents    map[string]string
 	refreshInterval time.Duration
@@ -53,7 +55,7 @@ func NewFileWatcher(folders []string, refreshInterval time.Duration) (Watcher, e
 
 	log.WithField("filePaths", paths).Info("Collected list of files we can watch.")
 	log.WithField("refreshInterval", refreshInterval).Info("Configured refresh interval.")
-	return &watcher{paths, make(map[string]string), refreshInterval}, nil
+	return &watcher{filePaths: paths, fileContents: make(map[string]string), refreshInterval: refreshInterval}, nil
 }
 
 func (e *watcher) Read(fileName string) (string, error) {
@@ -84,8 +86,14 @@ func (e *watcher) Watch(ctx context.Context, fileName string, callback func(val 
 			log.WithField("fileName", fileName).Warn("Cannot update value from file.")
 			continue
 		}
-		if newValue != e.fileContents[fileName] {
+		e.RLock()
+		currentValue := e.fileContents[fileName]
+		e.RUnlock()
+
+		if newValue !=  currentValue{
+			e.Lock()
 			e.fileContents[fileName] = newValue
+			e.Unlock()
 			log.WithField("newValue", newValue).Info("New value found in file, calling callback")
 			runCallback(newValue, callback)
 		}

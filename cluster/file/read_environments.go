@@ -30,9 +30,18 @@ type environmentService struct {
 
 func newEnvironmentService(watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (*environmentService, error) {
 	readURLs, err := watcher.Read(readEnvironmentsFile)
+	if err != nil {
+		log.WithField("file", readEnvironmentsFile).Error("Cannot read environments from file: ", err)
+		return nil, err
+	}
 	credentialsString, err := watcher.Read(credentialsFile)
+	if err != nil {
+		log.WithField("file", credentialsFile).Error("Cannot read credentials from file: ", err)
+		return nil, err
+	}
 	environments, err := parseEnvironments(readURLs, credentialsString)
 	if err != nil {
+		log.Error(err.Error())
 		return nil, err
 	}
 	return &environmentService{environments: environments, watcher: watcher}, nil
@@ -70,7 +79,7 @@ func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsF
 		r.Lock()
 		defer r.Unlock()
 
-		readEnvironments, err := r.watcher.Read(credentialsFile)
+		readEnvironments, err := r.watcher.Read(readEnvironmentsFile)
 		if err != nil {
 			log.WithError(err).Error("CredentialsFile were updated but failed to read environments file!")
 			return
