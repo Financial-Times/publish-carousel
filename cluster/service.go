@@ -8,7 +8,6 @@ import (
 
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
-	"time"
 )
 
 const healthPath = "/__health"
@@ -26,7 +25,6 @@ type clusterService struct {
 	gtgURL            *url.URL
 	healthURL         *url.URL
 	checkHealthchecks bool
-	client            http.Client
 }
 
 // NewService returns a new instance of a UPP cluster service which checks either the /__gtg or the /__health endpoints
@@ -41,12 +39,6 @@ func NewService(serviceName string, urlString string, checkHealthchecks bool) (S
 		return nil, err
 	}
 
-	httpClient := http.Client{
-		Timeout: 4500 * time.Millisecond,
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 100,
-		},
-	}
 	return &clusterService{serviceName: serviceName, gtgURL: gtgURL, healthURL: healthURL, checkHealthchecks: checkHealthchecks, client: httpClient}, nil
 }
 
@@ -116,5 +108,5 @@ func (s *clusterService) doGet(serviceUrl string) (*http.Response, error) {
 	}
 
 	req.Header.Add("User-Agent", "UPP Publish Carousel")
-	return s.client.Do(req)
+	return client.Do(req)
 }
