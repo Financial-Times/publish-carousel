@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"github.com/Financial-Times/publish-carousel/file"
+	"sync"
+	"context"
+	log "github.com/Sirupsen/logrus"
 )
 
 type readEnvironment struct {
@@ -19,23 +23,80 @@ type credentials struct {
 
 // NewReadCluster parse read cluster urls and credentials
 type environmentService struct {
+	sync.RWMutex
+	watcher      file.Watcher
 	environments map[string]readEnvironment
 }
 
-func newEnvironmentService(readURLs string, credentials string) (*environmentService, error) {
-	environments, err := parseEnvironments(readURLs, credentials)
+func newEnvironmentService(watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (*environmentService, error) {
+	readURLs, err := watcher.Read(readEnvironmentsFile)
 	if err != nil {
+		log.WithField("file", readEnvironmentsFile).Error("Cannot read environments from file: ", err)
 		return nil, err
 	}
-	return &environmentService{environments: environments}, nil
+	credentialsString := ""
+	if credentialsFile != "" {
+		credentialsString, err = watcher.Read(credentialsFile)
+		if err != nil {
+			log.WithField("file", credentialsFile).Error("Cannot read credentials from file: ", err)
+			return nil, err
+		}
+	}
+	environments, err := parseEnvironments(readURLs, credentialsString)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
+	}
+	return &environmentService{environments: environments, watcher: watcher}, nil
 }
 
 func (r *environmentService) GetEnvironments() []readEnvironment {
+	r.RLock()
+	defer r.RUnlock()
+
 	var envs []readEnvironment
 	for _, env := range r.environments {
 		envs = append(envs, env)
 	}
 	return envs
+}
+
+func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsFile string, credentialsFile string) {
+	//we have to watch both environments and credentials as we don't know which ones will change
+	go r.watcher.Watch(ctx, readEnvironmentsFile, func(readEnvironments string) {
+		r.Lock()
+		defer r.Unlock()
+
+		credentials, err := r.watcher.Read(credentialsFile)
+		if err != nil {
+			log.WithError(err).Error("Environments were updated but failed to read credentials file!")
+			return
+		}
+		update, err := parseEnvironments(readEnvironments, credentials)
+		if err != nil {
+			log.WithError(err).Error("One or more read-urls failed validation!")
+		}
+		r.environments = update
+	})
+	if credentialsFile == "" {
+		return
+	}
+
+	go r.watcher.Watch(ctx, credentialsFile, func(credentials string) {
+		r.Lock()
+		defer r.Unlock()
+
+		readEnvironments, err := r.watcher.Read(readEnvironmentsFile)
+		if err != nil {
+			log.WithError(err).Error("CredentialsFile were updated but failed to read environments file!")
+			return
+		}
+		update, err := parseEnvironments(readEnvironments, credentials)
+		if err != nil {
+			log.WithError(err).Error("One or more read-urls failed validation!")
+		}
+		r.environments = update
+	})
 }
 
 func parseEnvironments(readURLs string, credentialsString string) (map[string]readEnvironment, error) {

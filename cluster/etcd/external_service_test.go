@@ -3,7 +3,6 @@ package etcd
 import (
 	"testing"
 
-	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/Financial-Times/publish-carousel/cluster"
@@ -16,7 +15,7 @@ func TestExternalService(t *testing.T) {
 	})
 	defer server.Close()
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -39,7 +38,7 @@ func TestExternalServiceFails(t *testing.T) {
 	})
 	defer server.Close()
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -58,7 +57,7 @@ func TestExternalServiceFails(t *testing.T) {
 func TestExternalServiceCloses(t *testing.T) {
 	server := cluster.SetupFakeServerNoAuth(t, 200, "/__kafka-lagcheck/__gtg", "", false, func() {})
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -82,7 +81,7 @@ func TestSomeExternalServicesFail(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -111,7 +110,7 @@ func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -140,7 +139,7 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	defer server1.Close()
 	defer server2.Close()
 
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 
@@ -163,7 +162,7 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 }
 
 func TestExternalServiceNameAndString(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:localhost", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "read-key", mock.AnythingOfType("func(string)"))
 

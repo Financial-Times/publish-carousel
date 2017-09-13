@@ -32,6 +32,16 @@ govendor test -v -race -short +local
 
 To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`.
 
+## Configuration sourcing and dynamic updates
+
+The dynamic environment configuration for the service can be sourced from `etcd` or from the filesystem. 
+
+To read these configs from etcd, populate the `ETCD_PEERS` environment variable with the `etcd` peers. 
+
+For filesystem-sourced environment configuration,  `ETCD_PEERS` has to have the value: `NOT_AVAILABLE`.
+
+On-the fly changes to the configs are read both for etcd and the file-based option.
+
 ## Running locally
 `etcd` is required.
 

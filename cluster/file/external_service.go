@@ -7,17 +7,25 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/Financial-Times/publish-carousel/cluster"
+	"github.com/Financial-Times/publish-carousel/file"
+	"sync"
+	"context"
 )
 
 type externalService struct {
+	sync.RWMutex
 	name               string
 	serviceName        string
 	environmentService *environmentService
 }
 
 // NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
-func NewExternalService(name string, serviceName string, readURLs string, credentials string) (cluster.Service, error) {
-	environmentService, err := newEnvironmentService(readURLs, credentials)
+func NewExternalService(name string, serviceName string, watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (cluster.Service, error) {
+	environmentService, err := newEnvironmentService(watcher, readEnvironmentsFile, credentialsFile)
+	if err != nil {
+		return nil, err
+	}
+	environmentService.startWatcher(context.Background(), readEnvironmentsFile, credentialsFile)
 	return &externalService{name: name, serviceName: serviceName, environmentService: environmentService}, err
 }
 
@@ -30,6 +38,9 @@ func (e *externalService) ServiceName() string {
 }
 
 func (e *externalService) Check() error {
+	e.RLock()
+	defer e.RUnlock()
+
 	envs := e.environmentService.GetEnvironments()
 
 	errs := make([]error, 0)
@@ -42,6 +53,7 @@ func (e *externalService) Check() error {
 			errs = append(errs, err)
 			continue
 		}
+
 		if env.credentials != nil {
 			req.SetBasicAuth(env.credentials.username, env.credentials.password)
 		}

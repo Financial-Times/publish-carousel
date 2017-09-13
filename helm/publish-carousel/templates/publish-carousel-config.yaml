@@ -1,0 +1,18 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: publish-carousel-configs
+  namespace: default
+data:
+  read.environments: "{{ .Values.target_env }}-delivery-upp-eu:https://{{ .Values.target_env }}-delivery-upp-eu.ft.com/"
+  toggle: "true"
+  active-cluster: "true"
+
+# corresponding secret template
+# kind: Secret
+# apiVersion: v1
+# metadata:
+#   name: publish-carousel-secrets
+# type: Opaque
+# data:
+#    read.credentials: "k8s-delivery-upp-eu:user:pw"

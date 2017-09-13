@@ -1,5 +1,3 @@
-##this is an example deployment.yaml that should be customized in order to meet the configuration for app k8s deployment
-
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -56,10 +54,17 @@ spec:
           value: {{ .Values.env.s3.bucket }}
         - name: MONGO_DB_TIMEOUT
           value: "{{ .Values.env.mongodb.timeout }}"
-        - name: TOGGLE
-          value: "{{ .Values.env.toggle }}"
         - name: DEFAULT_THROTTLE
-          value: "{{ .Values.env.throttle }}" 
+          value: "{{ .Values.env.throttle }}"
+        - name: CONFIGS_DIR
+          value: "/configs"
+        - name: CREDENTIALS_DIR
+          value: "/credentials"
+        volumeMounts:
+          - name: configs-volume
+            mountPath: /configs
+          - name: secrets-volume
+            mountPath: /credentials
         ports:
         - containerPort: 8080
         - containerPort: 8081
@@ -75,4 +80,10 @@ spec:
           periodSeconds: 30 
         resources: 
 {{ toYaml .Values.resources | indent 12 }}
-
+      volumes:
+      - name: configs-volume
+        configMap:
+          name: publish-carousel-configs
+      - name: secrets-volume
+        secret:
+          secretName: publish-carousel-secrets

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/Financial-Times/publish-carousel/cluster"
 )
 
 var client etcdClient.Client
@@ -183,7 +184,7 @@ func watchInvalidReadURLValue(t *testing.T, watcher etcd.Watcher, readService *e
 }
 
 func TestSetupReadClusterFailsReadURLs(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("this shouldn't work", nil)
 
 	readService, err := newEnvironmentService(watcher, "read-key")
@@ -194,7 +195,7 @@ func TestSetupReadClusterFailsReadURLs(t *testing.T) {
 }
 
 func TestSetupReadClusterSucceedsWithEmptyKeys(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("", nil)
 
 	readService, err := newEnvironmentService(watcher, "read-key")
@@ -206,7 +207,7 @@ func TestSetupReadClusterSucceedsWithEmptyKeys(t *testing.T) {
 }
 
 func TestReadKeyFails(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("", errors.New("failed"))
 
 	readService, err := newEnvironmentService(watcher, "read-key")
@@ -216,7 +217,7 @@ func TestReadKeyFails(t *testing.T) {
 }
 
 func TestReadURLFails(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment::#,environment2::#", nil)
 
 	readService, err := newEnvironmentService(watcher, "read-key")
@@ -227,7 +228,7 @@ func TestReadURLFails(t *testing.T) {
 }
 
 func TestReadURLsTrailingComma(t *testing.T) {
-	watcher := new(etcd.MockWatcher)
+	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "read-key").Return("environment:localhost,", nil)
 
 	readService, err := newEnvironmentService(watcher, "read-key")
