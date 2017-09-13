@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"context"
 	"reflect"
+	"strings"
 )
 
 func TestParseEnvironmentsSuccessfully(t *testing.T) {
@@ -32,22 +33,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			credentials:      "",
 			expectedEnvsSize: 2,
 			expectedEnvSvc: environmentService{
-				environments: map[string]readEnvironment{
-					"environment1": {
-						name: "environment1",
-						readURL: &url.URL{
-							Host:   "address1",
-							Scheme: "http",
-						},
-					},
-					"environment2": {
-						name: "environment2",
-						readURL: &url.URL{
-							Host:   "address2",
-							Scheme: "http",
-						},
-					},
-				},
+				environments: buildEnvironment("environment1:http:address1", "environment2:http:address2"),
 			},
 		},
 		{
@@ -56,26 +42,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			credentials:      "environment1:user:password",
 			expectedEnvsSize: 2,
 			expectedEnvSvc: environmentService{
-				environments: map[string]readEnvironment{
-					"environment1": {
-						name: "environment1",
-						readURL: &url.URL{
-							Host:   "address1",
-							Scheme: "https",
-						},
-						credentials: &credentials{
-							username: "user",
-							password: "password",
-						},
-					},
-					"environment2": {
-						name: "environment2",
-						readURL: &url.URL{
-							Host:   "address2",
-							Scheme: "http",
-						},
-					},
-				},
+				environments: buildEnvironment("environment1:https:address1:user:password", "environment2:http:address2"),
 			},
 		},
 		{
@@ -109,8 +76,10 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
 			envs, err := parseEnvironments(tc.readURLs, tc.credentials)
+
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedEnvsSize, len(envs))
+
 			for expectedEnvName, expectedEnv := range tc.expectedEnvSvc.environments {
 				assert.Contains(t, envs, expectedEnvName)
 				assert.Equal(t, expectedEnv.name, envs[expectedEnvName].name)
@@ -163,23 +132,17 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 			description:      "readURLs string contains an invalid url",
 			expectedEnvsSize: 1,
 			expectedEnvs: environmentService{
-				environments: map[string]readEnvironment{
-					"environment2": {
-						name: "environment2",
-						readURL: &url.URL{
-							Host:   "localhost",
-							Scheme: "http",
-						},
-					},
-				},
+				environments: buildEnvironment("environment2:http:localhost"),
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
 			envs, err := parseEnvironments(tc.readURLs, tc.credentials)
+
 			assert.Error(t, err)
 			assert.Equal(t, tc.expectedEnvsSize, len(envs))
+
 			if tc.expectedEnvsSize != 0 {
 				for expectedEnvName, expectedEnv := range tc.expectedEnvs.environments {
 					assert.Contains(t, envs, expectedEnvName)
@@ -193,26 +156,8 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 
 func TestGetEnvironments(t *testing.T) {
 	expectedReadEnvs := []readEnvironment{
-		{
-			name: "environment1",
-			readURL: &url.URL{
-				Host:   "address1",
-				Scheme: "http",
-			},
-			credentials: &credentials{
-				username: "user1",
-				password: "password1",
-			}},
-		{
-			name: "environment2",
-			readURL: &url.URL{
-				Host:   "address2",
-				Scheme: "http",
-			},
-			credentials: &credentials{
-				username: "user2",
-				password: "password2",
-			}},
+		buildEnvironment("environment1:http:address1:user1:password1")["environment1"],
+		buildEnvironment("environment2:http:address2:user2:password2")["environment2"],
 	}
 
 	watcher := new(cluster.MockWatcher)
@@ -241,30 +186,7 @@ func TestNewEnvironmentService(t *testing.T) {
 			readURLs:    "environment1:https://address1,environment2:http://address2",
 			credentials: "environment1:user1:password1,environment2:user2:password2",
 			expectedEnvSvc: environmentService{
-				environments: map[string]readEnvironment{
-					"environment1": {
-						name: "environment1",
-						readURL: &url.URL{
-							Host:   "address1",
-							Scheme: "https",
-						},
-						credentials: &credentials{
-							username: "user1",
-							password: "password1",
-						},
-					},
-					"environment2": {
-						name: "environment2",
-						readURL: &url.URL{
-							Host:   "address2",
-							Scheme: "http",
-						},
-						credentials: &credentials{
-							username: "user2",
-							password: "password2",
-						},
-					},
-				},
+				environments: buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
 			},
 		},
 		{
@@ -276,9 +198,7 @@ func TestNewEnvironmentService(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
-
 			watcher := new(cluster.MockWatcher)
-
 			watcher.On("Read", "envsFile").Return(tc.readURLs, nil)
 			watcher.On("Read", "credsFile").Return(tc.credentials, nil)
 
@@ -359,54 +279,8 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 			updatedReadURLs:    "environment1:https://address3,environment2:http://address2",
 			initialCredentials: "environment1:user1:password1,environment2:user2:password2",
 			updatedCredentials: "environment1:user1:password1,environment2:user2:password2",
-			initialEnvs: map[string]readEnvironment{
-				"environment1": {
-					name: "environment1",
-					readURL: &url.URL{
-						Host:   "address1",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user1",
-						password: "password1",
-					},
-				},
-				"environment2": {
-					name: "environment2",
-					readURL: &url.URL{
-						Host:   "address2",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user2",
-						password: "password2",
-					},
-				},
-			},
-			updatedEnvs: map[string]readEnvironment{
-				"environment1": {
-					name: "environment1",
-					readURL: &url.URL{
-						Host:   "address3",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user1",
-						password: "password1",
-					},
-				},
-				"environment2": {
-					name: "environment2",
-					readURL: &url.URL{
-						Host:   "address2",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user2",
-						password: "password2",
-					},
-				},
-			},
+			initialEnvs:        buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
+			updatedEnvs:        buildEnvironment("environment1:https:address3:user1:password1", "environment2:http:address2:user2:password2"),
 		}, {
 			description:        "Credentials file ONLY is updated",
 			environmentUpdate:  false,
@@ -415,54 +289,8 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 			updatedReadURLs:    "environment1:https://address1,environment2:http://address2",
 			initialCredentials: "environment1:user1:password1,environment2:user2:password2",
 			updatedCredentials: "environment1:user5:password5,environment2:user6:password6",
-			initialEnvs: map[string]readEnvironment{
-				"environment1": {
-					name: "environment1",
-					readURL: &url.URL{
-						Host:   "address1",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user1",
-						password: "password1",
-					},
-				},
-				"environment2": {
-					name: "environment2",
-					readURL: &url.URL{
-						Host:   "address2",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user2",
-						password: "password2",
-					},
-				},
-			},
-			updatedEnvs: map[string]readEnvironment{
-				"environment1": {
-					name: "environment1",
-					readURL: &url.URL{
-						Host:   "address1",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user5",
-						password: "password5",
-					},
-				},
-				"environment2": {
-					name: "environment2",
-					readURL: &url.URL{
-						Host:   "address2",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user6",
-						password: "password6",
-					},
-				},
-			},
+			initialEnvs:        buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
+			updatedEnvs:        buildEnvironment("environment1:https:address1:user5:password5", "environment2:http:address2:user6:password6"),
 		}, {
 			description:        "Credentials file AND Environments file is updated",
 			environmentUpdate:  true,
@@ -471,76 +299,58 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 			updatedReadURLs:    "environment4:https://address4,environment5:http://address5",
 			initialCredentials: "environment1:user1:password1,environment2:user2:password2",
 			updatedCredentials: "environment4:user4:password4,environment5:user5:password5",
-			initialEnvs: map[string]readEnvironment{
-				"environment1": {
-					name: "environment1",
-					readURL: &url.URL{
-						Host:   "address1",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user1",
-						password: "password1",
-					},
-				},
-				"environment2": {
-					name: "environment2",
-					readURL: &url.URL{
-						Host:   "address2",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user2",
-						password: "password2",
-					},
-				},
-			},
-			updatedEnvs: map[string]readEnvironment{
-				"environment4": {
-					name: "environment4",
-					readURL: &url.URL{
-						Host:   "address4",
-						Scheme: "https",
-					},
-					credentials: &credentials{
-						username: "user4",
-						password: "password4",
-					},
-				},
-				"environment5": {
-					name: "environment5",
-					readURL: &url.URL{
-						Host:   "address5",
-						Scheme: "http",
-					},
-					credentials: &credentials{
-						username: "user5",
-						password: "password5",
-					},
-				},
-			},
+			initialEnvs:        buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
+			updatedEnvs:        buildEnvironment("environment4:https:address4:user4:password4", "environment5:http:address5:user5:password5"),
+		},
+		{
+			description:        "Environment removed",
+			environmentUpdate:  true,
+			credentialsUpdate:  true,
+			initialReadURLs:    "environment1:https://address1,environment2:http://address2",
+			updatedReadURLs:    "environment1:https://address1",
+			initialCredentials: "environment1:user1:password1,environment2:user2:password2",
+			updatedCredentials: "environment1:user1:password1",
+			initialEnvs:        buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
+			updatedEnvs:        buildEnvironment("environment1:https:address1:user1:password1"),
+		},
+		{
+			description:        "Environment added",
+			environmentUpdate:  true,
+			credentialsUpdate:  true,
+			initialReadURLs:    "environment1:https://address1",
+			updatedReadURLs:    "environment1:https://address1,environment2:http://address2",
+			initialCredentials: "environment1:user1:password1",
+			updatedCredentials: "environment1:user1:password1,environment2:user2:password2",
+			initialEnvs:        buildEnvironment("environment1:https:address1:user1:password1"),
+			updatedEnvs:        buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+			//setup files with initial content
 			tempDir, _ := ioutil.TempDir(os.TempDir(), "testDir")
+
 			envsFile, _ := ioutil.TempFile(tempDir, "read-environments")
 			envsFile.WriteString(tc.initialReadURLs)
 			envsFile.Close()
+
 			credsFile, _ := ioutil.TempFile(tempDir, "credentials")
 			credsFile.WriteString(tc.initialCredentials)
 			credsFile.Close()
 
 			ctx, cancel := context.WithCancel(context.Background())
 
+			//start watcher on the files, with a cancellable context
 			watcher, _ := file.NewFileWatcher([]string{tempDir}, time.Second*1)
 			envSrv, _ := newEnvironmentService(watcher, filepath.Base(envsFile.Name()), filepath.Base(credsFile.Name()))
 			envSrv.startWatcher(ctx, filepath.Base(envsFile.Name()), filepath.Base(credsFile.Name()))
+
 			initialEnvironments := envSrv.environments
 			assert.Equal(t, len(tc.initialEnvs), len(initialEnvironments))
 			assert.True(t, reflect.DeepEqual(tc.initialEnvs, initialEnvironments))
 
+			//update files with new values
 			if tc.environmentUpdate {
 				ioutil.WriteFile(envsFile.Name(), []byte(tc.updatedReadURLs), 0600)
 			}
@@ -548,13 +358,12 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 				ioutil.WriteFile(credsFile.Name(), []byte(tc.updatedCredentials), 0600)
 			}
 
+			//wait for the watcher to pick up the changes, then cancel it's context
 			time.Sleep(2 * time.Second)
 			cancel()
+
 			updatedEnvironments := envSrv.environments
 			assert.Equal(t, len(tc.updatedEnvs), len(updatedEnvironments))
-
-			//fmt.Printf("EXPECTED\n%# v", pretty.Formatter(tc.updatedEnvs))
-			//fmt.Printf("ACTUAL\n%# v", pretty.Formatter(updatedEnvironments))
 			assert.True(t, reflect.DeepEqual(tc.updatedEnvs, updatedEnvironments))
 
 			cleanupDir(tempDir)
@@ -574,4 +383,18 @@ func cleanupDir(tempDir string) {
 	if err != nil {
 		logrus.WithError(err).Error("Cannot remove temp dir", tempDir)
 	}
+}
+
+func buildEnvironment(envs ...string) map[string]readEnvironment {
+	readEnvs := make(map[string]readEnvironment)
+	for _, envs := range envs {
+		elements := strings.Split(envs, ":")
+		var readEnv readEnvironment
+		readEnv = readEnvironment{name: elements[0], readURL: &url.URL{Host: elements[2], Scheme: elements[1],},}
+		if len(elements) == 5 {
+			readEnv.credentials = &credentials{username: elements[3], password: elements[4],}
+		}
+		readEnvs[elements[0]] = readEnv
+	}
+	return readEnvs
 }

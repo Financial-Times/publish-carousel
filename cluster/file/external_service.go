@@ -25,7 +25,7 @@ func NewExternalService(name string, serviceName string, watcher file.Watcher, r
 	if err != nil {
 		return nil, err
 	}
-	environmentService.startWatcher(context.Background(),readEnvironmentsFile, credentialsFile)
+	environmentService.startWatcher(context.Background(), readEnvironmentsFile, credentialsFile)
 	return &externalService{name: name, serviceName: serviceName, environmentService: environmentService}, err
 }
 
@@ -52,6 +52,10 @@ func (e *externalService) Check() error {
 		if err != nil {
 			errs = append(errs, err)
 			continue
+		}
+
+		if env.credentials != nil {
+			req.SetBasicAuth(env.credentials.username, env.credentials.password)
 		}
 
 		req.Header.Add("User-Agent", "UPP Publish Carousel")

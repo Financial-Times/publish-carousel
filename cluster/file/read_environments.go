@@ -34,10 +34,13 @@ func newEnvironmentService(watcher file.Watcher, readEnvironmentsFile string, cr
 		log.WithField("file", readEnvironmentsFile).Error("Cannot read environments from file: ", err)
 		return nil, err
 	}
-	credentialsString, err := watcher.Read(credentialsFile)
-	if err != nil {
-		log.WithField("file", credentialsFile).Error("Cannot read credentials from file: ", err)
-		return nil, err
+	credentialsString := ""
+	if credentialsFile != "" {
+		credentialsString, err = watcher.Read(credentialsFile)
+		if err != nil {
+			log.WithField("file", credentialsFile).Error("Cannot read credentials from file: ", err)
+			return nil, err
+		}
 	}
 	environments, err := parseEnvironments(readURLs, credentialsString)
 	if err != nil {
@@ -75,6 +78,10 @@ func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsF
 		}
 		r.environments = update
 	})
+	if credentialsFile == "" {
+		return
+	}
+
 	go r.watcher.Watch(ctx, credentialsFile, func(credentials string) {
 		r.Lock()
 		defer r.Unlock()
