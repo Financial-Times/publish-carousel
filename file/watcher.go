@@ -94,7 +94,7 @@ func (e *watcher) Watch(ctx context.Context, fileName string, callback func(val 
 			e.Lock()
 			e.fileContents[fileName] = newValue
 			e.Unlock()
-			log.WithField("newValue", newValue).Info("New value found in file, calling callback")
+			log.WithField("fileName", fileName).Info("New value found in file, calling callback")
 			runCallback(newValue, callback)
 		}
 	}

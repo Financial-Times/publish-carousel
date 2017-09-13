@@ -220,6 +220,7 @@ func main() {
 		var manualToggle, autoToggle string
 
 		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
+			log.Info("Sourcing configs from file.")
 			fileWatcher, err := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
 			if err != nil {
 				panic(err)
@@ -238,6 +239,7 @@ func main() {
 			go fileWatcher.Watch(context.Background(), "toggle", sched.ManualToggleHandler)
 			go fileWatcher.Watch(context.Background(), "active-cluster", sched.AutomaticToggleHandler)
 		} else {
+			log.Info("Sourcing configs from etcd.")
 			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
 			if err != nil {
 				panic(err)
