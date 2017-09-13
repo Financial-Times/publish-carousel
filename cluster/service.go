@@ -39,7 +39,7 @@ func NewService(serviceName string, urlString string, checkHealthchecks bool) (S
 		return nil, err
 	}
 
-	return &clusterService{serviceName: serviceName, gtgURL: gtgURL, healthURL: healthURL, checkHealthchecks: checkHealthchecks, client: httpClient}, nil
+	return &clusterService{serviceName: serviceName, gtgURL: gtgURL, healthURL: healthURL, checkHealthchecks: checkHealthchecks}, nil
 }
 
 func (s *clusterService) Name() string {
