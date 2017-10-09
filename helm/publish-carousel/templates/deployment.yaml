@@ -85,13 +85,16 @@ spec:
         projected:
           sources:
           - configMap:
-              name: synthetic-publication-monitor-read-environments
+              name: global-config
               items:
-              - key: read.environments
+              - key: publish_monitor.read_environments
                 path: read.environments
           - configMap:
               name: publish-carousel-configs
 
       - name: secrets-volume
         secret:
-          secretName: synthetic-publication-monitor-read-credentials
+          secretName: global-secrets
+          items:
+          - key: publish_monitor.read_credentials
+            path: read.credentials
