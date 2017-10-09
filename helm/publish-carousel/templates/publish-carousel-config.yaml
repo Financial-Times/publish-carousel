@@ -4,7 +4,6 @@ metadata:
   name: publish-carousel-configs
   namespace: default
 data:
-  read.environments: "{{ .Values.target_env }}-delivery-upp-eu:https://{{ .Values.target_env }}-delivery-upp-eu.ft.com/"
   toggle: "true"
   active-cluster: "true"
 

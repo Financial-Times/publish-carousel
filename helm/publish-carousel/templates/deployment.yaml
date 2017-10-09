@@ -61,7 +61,7 @@ spec:
         - name: CREDENTIALS_DIR
           value: "/credentials"
         volumeMounts:
-          - name: configs-volume
+          - name: monitor-configs-volume
             mountPath: /configs
           - name: secrets-volume
             mountPath: /credentials
@@ -81,9 +81,20 @@ spec:
         resources: 
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
-      - name: configs-volume
-        configMap:
-          name: publish-carousel-configs
+      - name: monitor-configs-volume
+        projected:
+          sources:
+          - configMap:
+              name: global-config
+              items:
+              - key: publish_monitor.read_environments
+                path: read.environments
+          - configMap:
+              name: publish-carousel-configs
+
       - name: secrets-volume
         secret:
-          secretName: publish-carousel-secrets
+          secretName: global-secrets
+          items:
+          - key: publish_monitor.read_credentials
+            path: read.credentials
