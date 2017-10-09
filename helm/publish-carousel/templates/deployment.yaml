@@ -63,8 +63,6 @@ spec:
         volumeMounts:
           - name: monitor-configs-volume
             mountPath: /configs
-          - name: configs-volume
-            mountPath: /configs
           - name: secrets-volume
             mountPath: /credentials
         ports:
@@ -84,15 +82,15 @@ spec:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
       - name: monitor-configs-volume
-        configMap:
-          name: synthetic-publication-monitor-read-environments
-          items:
-          - key: read.environments
-            path: read.environments
-
-      - name: configs-volume
-        configMap:
-          name: publish-carousel-configs
+        projected:
+          sources:
+          - configMap:
+              name: synthetic-publication-monitor-read-environments
+              items:
+              - key: read.environments
+                path: read.environments
+          - configMap:
+              name: publish-carousel-configs
 
       - name: secrets-volume
         secret:
