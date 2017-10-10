@@ -32,7 +32,7 @@ govendor test -v -race -short +local
 
 To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`. To connect to an Etcd instance, please use the environment variable `ETCD_TEST_URL` i.e. `export ETCD_TEST_URL=http://localhost:2379`.
 
-## Configuration sourcing and dynamic updates
+## Configuration sourcing and dynamic updates <a name="config"></a>
 
 The dynamic environment configuration for the service can be sourced from `etcd` or from the filesystem. 
 
@@ -43,7 +43,8 @@ For filesystem-sourced environment configuration,  `ETCD_PEERS` has to have the 
 On-the fly changes to the configs are read both for etcd and the file-based option.
 
 ## Running locally
-`etcd` is required.
+
+`etcd` or configuration files are required, depending on the configuration option - see [Configuration sourcing and dynamic updates](#config)
 
 For running the Carousel locally, please see the command line arguments that need to be set using:
 
