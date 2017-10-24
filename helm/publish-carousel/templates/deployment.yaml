@@ -91,7 +91,6 @@ spec:
                 path: read.environments
           - configMap:
               name: publish-carousel-configs
-
       - name: secrets-volume
         secret:
           secretName: global-secrets
