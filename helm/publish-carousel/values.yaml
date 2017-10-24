@@ -11,9 +11,9 @@ image:
 env:
   etcd_peers: NOT_AVAILABLE
   mongodb: 
-    url: mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017
+    url: mongodb-new-mongodb-replicaset-0.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017, mongodb-new-mongodb-replicaset-1.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017, mongodb-new-mongodb-replicaset-2.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017
     # timeout in milliseconds
-    timeout: "30000"
+    timeout: "5000"
     node_count: 3
   cmsnotifier: 
     url: http://cms-notifier:8080

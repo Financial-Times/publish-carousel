@@ -6,12 +6,3 @@ metadata:
 data:
   toggle: "true"
   active-cluster: "true"
-
-# corresponding secret template
-# kind: Secret
-# apiVersion: v1
-# metadata:
-#   name: publish-carousel-secrets
-# type: Opaque
-# data:
-#    read.credentials: "k8s-delivery-upp-eu:user:pw"
