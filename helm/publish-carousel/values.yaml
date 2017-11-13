@@ -11,7 +11,6 @@ image:
 env:
   etcd_peers: NOT_AVAILABLE
   mongodb: 
-    url: mongodb-new-mongodb-replicaset-0.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017, mongodb-new-mongodb-replicaset-1.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017, mongodb-new-mongodb-replicaset-2.mongodb-new-mongodb-replicaset.default.svc.cluster.local:27017
     # timeout in milliseconds
     timeout: "5000"
     node_count: 3

@@ -26,7 +26,10 @@ spec:
         - name: ETCD_PEERS
           value: {{ .Values.env.etcd_peers }}
         - name: MONGO_DB_URL
-          value: {{ .Values.env.mongodb.url }}
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: mongo.addresses
         - name: MONGO_NODE_COUNT
           value: "{{ .Values.env.mongodb.node_count }}"
         - name: CMS_NOTIFIER_URL
