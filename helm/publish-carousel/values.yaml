@@ -21,8 +21,6 @@ env:
   # publishing cluster lagcheck
   lagcheck: 
     url: http://kafka-lagcheck:8080
-  s3: 
-    bucket: com.ft.universalpublishing.publish-carousel.k8s-eu
   toggle: "true"
   throttle: "6s"
 resources:
