@@ -24,7 +24,7 @@ func TestUnhappyNewService(t *testing.T) {
 
 func TestHappyGTG(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusOK, "/__gtg", "", false, func() {
+	mockService := SetupFakeServerNoAuth(t, http.StatusOK, "/__gtg", "", false, func() {
 		called = true
 	})
 	defer mockService.Close()
@@ -37,7 +37,7 @@ func TestHappyGTG(t *testing.T) {
 
 func TestUnhappyGTG(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusServiceUnavailable, "/__gtg", "", false, func() {
+	mockService := setupFakeServer(t, http.StatusServiceUnavailable, "/__gtg", "", false, false, func() {
 		called = true
 	})
 	defer mockService.Close()
@@ -50,7 +50,7 @@ func TestUnhappyGTG(t *testing.T) {
 
 func TestHappyHealth(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusOK, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "true"), true, func() {
+	mockService := setupFakeServer(t, http.StatusOK, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "true"), true, false, func() {
 		called = true
 	})
 	defer mockService.Close()
@@ -64,7 +64,7 @@ func TestHappyHealth(t *testing.T) {
 
 func TestUnhappyHealth(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusOK, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "false"), true, func() {
+	mockService := setupFakeServer(t, http.StatusOK, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "false"), true, false, func() {
 		called = true
 	})
 	defer mockService.Close()
@@ -77,7 +77,7 @@ func TestUnhappyHealth(t *testing.T) {
 
 func TestEmptyHealthResponse(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusOK, "/__health", "", true, func() {
+	mockService := setupFakeServer(t, http.StatusOK, "/__health", "", true, false, func() {
 		called = true
 	})
 	defer mockService.Close()
@@ -91,7 +91,7 @@ func TestEmptyHealthResponse(t *testing.T) {
 
 func TestNonOKHealth(t *testing.T) {
 	called := false
-	mockService := setupFakeServer(t, http.StatusServiceUnavailable, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "false"), true, func() {
+	mockService := setupFakeServer(t, http.StatusServiceUnavailable, "/__health", fmt.Sprintf(pamHealthcheckTemplate, "false"), true, false, func() {
 		called = true
 	})
 	defer mockService.Close()

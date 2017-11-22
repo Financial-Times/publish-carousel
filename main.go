@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -9,11 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	ui "github.com/Financial-Times/publish-carousel-ui"
+	"github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
-	"github.com/Financial-Times/publish-carousel/etcd"
+
 	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
@@ -23,8 +22,13 @@ import (
 	"github.com/Financial-Times/service-status-go/httphandlers"
 	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
 	"fmt"
+	"github.com/Financial-Times/publish-carousel/etcd"
+	"context"
+	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
+	"github.com/Financial-Times/publish-carousel/file"
 )
 
 func init() {
@@ -84,7 +88,7 @@ func main() {
 			Name:   "lagcheck-url",
 			Value:  "http://localhost:8080/__kafka-lagcheck",
 			EnvVar: "LAGCHECK_URL",
-			Usage:  "The URL of the queue lagcheck service to verify the health of the cluster.",
+			Usage:  "The URL of the queue lagcheck service from the publishing cluster to verify the health of the cluster.",
 		},
 		cli.StringFlag{
 			Name:   "aws-region",
@@ -146,6 +150,18 @@ func main() {
 			EnvVar: "CHECKPOINT_INTERVAL",
 			Usage:  "Interval for saving metadata checkpoints",
 		},
+		cli.StringFlag{
+			Name:   "configs-dir",
+			Value:  "/configs",
+			EnvVar: "CONFIGS_DIR",
+			Usage:  "Directory containing the files with read environment, toggle and active-cluster values",
+		},
+		cli.StringFlag{
+			Name:   "credentials-dir",
+			Value:  "/configs/credentials",
+			EnvVar: "CREDENTIALS_DIR",
+			Usage:  "Directory containing the file with read environment credentials",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) {
@@ -184,16 +200,6 @@ func main() {
 
 		task := tasks.NewNativeContentPublishTask(reader, notifier, isImage)
 
-		etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
-		if err != nil {
-			panic(err)
-		}
-
-		deliveryLagcheck, err := cluster.NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
-		if err != nil {
-			panic(err)
-		}
-
 		defaultThrottle, err := time.ParseDuration(ctx.String("default-throttle"))
 		if err != nil {
 			log.WithError(err).Error("Invalid value for default throttle")
@@ -210,21 +216,56 @@ func main() {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}
 
-		manualToggle, err := etcdWatcher.Read(ctx.String("toggle-etcd-key"))
-		if err != nil {
-			panic(err)
-		}
-		autoToggle, err := etcdWatcher.Read(ctx.String("active-cluster-etcd-key"))
-		if err != nil {
-			panic(err)
+		var deliveryLagcheck cluster.Service
+		var manualToggle, autoToggle string
+
+		if ctx.StringSlice("etcd-peers")[0] == "NOT_AVAILABLE" {
+			log.Info("Sourcing configs from file.")
+			fileWatcher, err := file.NewFileWatcher([]string{ctx.String("configs-dir"), ctx.String("credentials-dir")}, time.Second*30)
+			if err != nil {
+				panic(err)
+			}
+			deliveryLagcheck, err = cluster_file.NewExternalService(
+				"kafka-lagcheck-delivery", "kafka-lagcheck",
+				fileWatcher, "read.environments", "read.credentials")
+			if err != nil {
+				panic(err)
+			}
+			manualToggle, _ = fileWatcher.Read("toggle")
+			autoToggle, _ = fileWatcher.Read("active-cluster")
+
+			log.WithField("manualToggle", manualToggle).WithField("autoToggle", autoToggle).Info("Read configs!")
+
+			go fileWatcher.Watch(context.Background(), "toggle", sched.ManualToggleHandler)
+			go fileWatcher.Watch(context.Background(), "active-cluster", sched.AutomaticToggleHandler)
+		} else {
+			log.Info("Sourcing configs from etcd.")
+			etcdWatcher, err := etcd.NewEtcdWatcher(ctx.StringSlice("etcd-peers"))
+			if err != nil {
+				panic(err)
+			}
+
+			deliveryLagcheck, err = cluster_etcd.NewExternalService("kafka-lagcheck-delivery",
+				"kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
+			if err != nil {
+				panic(err)
+			}
+
+			manualToggle, err = etcdWatcher.Read(ctx.String("toggle-etcd-key"))
+			if err != nil {
+				panic(err)
+			}
+			autoToggle, err = etcdWatcher.Read(ctx.String("active-cluster-etcd-key"))
+			if err != nil {
+				panic(err)
+			}
+			go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ManualToggleHandler)
+			go etcdWatcher.Watch(context.Background(), ctx.String("active-cluster-etcd-key"), sched.AutomaticToggleHandler)
+
 		}
 
 		sched.ManualToggleHandler(manualToggle)
 		sched.AutomaticToggleHandler(autoToggle)
-
-		go etcdWatcher.Watch(context.Background(), ctx.String("toggle-etcd-key"), sched.ManualToggleHandler)
-		go etcdWatcher.Watch(context.Background(), ctx.String("active-cluster-etcd-key"), sched.AutomaticToggleHandler)
-
 		sched.RestorePreviousState()
 		sched.Start()
 

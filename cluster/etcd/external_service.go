@@ -1,4 +1,4 @@
-package cluster
+package etcd
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/Financial-Times/publish-carousel/etcd"
 	log "github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/publish-carousel/cluster"
 )
 
 type externalService struct {
@@ -19,7 +20,7 @@ type externalService struct {
 }
 
 // NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
-func NewExternalService(name string, serviceName string, watcher etcd.Watcher, readURLsKey string) (Service, error) {
+func NewExternalService(name string, serviceName string, watcher etcd.Watcher, readURLsKey string) (cluster.Service, error) {
 	environmentService, err := newEnvironmentService(watcher, readURLsKey)
 	environmentService.startWatcher(context.Background())
 

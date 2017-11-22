@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
@@ -19,7 +20,7 @@ import (
 
 // Health returns a handler for the standard FT healthchecks
 func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
-	return fthealth.Handler("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)...)
+	return fthealth.HandlerParallel("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)...)
 }
 
 // GTG returns a handler for a standard GTG endpoint.
@@ -167,30 +168,24 @@ func toJSON(data interface{}) string {
 	return string(b)
 }
 
+type checkResult struct {
+	serviceName string
+	err error
+}
+
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
 	return func() (string, error) {
-		var unhealthyServices []string
+		results := make(chan checkResult, 1)
 
-		errs := make([]error, 0)
-		for _, service := range upServices {
-			err := service.Check()
-			if err != nil {
-				if sched.IsRunning() {
-					log.WithField("service", service.Name()).Info("Shutting down scheduler due to unhealthy cluster service(s)")
-					sched.Shutdown()
-				}
-				unhealthyServices = append(unhealthyServices, service.String())
-				errs = append(errs, err)
+		checkServicesGTG(upServices, results)
+		unhealthyServices, msg := getUnhealthyServices(len(upServices), results)
+
+		if len(*unhealthyServices) > 0 {
+			if sched.IsRunning() {
+				log.WithFields(log.Fields{"services": *unhealthyServices}).Info("Shutting down scheduler due to unhealthy cluster service(s)")
+				sched.Shutdown()
 			}
-		}
-
-		msg := ""
-		for _, err := range errs {
-			msg += err.Error() + ". "
-		}
-
-		if len(unhealthyServices) > 0 {
-			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(unhealthyServices)), errors.New(msg)
+			return fmt.Sprintf("One or more dependent services are unhealthy: %v", toJSON(*unhealthyServices)), errors.New(msg)
 		}
 
 		if !sched.IsRunning() && sched.IsEnabled() && !sched.WasAutomaticallyDisabled() {
@@ -200,6 +195,42 @@ func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service)
 
 		return "Cluster is healthy", nil
 	}
+}
+
+func checkServicesGTG(upServices []cluster.Service, results chan<- checkResult) {
+	for _, service := range upServices {
+		go func(svc cluster.Service) {
+			err := svc.Check()
+			if err != nil {
+				results <- checkResult{serviceName: svc.Name(), err : err }
+			} else {
+				results <- checkResult{}
+			}
+		}(service)
+	}
+}
+
+func getUnhealthyServices(serviceCount int, results chan checkResult) (*[]string, string) {
+	var unhealthyServices []string
+	var errMsg string
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var checkedServices int
+		for result := range results {
+			checkedServices++
+			if result.serviceName != "" {
+				unhealthyServices = append(unhealthyServices, result.serviceName)
+				errMsg += result.err.Error() + ". "
+			}
+			if checkedServices == serviceCount {
+				close(results)
+			}
+		}
+	}()
+	wg.Wait()
+	return &unhealthyServices, errMsg
 }
 
 func configHealthcheck(err error) func() (string, error) {

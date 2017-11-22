@@ -1,0 +1,30 @@
+# Default values for publish-carousel.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+service:
+  name: "" # The name of the service, should be defined in the specific app-configs folder.
+  hasHealthcheck: "true"
+replicaCount: 1
+image:
+  repository: coco/publish-carousel
+  pullPolicy: Always
+env:
+  etcd_peers: NOT_AVAILABLE
+  mongodb: 
+    # timeout in milliseconds
+    timeout: "5000"
+    node_count: 3
+  cmsnotifier: 
+    url: http://cms-notifier:8080
+  pam: 
+    url: http://publish-availability-monitor:8080
+  # publishing cluster lagcheck
+  lagcheck: 
+    url: http://kafka-lagcheck:8080
+  toggle: "true"
+  throttle: "6s"
+resources:
+  limits:
+    memory: 256Mi
+
+

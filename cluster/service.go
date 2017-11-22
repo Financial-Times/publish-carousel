@@ -108,5 +108,5 @@ func (s *clusterService) doGet(serviceUrl string) (*http.Response, error) {
 	}
 
 	req.Header.Add("User-Agent", "UPP Publish Carousel")
-	return http.DefaultClient.Do(req)
+	return client.Do(req)
 }

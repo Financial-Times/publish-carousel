@@ -341,7 +341,7 @@
 			"versionExact": "v1.0.1"
 		},
 		{
-			"checksumSHA1": "Wbsfxh89xfnFDZzoEOzpfUV9+u8=",
+			"checksumSHA1": "0ZrwvB6KoGPj2PoDNSEJwxQ6Mog=",
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d",
 			"revisionTime": "2016-08-03T19:07:31Z"
@@ -367,6 +367,14 @@
 			"revisionTime": "2017-03-20T16:35:37Z",
 			"version": "v1.0.0",
 			"versionExact": "v1.0.0"
+		},
+		{
+			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
+			"path": "github.com/pkg/errors",
+			"revision": "645ef00459ed84a119197bfb8d8205042c6df63d",
+			"revisionTime": "2016-09-29T01:48:01Z",
+			"version": "v0.8.0",
+			"versionExact": "v0.8.0"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
@@ -421,7 +429,7 @@
 			"versionExact": "v1.1.4"
 		},
 		{
-         "checksumSHA1": "i1oySm1zXP3iDj+031i8F9InUqE=",
+			"checksumSHA1": "CoxdaTYdPZNJXr8mJfLxye428N0=",
 			"path": "github.com/ugorji/go/codec",
 			"revision": "c88ee250d0221a57af388746f5cf03768c21d6e2",
 			"revisionTime": "2017-02-15T20:11:44Z"

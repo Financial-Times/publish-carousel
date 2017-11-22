@@ -305,13 +305,9 @@ func TestUnhappyClusterHealthcheckWithSchedulerShutdown(t *testing.T) {
 
 	upService2.On("Check").Return(errors.New("not good to go"))
 	upService2.On("Name").Return("An UPP service")
-	upService2.On("String").Return("localhost")
 
 	sched := mocks["scheduler"].(*scheduler.MockScheduler)
 	sched.On("Shutdown").Return(nil)
-	sched.On("IsEnabled").Return(true)
-	sched.On("IsAutomaticallyDisabled").Return(false)
-	sched.On("WasAutomaticallyDisabled").Return(false)
 
 	endpoint(w, req)
 
