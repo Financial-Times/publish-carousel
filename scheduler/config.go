@@ -9,7 +9,6 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -75,8 +74,8 @@ func checkDurations(name string, durations ...string) error {
 }
 
 // LoadSchedulerFromFile loads cycles and throttles from the provided yaml config file
-func LoadSchedulerFromFile(configFile string, blist blacklist.IsBlacklisted, mongo native.DB, publishTask tasks.Task, rw MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) (Scheduler, error) {
-	scheduler := NewScheduler(blist, mongo, publishTask, rw, defaultThrottle, checkpointInterval)
+func LoadSchedulerFromFile(configFile string, uuidCollectionBuilder *native.NativeUUIDCollectionBuilder, publishTask tasks.Task, rw MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) (Scheduler, error) {
+	scheduler := NewScheduler(uuidCollectionBuilder, publishTask, rw, defaultThrottle, checkpointInterval)
 	fileData, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return scheduler, err

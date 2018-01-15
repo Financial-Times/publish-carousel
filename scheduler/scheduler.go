@@ -33,32 +33,32 @@ type Scheduler interface {
 }
 
 type defaultScheduler struct {
-	publishTask        tasks.Task
-	blacklist          blacklist.IsBlacklisted
-	database           native.DB
-	cycles             map[string]Cycle
-	metadataReadWriter MetadataReadWriter
-	cycleLock          *sync.RWMutex
-	state              *schedulerState
-	autoDisabled       bool
-	toggleHandlerLock  *sync.Mutex
-	defaultThrottle    time.Duration
-	checkpointHandler  *checkpointHandler
+	uuidCollectionBuilder *native.NativeUUIDCollectionBuilder
+	publishTask           tasks.Task
+	blacklist             blacklist.IsBlacklisted
+	database              native.DB
+	cycles                map[string]Cycle
+	metadataReadWriter    MetadataReadWriter
+	cycleLock             *sync.RWMutex
+	state                 *schedulerState
+	autoDisabled          bool
+	toggleHandlerLock     *sync.Mutex
+	defaultThrottle       time.Duration
+	checkpointHandler     *checkpointHandler
 }
 
 // NewScheduler returns a new instance of the cycles scheduler
-func NewScheduler(blist blacklist.IsBlacklisted, database native.DB, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
+func NewScheduler(uuidCollectionBuilder *native.NativeUUIDCollectionBuilder, publishTask tasks.Task, metadataReadWriter MetadataReadWriter, defaultThrottle time.Duration, checkpointInterval time.Duration) Scheduler {
 	return &defaultScheduler{
-		blacklist:          blist,
-		database:           database,
-		publishTask:        publishTask,
-		cycles:             map[string]Cycle{},
-		metadataReadWriter: metadataReadWriter,
-		cycleLock:          &sync.RWMutex{},
-		state:              newSchedulerState(),
-		toggleHandlerLock:  &sync.Mutex{},
-		defaultThrottle:    defaultThrottle,
-		checkpointHandler:  newCheckpointHandler(checkpointInterval),
+		uuidCollectionBuilder: uuidCollectionBuilder,
+		publishTask:           publishTask,
+		cycles:                map[string]Cycle{},
+		metadataReadWriter:    metadataReadWriter,
+		cycleLock:             &sync.RWMutex{},
+		state:                 newSchedulerState(),
+		toggleHandlerLock:     &sync.Mutex{},
+		defaultThrottle:       defaultThrottle,
+		checkpointHandler:     newCheckpointHandler(checkpointInterval),
 	}
 }
 
@@ -349,13 +349,13 @@ func (s *defaultScheduler) NewCycle(config CycleConfig) (Cycle, error) {
 			throttleInterval, _ = time.ParseDuration(config.Throttle)
 		}
 		t, _ := NewThrottle(throttleInterval, 1)
-		c = NewThrottledWholeCollectionCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, coolDown, t, s.publishTask)
+		c = NewThrottledWholeCollectionCycle(config.Name, s.uuidCollectionBuilder, config.Collection, config.Origin, coolDown, t, s.publishTask)
 
 	case "scalingwindow":
 		timeWindow, _ := time.ParseDuration(config.TimeWindow)
 		minimumThrottle, _ := time.ParseDuration(config.MinimumThrottle)
 		maximumThrottle, _ := time.ParseDuration(config.MaximumThrottle)
-		c = NewScalingWindowCycle(config.Name, s.blacklist, s.database, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
+		c = NewScalingWindowCycle(config.Name, s.uuidCollectionBuilder, config.Collection, config.Origin, timeWindow, coolDown, minimumThrottle, maximumThrottle, s.publishTask)
 	}
 
 	return c, nil

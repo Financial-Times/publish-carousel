@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -51,20 +50,19 @@ func newCycleID(name string, dbcollection string) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-func newAbstractCycle(name string, cycleType string, blist blacklist.IsBlacklisted, database native.DB, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
+func newAbstractCycle(name string, cycleType string, uuidCollectionBuilder *native.NativeUUIDCollectionBuilder, dbCollection string, origin string, coolDown time.Duration, task tasks.Task) *abstractCycle {
 	cycle := &abstractCycle{
-		CycleID:       newCycleID(name, dbCollection),
-		CycleName:     name,
-		CycleType:     cycleType,
-		CycleMetadata: CycleMetadata{},
-		metadataLock:  &sync.RWMutex{},
-		db:            database,
-		DBCollection:  dbCollection,
-		Origin:        origin,
-		CoolDown:      coolDown.String(),
-		coolDown:      coolDown,
-		publishTask:   task,
-		blacklist:     blist,
+		CycleID:               newCycleID(name, dbCollection),
+		CycleName:             name,
+		CycleType:             cycleType,
+		CycleMetadata:         CycleMetadata{},
+		metadataLock:          &sync.RWMutex{},
+		DBCollection:          dbCollection,
+		Origin:                origin,
+		CoolDown:              coolDown.String(),
+		coolDown:              coolDown,
+		publishTask:           task,
+		uuidCollectionBuilder: uuidCollectionBuilder,
 	}
 	cycle.UpdateState(stoppedState)
 
@@ -80,12 +78,11 @@ type abstractCycle struct {
 	Origin        string        `json:"origin"`
 	CoolDown      string        `json:"coolDown"`
 
-	coolDown     time.Duration
-	metadataLock *sync.RWMutex
-	cancel       context.CancelFunc
-	db           native.DB
-	publishTask  tasks.Task
-	blacklist    blacklist.IsBlacklisted
+	coolDown              time.Duration
+	metadataLock          *sync.RWMutex
+	cancel                context.CancelFunc
+	uuidCollectionBuilder *native.NativeUUIDCollectionBuilder
+	publishTask           tasks.Task
 }
 
 func (a *abstractCycle) publishCollection(ctx context.Context, collection native.UUIDCollection, t Throttle) (bool, error) {

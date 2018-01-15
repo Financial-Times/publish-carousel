@@ -2,11 +2,13 @@ package native
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -54,7 +56,9 @@ func TestLoadIntoMemory(t *testing.T) {
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
 
-	it, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
+	builder := &InMemoryCollectionBuilder{nil}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, it.Length())
 }
@@ -65,7 +69,9 @@ func TestLoadIntoMemoryWithSkip(t *testing.T) {
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
 
-	it, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
+	builder := &InMemoryCollectionBuilder{nil}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, it.Length())
 
@@ -81,7 +87,9 @@ func TestLoadIntoMemoryIgnoresBlanks(t *testing.T) {
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
 
-	it, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
+	builder := &InMemoryCollectionBuilder{nil}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, it.Length())
 
@@ -97,7 +105,9 @@ func TestLoadIntoMemoryBlacklisted(t *testing.T) {
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(3)
 
-	it, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, func(uuid string) (bool, error) {
+	builder := &InMemoryCollectionBuilder{nil}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, func(uuid string) (bool, error) {
 		if uuid == "1" {
 			return true, nil
 		}
@@ -130,7 +140,8 @@ func TestLoadIntoMemoryWithContextInterrupt(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		_, err := LoadIntoMemory(ctx, uuidCollection, "collection", 0, noopBlacklist)
+		builder := &InMemoryCollectionBuilder{nil}
+		_, err := builder.LoadIntoMemory(ctx, uuidCollection, "collection", 0, noopBlacklist)
 		assert.NoError(t, err)
 
 		completed = true
@@ -147,7 +158,8 @@ func TestLoadIntoMemoryErrors(t *testing.T) {
 	uuidCollection.On("Next").Return(errors.New("oh dear"))
 	uuidCollection.On("Length").Return(3)
 
-	_, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
+	builder := &InMemoryCollectionBuilder{nil}
+	_, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
 	assert.Error(t, err)
 }
 
@@ -157,7 +169,27 @@ func TestLoadIntoMemoryEmptyCollection(t *testing.T) {
 	uuidCollection.On("Next").Return(nil)
 	uuidCollection.On("Length").Return(0)
 
-	it, err := LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
+	builder := &InMemoryCollectionBuilder{nil}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, it.Length())
+}
+
+func TestLoadFromS3(t *testing.T) {
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
+	uuidCollection.On("Close").Return(nil)
+	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
+
+	expectedJSON, _ := json.Marshal(uuidCollection.uuids)
+
+	mockS3RW := new(s3.MockReadWriter)
+	mockS3RW.On("Write", "collection-uuids", mock.AnythingOfType("string"), expectedJSON, "application/json").Return(nil)
+
+	builder := &InMemoryCollectionBuilder{mockS3RW}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, it.Length())
 }

@@ -13,6 +13,13 @@ import (
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 
+	"context"
+	"fmt"
+
+	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
+	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+	"github.com/Financial-Times/publish-carousel/etcd"
+	"github.com/Financial-Times/publish-carousel/file"
 	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
@@ -23,12 +30,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
 	"gopkg.in/urfave/cli.v1"
-	"fmt"
-	"github.com/Financial-Times/publish-carousel/etcd"
-	"context"
-	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
-	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
-	"github.com/Financial-Times/publish-carousel/file"
 )
 
 func init() {
@@ -211,7 +212,9 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(mongo, s3rw, blacklist)
+
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), uuidCollectionBuilder, task, stateRw, defaultThrottle, checkpointInterval)
 		if configError != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}

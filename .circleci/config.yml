@@ -3,21 +3,22 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/publish-carousel
     docker:
-      - image: golang:1.7.5
+      - image: golang:1.8.3
         environment:
           GOPATH: /go
           MONGO_TEST_URL: localhost:27017
           ETCD_TEST_URL: http://localhost:2379
-      - image: mongo:3.0.2
-      - image: quay.io/coreos/etcd:v2.3.7
+      - image: mongo:3.2.18
+      - image: quay.io/coreos/etcd:v3.2.11
     steps:
       - checkout
       - run:
           name: External Dependencies
           command: |
-            go get github.com/mattn/goveralls
+            go get -u github.com/mattn/goveralls
             go get -u github.com/jstemmer/go-junit-report
             go get -u github.com/kardianos/govendor
+            go get -u github.com/haya14busa/goverage
       - run:
           name: Test Results
           command: |
@@ -32,20 +33,11 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            go test -v -cover -race -coverprofile=/tmp/coverage-results/coverage.out .
-            go list ./... | grep -v vendor | awk -F/ '{print $4}' | xargs -I {} go test -v -cover -race -coverprofile=/tmp/coverage-results/coverage_{}.out ./{}
-            mkdir -p /tmp/test-results/
-            go test -v -race . | /go/bin/go-junit-report > /tmp/test-results/main.xml
-            go list ./... | grep -v vendor | awk -F/ '{print $4}' | xargs -I {} go test -v -race ./{} | /go/bin/go-junit-report > /tmp/test-results/{}.xml
-      - run:
-          name: Combine Coverage Results
-          command: |
-            sed -i '1d' /tmp/coverage-results/*.out
-            echo "mode: atomic" > /tmp/coverage-results/overall-coverage.result
-            cat /tmp/coverage-results/*.out >> /tmp/coverage-results/overall-coverage.result
+            govendor test -race -v +local | /go/bin/go-junit-report > ${CIRCLE_TEST_REPORTS}/main.xml
+            goverage -covermode=atomic -race -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./...
       - run:
           name: Upload Coverage
-          command: /go/bin/goveralls -coverprofile=/tmp/coverage-results/overall-coverage.result -service=circle-ci -repotoken=$COVERALLS_TOKEN
+          command: /go/bin/goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - store_test_results:
           path: /tmp/test-results
   dockerfile:
@@ -58,3 +50,12 @@ jobs:
       - run:
           name: Build Dockerfile
           command: docker build .
+
+workflows:
+  version: 2
+  test-and-build-docker:
+    jobs:
+      - build
+      - dockerfile:
+          requires:
+            - build

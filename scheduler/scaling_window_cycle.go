@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/Sirupsen/logrus"
@@ -18,8 +17,7 @@ type ScalingWindowCycle struct {
 
 func NewScalingWindowCycle(
 	name string,
-	blist blacklist.IsBlacklisted,
-	db native.DB,
+	uuidCollectionBuilder *native.NativeUUIDCollectionBuilder,
 	dbCollection string,
 	origin string,
 	timeWindow time.Duration,
@@ -29,7 +27,7 @@ func NewScalingWindowCycle(
 	publishTask tasks.Task,
 ) Cycle {
 
-	base := newAbstractCycle(name, "ScalingWindow", blist, db, dbCollection, origin, coolDown, publishTask)
+	base := newAbstractCycle(name, "ScalingWindow", uuidCollectionBuilder, dbCollection, origin, coolDown, publishTask)
 	return &ScalingWindowCycle{
 		newAbstractTimeWindowedCycle(base, timeWindow, minimumThrottle, maximumThrottle),
 		maximumThrottle,
