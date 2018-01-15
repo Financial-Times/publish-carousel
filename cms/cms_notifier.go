@@ -9,7 +9,7 @@ import (
 
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/native"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // Notifier handles the publishing of the content to the cms-notifier

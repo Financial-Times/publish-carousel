@@ -27,7 +27,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/husobee/vestigo"
 	"gopkg.in/urfave/cli.v1"
 )

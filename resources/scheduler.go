@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Financial-Times/publish-carousel/scheduler"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // ShutdownScheduler stops all cycles

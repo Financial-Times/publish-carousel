@@ -9,8 +9,8 @@ import (
 
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/s3"
-	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -75,7 +75,7 @@ func computeBatchsize(interval time.Duration) (int, error) {
 		return maxBatchSize, nil
 	}
 
-	logrus.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
+	log.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
 	return int(size - 1), nil
 }
 

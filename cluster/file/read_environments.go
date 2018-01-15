@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/Financial-Times/publish-carousel/file"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type readEnvironment struct {
