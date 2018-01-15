@@ -33,4 +33,6 @@ RUN apk add --update bash \
 
 EXPOSE 8080
 
+WORKDIR /
+
 CMD [ "/publish-carousel" ]
