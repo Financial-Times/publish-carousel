@@ -27,8 +27,8 @@ import (
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
-	log "github.com/sirupsen/logrus"
 	"github.com/husobee/vestigo"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -164,6 +164,9 @@ func main() {
 			Usage:  "Directory containing the file with read environment credentials",
 		},
 	}
+
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetLevel(log.InfoLevel)
 
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
