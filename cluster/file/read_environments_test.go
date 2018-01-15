@@ -16,7 +16,7 @@ import (
 
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/file"
-	"github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -388,7 +388,7 @@ func assertEnvironment(t *testing.T, expectedEnv *readEnvironment, env *readEnvi
 func cleanupDir(tempDir string) {
 	err := os.RemoveAll(tempDir)
 	if err != nil {
-		logrus.WithError(err).Error("Cannot remove temp dir", tempDir)
+		log.WithError(err).Error("Cannot remove temp dir", tempDir)
 	}
 }
 

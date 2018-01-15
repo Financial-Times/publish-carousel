@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -143,6 +143,6 @@ func TestWatchCallbackPanics(t *testing.T) {
 func cleanupDir(tempDir string) {
 	err := os.RemoveAll(tempDir)
 	if err != nil {
-		logrus.WithError(err).Error("Cannot remove temp dir", tempDir)
+		log.WithError(err).Error("Cannot remove temp dir", tempDir)
 	}
 }
