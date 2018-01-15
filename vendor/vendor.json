@@ -279,8 +279,8 @@
 			"path": "github.com/coreos/etcd/client",
 			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
 			"revisionTime": "2017-02-16T03:25:01Z",
-			"version": "v2.3",
-			"versionExact": "v2.3.8"
+			"version": "v3.2.11",
+			"versionExact": "v3.2.11"
 		},
 		{
 			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",

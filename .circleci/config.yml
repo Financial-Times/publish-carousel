@@ -44,7 +44,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            govendor test -v -timeout 120s +local  | /go/bin/go-junit-report > ${CIRCLE_TEST_REPORTS}/main.xml
+            govendor test -v -race -timeout 120s +local  | /go/bin/go-junit-report > ${CIRCLE_TEST_REPORTS}/main.xml
             goverage -covermode=atomic -race -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./...
       - run:
           name: Upload Coverage

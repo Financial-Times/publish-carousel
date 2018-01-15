@@ -26,14 +26,14 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 		readURLs         string
 		credentials      string
 		expectedEnvsSize int
-		expectedEnvSvc   environmentService
+		expectedEnvSvc   *environmentService
 	}{
 		{
 			description:      "Valid readURLs string and empty credentials string",
 			readURLs:         "environment1:http://address1,environment2:http://address2",
 			credentials:      "",
 			expectedEnvsSize: 2,
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: buildEnvironment("environment1:http:address1", "environment2:http:address2"),
 			},
 		},
@@ -42,7 +42,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			readURLs:         "environment1:https://address1,environment2:http://address2",
 			credentials:      "environment1:user:password",
 			expectedEnvsSize: 2,
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: buildEnvironment("environment1:https:address1:user:password", "environment2:http:address2"),
 			},
 		},
@@ -51,7 +51,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			readURLs:         " ",
 			credentials:      " ",
 			expectedEnvsSize: 0,
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -60,7 +60,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			readURLs:         "",
 			credentials:      "",
 			expectedEnvsSize: 0,
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -69,7 +69,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 			readURLs:         ",,",
 			credentials:      ",,",
 			expectedEnvsSize: 0,
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -98,14 +98,14 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 		credentials      string
 		description      string
 		expectedEnvsSize int
-		expectedEnvs     environmentService
+		expectedEnvs     *environmentService
 	}{
 		{
 			readURLs:         "environment",
 			credentials:      "",
 			description:      "readURLs string is missing the environment url",
 			expectedEnvsSize: 0,
-			expectedEnvs: environmentService{
+			expectedEnvs: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -114,7 +114,7 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 			credentials:      "environment:user",
 			description:      "credentials string is missing the password",
 			expectedEnvsSize: 0,
-			expectedEnvs: environmentService{
+			expectedEnvs: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -123,7 +123,7 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 			credentials:      "environment",
 			description:      "credentials string is missing user and password",
 			expectedEnvsSize: 0,
-			expectedEnvs: environmentService{
+			expectedEnvs: &environmentService{
 				environments: map[string]readEnvironment{},
 			},
 		},
@@ -132,7 +132,7 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 			credentials:      "",
 			description:      "readURLs string contains an invalid url",
 			expectedEnvsSize: 1,
-			expectedEnvs: environmentService{
+			expectedEnvs: &environmentService{
 				environments: buildEnvironment("environment2:http:localhost"),
 			},
 		},
@@ -179,14 +179,14 @@ func TestNewEnvironmentService(t *testing.T) {
 		expectError    bool
 		readURLs       string
 		credentials    string
-		expectedEnvSvc environmentService
+		expectedEnvSvc *environmentService
 	}{
 		{
 			description: "Valid environment and credential strings",
 			expectError: false,
 			readURLs:    "environment1:https://address1,environment2:http://address2",
 			credentials: "environment1:user1:password1,environment2:user2:password2",
-			expectedEnvSvc: environmentService{
+			expectedEnvSvc: &environmentService{
 				environments: buildEnvironment("environment1:https:address1:user1:password1", "environment2:http:address2:user2:password2"),
 			},
 		},
@@ -347,7 +347,10 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 			envSrv, _ := newEnvironmentService(watcher, filepath.Base(envsFile.Name()), filepath.Base(credsFile.Name()))
 			envSrv.startWatcher(ctx, filepath.Base(envsFile.Name()), filepath.Base(credsFile.Name()))
 
+			envSrv.RLock()
 			initialEnvironments := envSrv.environments
+			envSrv.RUnlock()
+
 			assert.Equal(t, len(tc.initialEnvs), len(initialEnvironments))
 			assert.True(t, reflect.DeepEqual(tc.initialEnvs, initialEnvironments))
 
@@ -360,10 +363,13 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 			}
 
 			//wait for the watcher to pick up the changes, then cancel it's context
-			time.Sleep(2 * time.Second)
+			time.Sleep(3 * time.Second)
 			cancel()
 
+			envSrv.RLock()
 			updatedEnvironments := envSrv.environments
+			envSrv.RUnlock()
+
 			assert.Equal(t, len(tc.updatedEnvs), len(updatedEnvironments))
 			assert.True(t, reflect.DeepEqual(tc.updatedEnvs, updatedEnvironments))
 

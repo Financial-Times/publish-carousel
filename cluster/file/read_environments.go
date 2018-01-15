@@ -1,12 +1,13 @@
 package file
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-	"github.com/Financial-Times/publish-carousel/file"
 	"sync"
-	"context"
+
+	"github.com/Financial-Times/publish-carousel/file"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -78,6 +79,7 @@ func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsF
 		}
 		r.environments = update
 	})
+
 	if credentialsFile == "" {
 		return
 	}
