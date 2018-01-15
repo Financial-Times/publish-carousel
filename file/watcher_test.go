@@ -1,14 +1,15 @@
 package file
 
 import (
-	"os"
-	"testing"
+	"context"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"context"
-	"time"
 )
 
 const refreshInterval = time.Second * 30

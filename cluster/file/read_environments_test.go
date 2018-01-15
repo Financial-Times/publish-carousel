@@ -1,22 +1,23 @@
 package file
 
 import (
-	"testing"
 	"fmt"
 	"net/url"
+	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/Financial-Times/publish-carousel/cluster"
+	"context"
 	"errors"
 	"io/ioutil"
 	"os"
-	"github.com/Sirupsen/logrus"
-	"time"
-	"github.com/Financial-Times/publish-carousel/file"
 	"path/filepath"
-	"context"
 	"reflect"
 	"strings"
+	"time"
+
+	"github.com/Financial-Times/publish-carousel/cluster"
+	"github.com/Financial-Times/publish-carousel/file"
+	"github.com/Sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseEnvironmentsSuccessfully(t *testing.T) {
@@ -390,9 +391,9 @@ func buildEnvironment(envs ...string) map[string]readEnvironment {
 	for _, envs := range envs {
 		elements := strings.Split(envs, ":")
 		var readEnv readEnvironment
-		readEnv = readEnvironment{name: elements[0], readURL: &url.URL{Host: elements[2], Scheme: elements[1],},}
+		readEnv = readEnvironment{name: elements[0], readURL: &url.URL{Host: elements[2], Scheme: elements[1]}}
 		if len(elements) == 5 {
-			readEnv.credentials = &credentials{username: elements[3], password: elements[4],}
+			readEnv.credentials = &credentials{username: elements[3], password: elements[4]}
 		}
 		readEnvs[elements[0]] = readEnv
 	}
