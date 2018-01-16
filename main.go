@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -8,16 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel-ui"
+	ui "github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cluster"
-	"github.com/Financial-Times/publish-carousel/cms"
-
-	"context"
-	"fmt"
-
 	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
 	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
+	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/etcd"
 	"github.com/Financial-Times/publish-carousel/file"
 	"github.com/Financial-Times/publish-carousel/image"
