@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -176,7 +178,7 @@ func TestLoadIntoMemoryEmptyCollection(t *testing.T) {
 	assert.Equal(t, 0, it.Length())
 }
 
-func TestLoadFromS3(t *testing.T) {
+func TestPersistToS3DuringInMemoryStartup(t *testing.T) {
 	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
 	uuidCollection.On("Close").Return(nil)
 	uuidCollection.On("Next").Return(nil)
@@ -192,4 +194,74 @@ func TestLoadFromS3(t *testing.T) {
 	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 0, noopBlacklist)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, it.Length())
+}
+
+func TestReadFromS3DuringInMemoryStartup(t *testing.T) {
+	uuidCollection := &MockUUIDCollection{uuids: []string{}}
+	uuidCollection.On("Close").Return(nil)
+
+	rw := new(s3.MockReadWriter)
+	rw.On("GetLatestKeyForID", "collection-uuids").Return("key", nil)
+
+	contentType := "application/json"
+
+	rw.On("Read", "key").Return(true, ioutil.NopCloser(strings.NewReader(`["1","2","3","4"]`)), &contentType, nil)
+
+	builder := &InMemoryCollectionBuilder{rw}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, it.Length())
+
+	rw.AssertExpectations(t)
+	uuidCollection.AssertExpectations(t)
+}
+
+func TestReadFromS3DuringInMemoryStartupInvalidSkip(t *testing.T) {
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1"}}
+	uuidCollection.On("Close").Return(nil)
+	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(1)
+
+	expectedJSON, _ := json.Marshal(uuidCollection.uuids)
+
+	rw := new(s3.MockReadWriter)
+	rw.On("GetLatestKeyForID", "collection-uuids").Return("key", nil)
+	rw.On("Write", "collection-uuids", mock.AnythingOfType("string"), expectedJSON, "application/json").Return(nil)
+
+	contentType := "application/json"
+
+	rw.On("Read", "key").Return(true, ioutil.NopCloser(strings.NewReader(`["1","2","3","4"]`)), &contentType, nil)
+
+	builder := &InMemoryCollectionBuilder{rw}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 9, noopBlacklist)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, it.Length())
+
+	rw.AssertExpectations(t)
+	uuidCollection.AssertExpectations(t)
+}
+
+func TestReadFromS3DuringInMemoryStartupFails(t *testing.T) {
+	uuidCollection := &MockUUIDCollection{uuids: []string{"1", "2", "3"}}
+	uuidCollection.On("Close").Return(nil)
+	uuidCollection.On("Next").Return(nil)
+	uuidCollection.On("Length").Return(3)
+
+	rw := new(s3.MockReadWriter)
+	rw.On("GetLatestKeyForID", "collection-uuids").Return("key", nil)
+	rw.On("Write", "collection-uuids", mock.AnythingOfType("string"), []byte(`["2","3"]`), "application/json").Return(nil)
+
+	contentType := "application/json"
+	rw.On("Read", "key").Return(false, ioutil.NopCloser(strings.NewReader("")), &contentType, errors.New("no s3 for you"))
+
+	builder := &InMemoryCollectionBuilder{rw}
+
+	it, err := builder.LoadIntoMemory(context.Background(), uuidCollection, "collection", 1, noopBlacklist)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, it.Length())
+
+	rw.AssertExpectations(t)
+	uuidCollection.AssertExpectations(t)
 }

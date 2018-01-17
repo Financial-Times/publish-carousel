@@ -41,7 +41,6 @@ func init() {
 }
 
 func main() {
-	log.Debug("hi")
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
 	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."

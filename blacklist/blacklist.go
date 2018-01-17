@@ -19,10 +19,6 @@ func NewFileBasedBlacklist(file string) (IsBlacklisted, error) {
 	}
 	defer f.Close()
 
-	if err != nil {
-		return nil, err
-	}
-
 	return func(uuid string) (bool, error) {
 		f, err := os.Open(file)
 		if err != nil {
