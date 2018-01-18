@@ -45,10 +45,10 @@ func NewHealthService(appSystemCode string, appName string, description string, 
 // Health returns a handler for the standard FT healthchecks
 func (healthService *HealthService) Health() func(w http.ResponseWriter, r *http.Request) {
 	hc := fthealth.HealthCheck{
-		SystemCode: healthService.config.appSystemCode,
-		Name: healthService.config.appName,
+		SystemCode:  healthService.config.appSystemCode,
+		Name:        healthService.config.appName,
 		Description: healthService.config.description,
-		Checks: healthService.Checks,
+		Checks:      healthService.Checks,
 	}
 	return fthealth.Handler(hc)
 }
@@ -63,11 +63,14 @@ func (healthService *HealthService) gtgCheck(check fthealth.Check) gtg.Status {
 // GTG returns a handler for a standard GTG endpoint.
 func (healthService *HealthService) GTG() gtg.Status {
 	var checks []gtg.StatusChecker
+
 	for _, check := range healthService.Checks {
+		status := healthService.gtgCheck(check)
 		checks = append(checks, func() gtg.Status {
-			return healthService.gtgCheck(check)
+			return status
 		})
 	}
+
 	return gtg.FailFastParallelCheck(checks)()
 }
 
@@ -201,7 +204,7 @@ func toJSON(data interface{}) string {
 
 type checkResult struct {
 	serviceName string
-	err error
+	err         error
 }
 
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
@@ -233,7 +236,7 @@ func checkServicesGTG(upServices []cluster.Service, results chan<- checkResult) 
 		go func(svc cluster.Service) {
 			err := svc.Check()
 			if err != nil {
-				results <- checkResult{serviceName: svc.Name(), err : err }
+				results <- checkResult{serviceName: svc.Name(), err: err}
 			} else {
 				results <- checkResult{}
 			}

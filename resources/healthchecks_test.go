@@ -79,7 +79,7 @@ func setupTestHealthcheckEndpoint(configError error) (func(w http.ResponseWriter
 
 	healthService := NewHealthService(appSystemCode, appName, description,
 		mocks["db"].(native.DB), mocks["s3RW"].(s3.ReadWriter), mocks["cmsNotifier"].(cms.Notifier),
-			mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service),)
+			mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service))
 
 	return healthService.Health(), mocks
 }
@@ -89,7 +89,7 @@ func setupTestGTGEndpoint(configError error) (func(w http.ResponseWriter, r *htt
 
 	healthService := NewHealthService(appSystemCode, appName, description,
 		mocks["db"].(native.DB), mocks["s3RW"].(s3.ReadWriter), mocks["cmsNotifier"].(cms.Notifier),
-		mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service),)
+		mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service))
 
 	return httphandlers.NewGoodToGoHandler(healthService.GTG), mocks
 }
