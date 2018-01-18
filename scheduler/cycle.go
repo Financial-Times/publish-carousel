@@ -95,25 +95,27 @@ func (a *abstractCycle) publishCollection(ctx context.Context, collection native
 
 		finished, uuid, err := collection.Next()
 		if finished {
-			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
+			log.WithField("id", a.CycleID).WithField("name", a.Name()).WithField("collection", a.DBCollection).Info("Finished publishing collection.")
 			a.updateProgress("", "", err)
 			return false, err
 		}
 
 		if strings.TrimSpace(uuid) == "" { // N.B. UUID cannot be empty for the in memory collection
-			log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
+			log.WithField("id", a.CycleID).WithField("name", a.Name()).WithField("collection", a.DBCollection).Warn("Next UUID is empty! Skipping.")
 			a.updateProgress(uuid, "", errors.New("Empty uuid"))
 			continue
 		}
 
-		log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
+		log.WithField("id", a.CycleID).WithField("name", a.Name()).WithField("collection", a.DBCollection).WithField("uuid", uuid).Info("Running publish task.")
 		content, txID, err := a.publishTask.Prepare(a.DBCollection, uuid)
 
 		if err == nil {
 			err = a.publishTask.Execute(uuid, content, a.Origin, txID)
 			if err != nil {
-				log.WithField("id", a.CycleID).WithField("name", a.Name).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
+				log.WithField("id", a.CycleID).WithField("name", a.Name()).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to publish!")
 			}
+		} else {
+			log.WithField("id", a.CycleID).WithField("name", a.Name()).WithField("collection", a.DBCollection).WithField("uuid", uuid).WithError(err).Warn("Failed to prepare content!")
 		}
 
 		a.updateProgress(uuid, txID, err)
