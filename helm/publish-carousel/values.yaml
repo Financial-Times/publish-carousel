@@ -24,7 +24,8 @@ env:
   toggle: "true"
   throttle: "6s"
 resources:
+  requests:
+    memory: 128Mi
   limits:
-    memory: 256Mi
-
+    memory: 1Gi
 

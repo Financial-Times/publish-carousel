@@ -1,4 +1,13 @@
 version: 2
+workflows:
+  version: 2
+  build-docker-image:
+    jobs:
+      - build
+      - docker-push:
+          filters:
+            tags:
+              only: /.*/
 jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/publish-carousel
@@ -48,7 +57,7 @@ jobs:
           command: /go/bin/goveralls -coverprofile=/tmp/coverage-results/overall-coverage.result -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - store_test_results:
           path: /tmp/test-results
-  dockerfile:
+  docker-push:
     working_directory: /publish-carousel
     docker:
       - image: docker:1.12.6-git
@@ -56,5 +65,26 @@ jobs:
       - checkout
       - setup_docker_engine
       - run:
-          name: Build Dockerfile
-          command: docker build .
+          name: Set Docker image tag based on branch or git tag
+          command: |
+            if [ ! -z "${CIRCLE_TAG}" ] ; then
+              echo 'export DOCKER_TAG=${CIRCLE_TAG}' >> $BASH_ENV
+            elif [ "${CIRCLE_BRANCH}" == "master" ] ; then
+              echo 'export DOCKER_TAG=latest' >> $BASH_ENV
+            else
+              echo 'export DOCKER_TAG=$( echo ${CIRCLE_BRANCH} | cut -f 2 -d / )' >> $BASH_ENV
+            fi
+      - run:
+          name: Build Docker image
+          command: |
+            source ${BASH_ENV}
+            docker build \
+            --build-arg SONATYPE_USER=${SONATYPE_USER} \
+            --build-arg SONATYPE_PASSWORD=${SONATYPE_PASSWORD} \
+            --tag nexus.in.ft.com:5000/coco/${CIRCLE_PROJECT_REPONAME}:${DOCKER_TAG} .
+      - deploy:
+          name: Push Docker image
+          command: |
+            source ${BASH_ENV}
+            docker login nexus.in.ft.com:5000 -u ${DOCKER_USER} -p ${DOCKER_PASSWORD}
+            docker push nexus.in.ft.com:5000/coco/${CIRCLE_PROJECT_REPONAME}:${DOCKER_TAG}

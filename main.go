@@ -31,6 +31,12 @@ import (
 	"github.com/Financial-Times/publish-carousel/file"
 )
 
+const (
+	appSystemCode = "publish-carousel"
+	appName       = "UPP Publish Carousel"
+	description   = "A microservice that continuously republishes content and annotations available in the native store."
+)
+
 func init() {
 	f := &log.TextFormatter{
 		FullTimestamp:   true,
@@ -296,14 +302,16 @@ func shutdown(sched scheduler.Scheduler) {
 func serve(mongo native.DB, sched scheduler.Scheduler, s3rw s3.ReadWriter, notifier cms.Notifier, api []byte, configError error, upServices ...cluster.Service) {
 	r := vestigo.NewRouter()
 
+	healthService := resources.NewHealthService(appSystemCode, appName, description, mongo, s3rw, notifier, sched, configError, upServices...)
+
 	r.Get("/__api", resources.API(api))
 	r.Post("/__log", resources.LogLevel)
 
 	r.Get(httphandlers.BuildInfoPath, httphandlers.BuildInfoHandler)
 	r.Get(httphandlers.PingPath, httphandlers.PingHandler)
 
-	r.Get(httphandlers.GTGPath, resources.GTG(mongo, s3rw, notifier, sched, configError, upServices...))
-	r.Get("/__health", resources.Health(mongo, s3rw, notifier, sched, configError, upServices...))
+	r.Get(httphandlers.GTGPath, httphandlers.NewGoodToGoHandler(healthService.GTG))
+	r.Get("/__health", healthService.Health())
 
 	r.Get("/cycles", resources.GetCycles(sched))
 	r.Post("/cycles", resources.CreateCycle(sched))

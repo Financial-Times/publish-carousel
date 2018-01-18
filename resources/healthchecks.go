@@ -9,38 +9,69 @@ import (
 	"sync"
 	"time"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	log "github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/service-status-go/gtg"
 )
 
+type HealthService struct {
+	config *config
+	Checks []fthealth.Check
+}
+
+type config struct {
+	appSystemCode string
+	appName       string
+	description   string
+}
+
+func NewHealthService(appSystemCode string, appName string, description string, db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) *HealthService {
+	service := &HealthService{
+		config: &config{
+			appSystemCode: appSystemCode,
+			appName:       appName,
+			description:   description,
+		},
+	}
+	service.Checks = service.getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)
+	return service
+}
+
 // Health returns a handler for the standard FT healthchecks
-func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
-	return fthealth.HandlerParallel("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)...)
+func (healthService *HealthService) Health() func(w http.ResponseWriter, r *http.Request) {
+	hc := fthealth.HealthCheck{
+		SystemCode: healthService.config.appSystemCode,
+		Name: healthService.config.appName,
+		Description: healthService.config.description,
+		Checks: healthService.Checks,
+	}
+	return fthealth.Handler(hc)
+}
+
+func (healthService *HealthService) gtgCheck(check fthealth.Check) gtg.Status {
+	if _, err := check.Checker(); err != nil {
+		return gtg.Status{GoodToGo: false, Message: err.Error()}
+	}
+	return gtg.Status{GoodToGo: true}
 }
 
 // GTG returns a handler for a standard GTG endpoint.
-func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...), clusterFailoverHealthcheck(sched)}
-
-		for _, check := range checks {
-			_, err := check()
-			if err != nil {
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			}
-		}
-
-		w.WriteHeader(http.StatusOK)
+func (healthService *HealthService) GTG() gtg.Status {
+	var checks []gtg.StatusChecker
+	for _, check := range healthService.Checks {
+		checks = append(checks, func() gtg.Status {
+			return healthService.gtgCheck(check)
+		})
 	}
+	return gtg.FailFastParallelCheck(checks)()
 }
 
-func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) []fthealth.Check {
+func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) []fthealth.Check {
 	return []fthealth.Check{
 		{
 			Name:             "CheckConnectivityToNativeDatabase",
