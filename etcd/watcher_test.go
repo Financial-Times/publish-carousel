@@ -76,8 +76,8 @@ func TestWatchCallbackPanics(t *testing.T) {
 		if val == "panic" {
 			panic("ahhhhh")
 		}
-		cancel()
 		success = true
+		cancel()
 	})
 
 	assert.True(t, success)

@@ -75,7 +75,9 @@ func TestNewNativeUUIDCollection(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, nil)
 
-	actual, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	actual, err := builder.NewNativeUUIDCollection(context.Background(), testCollection, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, actual.Length())
 
@@ -90,7 +92,9 @@ func TestNewNativeUUIDCollectionOpenFails(t *testing.T) {
 	testCollection := "testing-123"
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	_, err := builder.NewNativeUUIDCollection(context.Background(), testCollection, 0)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -109,7 +113,9 @@ func TestNewNativeUUIDCollectionFindFails(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDs", testCollection, 0, 100).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollection(context.Background(), mockDb, testCollection, 0, noopBlacklist)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	_, err := builder.NewNativeUUIDCollection(context.Background(), testCollection, 0)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -129,7 +135,9 @@ func TestNewNativeUUIDCollectionForTimeWindow(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end, 9).Return(iter, 11234, nil)
 
-	actual, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	actual, err := builder.NewNativeUUIDCollectionForTimeWindow(testCollection, start, end, time.Minute)
 	assert.NoError(t, err)
 	assert.Equal(t, iter, actual.(*NativeUUIDCollection).iter)
 	assert.Equal(t, 11234, actual.Length())
@@ -148,7 +156,9 @@ func TestNewNativeUUIDCollectionForTimeWindowOpenFails(t *testing.T) {
 
 	mockDb.On("Open").Return(mockTx, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	_, err := builder.NewNativeUUIDCollectionForTimeWindow(testCollection, start, end, time.Minute)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -168,7 +178,9 @@ func TestNewNativeUUIDCollectionForTimeWindowFindFails(t *testing.T) {
 	mockDb.On("Open").Return(mockTx, nil)
 	mockTx.On("FindUUIDsInTimeWindow", testCollection, start, end, 9).Return(iter, 11234, errors.New("fail"))
 
-	_, err := NewNativeUUIDCollectionForTimeWindow(mockDb, testCollection, start, end, time.Minute)
+	builder := NewNativeUUIDCollectionBuilder(mockDb, nil, noopBlacklist)
+
+	_, err := builder.NewNativeUUIDCollectionForTimeWindow(testCollection, start, end, time.Minute)
 	assert.Error(t, err)
 
 	mockDb.AssertExpectations(t)
@@ -188,8 +200,9 @@ func TestNativeUUIDCollection(t *testing.T) {
 	insertTestContent(t, db, testUUID, time.Now())
 
 	t.Log(testUUID)
+	builder := NewNativeUUIDCollectionBuilder(db, nil, noopBlacklist)
 
-	uuidCollection, err := NewNativeUUIDCollection(context.Background(), db, "methode", 0, noopBlacklist)
+	uuidCollection, err := builder.NewNativeUUIDCollection(context.Background(), "methode", 0)
 	assert.NoError(t, err)
 
 	found := false

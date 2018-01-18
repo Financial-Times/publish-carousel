@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/blacklist"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/publish-carousel/s3"
+	log "github.com/sirupsen/logrus"
 )
 
 type InMemoryUUIDCollection struct {
@@ -15,10 +16,33 @@ type InMemoryUUIDCollection struct {
 	skip       int
 }
 
-func LoadIntoMemory(ctx context.Context, uuidCollection UUIDCollection, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
+type InMemoryCollectionBuilder struct {
+	s3ReadWriter s3.ReadWriter
+}
+
+func NewInMemoryCollectionBuilder(s3ReadWriter s3.ReadWriter) *InMemoryCollectionBuilder {
+	return &InMemoryCollectionBuilder{s3ReadWriter: s3ReadWriter}
+}
+
+func (b *InMemoryCollectionBuilder) LoadIntoMemory(ctx context.Context, uuidCollection UUIDCollection, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
 	defer uuidCollection.Close()
 
+	if skip > 0 && b.s3ReadWriter != nil {
+		log.WithField("collection", collection).Info("Attempting to retrieve uuids from S3")
+		uuids, err := readFromS3(b.s3ReadWriter, collection)
+		if err != nil {
+			log.WithError(err).WithField("collection", collection).Warn("Failed to retrieve persisted file from S3")
+		} else if len(uuids) > 0 {
+			if skip < len(uuids) {
+				return &InMemoryUUIDCollection{collection: collection, skip: skip, uuids: uuids[skip:]}, nil
+			}
+			log.WithField("skip", skip).WithField("uuids", len(uuids)).Info("Unexpected value for skip! It's greater than the total number of uuids to process. Restarting from zero.")
+			skip = 0
+		}
+	}
+
 	it := &InMemoryUUIDCollection{collection: collection, skip: skip, uuids: make([]string, 0)}
+
 	if uuidCollection.Length() == 0 {
 		log.WithField("collection", collection).Warn("No data in mongo cursor for this collection.")
 		return it, nil
@@ -74,6 +98,13 @@ func LoadIntoMemory(ctx context.Context, uuidCollection UUIDCollection, collecti
 		}
 
 		it.append(uuid)
+	}
+
+	if b.s3ReadWriter != nil {
+		err := persistInS3(b.s3ReadWriter, it)
+		if err != nil {
+			log.WithError(err).Warn("Failed to persist collection uuids to bucket")
+		}
 	}
 
 	end = time.Now()

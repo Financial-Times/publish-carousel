@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	etcdClient "github.com/coreos/etcd/client"
 	"golang.org/x/net/proxy"
 )

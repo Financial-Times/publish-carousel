@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/blacklist"
+	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -85,7 +86,10 @@ func TestCreateCycle(t *testing.T) {
 
 	minThrottle := time.Millisecond * 2500
 	maxThrottle := time.Millisecond * 500
-	cycle := scheduler.NewScalingWindowCycle(name, blacklist.NoOpBlacklist, nil, "test-collection", "methode", time.Second, time.Minute, minThrottle, maxThrottle, nil)
+
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(nil, nil, blacklist.NoOpBlacklist)
+
+	cycle := scheduler.NewScalingWindowCycle(name, uuidCollectionBuilder, "test-collection", "methode", time.Second, time.Minute, minThrottle, maxThrottle, nil)
 	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
 		return reflect.DeepEqual(expected, actual)
 	})).Return(cycle, nil)
@@ -220,7 +224,9 @@ func TestGetCycleThrottle(t *testing.T) {
 	cycles := make(map[string]scheduler.Cycle)
 
 	throttle, _ := scheduler.NewThrottle(30*time.Second, 1)
-	cycle := scheduler.NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, nil, "test-collection", "test-origin", time.Minute, throttle, nil)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(nil, nil, blacklist.NoOpBlacklist)
+
+	cycle := scheduler.NewThrottledWholeCollectionCycle("test-cycle", uuidCollectionBuilder, "test-collection", "test-origin", time.Minute, throttle, nil)
 	cycles["123"] = cycle
 
 	sched.On("Cycles").Return(cycles)
@@ -238,7 +244,10 @@ func TestSetCycleThrottle(t *testing.T) {
 	origin := "methode-web-pub"
 	collection := "test-collection"
 	oldThrottle, _ := scheduler.NewThrottle(30*time.Second, 1)
-	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, blacklist.NoOpBlacklist, nil, collection, origin, time.Minute, oldThrottle, nil)
+
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(nil, nil, blacklist.NoOpBlacklist)
+
+	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, uuidCollectionBuilder, collection, origin, time.Minute, oldThrottle, nil)
 	cycleID := oldCycle.ID()
 
 	metadata := scheduler.CycleMetadata{
@@ -277,7 +286,7 @@ func TestSetCycleThrottle(t *testing.T) {
 		//	MaximumThrottle
 	}
 
-	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, blacklist.NoOpBlacklist, nil, collection, origin, time.Minute, newThrottle, nil)
+	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, uuidCollectionBuilder, collection, origin, time.Minute, newThrottle, nil)
 	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
 		return reflect.DeepEqual(expected, actual)
 	})).Return(newCycle, nil)
@@ -297,7 +306,9 @@ func TestSetCycleThrottleRedirectUsesOriginalRequestURL(t *testing.T) {
 	origin := "methode-web-pub"
 	collection := "test-collection"
 	oldThrottle, _ := scheduler.NewThrottle(30*time.Second, 1)
-	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, blacklist.NoOpBlacklist, nil, collection, origin, time.Minute, oldThrottle, nil)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(nil, nil, blacklist.NoOpBlacklist)
+
+	oldCycle := scheduler.NewThrottledWholeCollectionCycle(name, uuidCollectionBuilder, collection, origin, time.Minute, oldThrottle, nil)
 	cycleID := oldCycle.ID()
 
 	metadata := scheduler.CycleMetadata{
@@ -336,7 +347,7 @@ func TestSetCycleThrottleRedirectUsesOriginalRequestURL(t *testing.T) {
 		//	MaximumThrottle
 	}
 
-	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, blacklist.NoOpBlacklist, nil, collection, origin, time.Minute, newThrottle, nil)
+	newCycle := scheduler.NewThrottledWholeCollectionCycle(name, uuidCollectionBuilder, collection, origin, time.Minute, newThrottle, nil)
 	sched.On("NewCycle", mock.MatchedBy(func(actual scheduler.CycleConfig) bool {
 		return reflect.DeepEqual(expected, actual)
 	})).Return(newCycle, nil)

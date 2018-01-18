@@ -59,14 +59,6 @@
 			"revisionTime": "2017-01-23T13:54:25Z"
 		},
 		{
-			"checksumSHA1": "0Tugz8gj9KqqVj6JLkXUA7BXas4=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "0208149b40d863d2c1a2f8fe5753096a9cf2cc8b",
-			"revisionTime": "2017-02-27T12:44:09Z",
-			"version": "v0.11.4",
-			"versionExact": "v0.11.4"
-		},
-		{
 			"checksumSHA1": "FN20dHo+g6B2zQC/ETGW/J+RNxw=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "fa1a4bc634fffa6ac468d8fb217e05475e063440",
@@ -279,8 +271,8 @@
 			"path": "github.com/coreos/etcd/client",
 			"revision": "7e4fc7eaa931298732c880a703bccc9c177ae1de",
 			"revisionTime": "2017-02-16T03:25:01Z",
-			"version": "v2.3",
-			"versionExact": "v2.3.8"
+			"version": "v3.2.11",
+			"versionExact": "v3.2.11"
 		},
 		{
 			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",
@@ -381,6 +373,14 @@
 			"path": "github.com/pmezard/go-difflib/difflib",
 			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
 			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
+			"checksumSHA1": "E5EpS4RFeQdOwMeNliG4NsLvkM8=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "0208149b40d863d2c1a2f8fe5753096a9cf2cc8b",
+			"revisionTime": "2017-02-27T12:44:09Z",
+			"version": "v1.0.4",
+			"versionExact": "v1.0.4"
 		},
 		{
 			"checksumSHA1": "K0crHygPTP42i1nLKWphSlvOQJw=",

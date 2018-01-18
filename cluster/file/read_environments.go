@@ -1,13 +1,14 @@
 package file
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-	"github.com/Financial-Times/publish-carousel/file"
 	"sync"
-	"context"
-	log "github.com/Sirupsen/logrus"
+
+	"github.com/Financial-Times/publish-carousel/file"
+	log "github.com/sirupsen/logrus"
 )
 
 type readEnvironment struct {
@@ -78,6 +79,7 @@ func (r *environmentService) startWatcher(ctx context.Context, readEnvironmentsF
 		}
 		r.environments = update
 	})
+
 	if credentialsFile == "" {
 		return
 	}
