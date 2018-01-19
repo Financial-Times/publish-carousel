@@ -15,8 +15,8 @@ import (
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/scheduler"
-	log "github.com/Sirupsen/logrus"
 	"github.com/Financial-Times/service-status-go/gtg"
+	log "github.com/Sirupsen/logrus"
 )
 
 type HealthService struct {
