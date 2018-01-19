@@ -20,35 +20,27 @@ import (
 )
 
 type HealthService struct {
-	config *config
-	Checks []fthealth.Check
+	healthCheck fthealth.HealthCheck
 }
 
-type config struct {
-	appSystemCode string
-	appName       string
-	description   string
-}
 
 func NewHealthService(appSystemCode string, appName string, description string, db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) *HealthService {
 	service := &HealthService{
-		config: &config{
-			appSystemCode: appSystemCode,
-			appName:       appName,
-			description:   description,
+		healthCheck: fthealth.HealthCheck{
+			SystemCode: appSystemCode,
+			Name:       appName,
+			Description:   description,
 		},
 	}
-	service.Checks = service.getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)
+	service.healthCheck.Checks = service.getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)
 	return service
 }
 
 // Health returns a handler for the standard FT healthchecks
 func (healthService *HealthService) Health() func(w http.ResponseWriter, r *http.Request) {
-	hc := fthealth.HealthCheck{
-		SystemCode:  healthService.config.appSystemCode,
-		Name:        healthService.config.appName,
-		Description: healthService.config.description,
-		Checks:      healthService.Checks,
+	hc := fthealth.TimedHealthCheck{
+		HealthCheck: healthService.healthCheck,
+		Timeout: 10 * time.Second,
 	}
 	return fthealth.Handler(hc)
 }
@@ -64,7 +56,7 @@ func (healthService *HealthService) gtgCheck(check fthealth.Check) gtg.Status {
 func (healthService *HealthService) GTG() gtg.Status {
 	var checks []gtg.StatusChecker
 
-	for _, check := range healthService.Checks {
+	for _, check := range healthService.healthCheck.Checks {
 		status := healthService.gtgCheck(check)
 		checks = append(checks, func() gtg.Status {
 			return status
