@@ -4,8 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/native"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type abstractTimeWindowedCycle struct {
@@ -40,7 +39,7 @@ func (s *abstractTimeWindowedCycle) start(ctx context.Context, throttle func(pub
 }
 
 func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, startTime time.Time, endTime time.Time, throttle func(publishes int) (Throttle, context.CancelFunc)) (time.Time, bool) {
-	uuidCollection, err := native.NewNativeUUIDCollectionForTimeWindow(s.db, s.DBCollection, startTime, endTime, s.batchDuration)
+	uuidCollection, err := s.uuidCollectionBuilder.NewNativeUUIDCollectionForTimeWindow(s.DBCollection, startTime, endTime, s.batchDuration)
 	if err != nil {
 		log.WithField("id", s.CycleID).WithField("name", s.CycleName).WithField("collection", s.DBCollection).WithField("start", startTime).WithField("end", endTime).WithError(err).Warn("Failed to query native collection for time window.")
 		s.UpdateState(stoppedState, unhealthyState)

@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/Financial-Times/publish-carousel/blacklist"
-	"github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -30,8 +31,18 @@ type NativeUUIDCollection struct {
 	length     int
 }
 
-func NewNativeUUIDCollectionForTimeWindow(mongo DB, collection string, start time.Time, end time.Time, maximumThrottle time.Duration) (UUIDCollection, error) {
-	tx, err := mongo.Open()
+type NativeUUIDCollectionBuilder struct {
+	db            DB
+	inMemory      *InMemoryCollectionBuilder
+	isBlacklisted blacklist.IsBlacklisted
+}
+
+func NewNativeUUIDCollectionBuilder(mongo DB, rw s3.ReadWriter, isBlacklisted blacklist.IsBlacklisted) *NativeUUIDCollectionBuilder {
+	return &NativeUUIDCollectionBuilder{db: mongo, isBlacklisted: isBlacklisted, inMemory: NewInMemoryCollectionBuilder(rw)}
+}
+
+func (b *NativeUUIDCollectionBuilder) NewNativeUUIDCollectionForTimeWindow(collection string, start time.Time, end time.Time, maximumThrottle time.Duration) (UUIDCollection, error) {
+	tx, err := b.db.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -64,12 +75,12 @@ func computeBatchsize(interval time.Duration) (int, error) {
 		return maxBatchSize, nil
 	}
 
-	logrus.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
+	log.WithField("batch", int(size-1)).Info("Computed batch size for cursor.")
 	return int(size - 1), nil
 }
 
-func NewNativeUUIDCollection(ctx context.Context, mongo DB, collection string, skip int, blist blacklist.IsBlacklisted) (UUIDCollection, error) {
-	tx, err := mongo.Open()
+func (b *NativeUUIDCollectionBuilder) NewNativeUUIDCollection(ctx context.Context, collection string, skip int) (UUIDCollection, error) {
+	tx, err := b.db.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +92,7 @@ func NewNativeUUIDCollection(ctx context.Context, mongo DB, collection string, s
 
 	cursor := &NativeUUIDCollection{collection: collection, iter: iter, length: length}
 
-	inMemory, err := LoadIntoMemory(ctx, cursor, collection, skip, blist)
+	inMemory, err := b.inMemory.LoadIntoMemory(ctx, cursor, collection, skip, b.isBlacklisted)
 	return inMemory, err
 }
 

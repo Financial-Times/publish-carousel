@@ -41,13 +41,15 @@ func TestCheckpointSaveCycleMetadata(t *testing.T) {
 	c1.On("Stop").Return()
 	c1.On("TransformToConfig").Return(CycleConfig{Type: "test"})
 
-	c2 := NewThrottledWholeCollectionCycle("test", blacklist.NoOpBlacklist, db, dbCollection, origin, coolDown, throttle, nil)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c2 := NewThrottledWholeCollectionCycle("test", uuidCollectionBuilder, dbCollection, origin, coolDown, throttle, nil)
 	id2 := c2.ID()
 
 	rw := MockMetadataRW{}
 	rw.On("WriteMetadata", id2, c2.TransformToConfig(), mock.AnythingOfType("CycleMetadata")).Return(nil).Times(12)
 
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Second, 1*time.Second)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &rw, 1*time.Second, 1*time.Second)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)

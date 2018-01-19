@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -8,11 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel-ui"
+	ui "github.com/Financial-Times/publish-carousel-ui"
 	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/cluster"
+	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
+	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
 	"github.com/Financial-Times/publish-carousel/cms"
-
+	"github.com/Financial-Times/publish-carousel/etcd"
+	"github.com/Financial-Times/publish-carousel/file"
 	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/resources"
@@ -20,15 +25,9 @@ import (
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	"github.com/Financial-Times/service-status-go/httphandlers"
-	log "github.com/Sirupsen/logrus"
 	"github.com/husobee/vestigo"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v1"
-	"fmt"
-	"github.com/Financial-Times/publish-carousel/etcd"
-	"context"
-	cluster_file "github.com/Financial-Times/publish-carousel/cluster/file"
-	cluster_etcd "github.com/Financial-Times/publish-carousel/cluster/etcd"
-	"github.com/Financial-Times/publish-carousel/file"
 )
 
 const (
@@ -48,7 +47,6 @@ func init() {
 }
 
 func main() {
-	log.Debug("hi")
 	app := cli.NewApp()
 	app.Name = "publish-carousel"
 	app.Usage = "A microservice that continuously republishes content and annotations available in the native store."
@@ -170,6 +168,9 @@ func main() {
 		},
 	}
 
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetLevel(log.InfoLevel)
+
 	app.Action = func(ctx *cli.Context) {
 		log.Info("Starting the Publish Carousel.")
 
@@ -217,7 +218,9 @@ func main() {
 			checkpointInterval = time.Hour
 		}
 
-		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), blacklist, mongo, task, stateRw, defaultThrottle, checkpointInterval)
+		uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(mongo, s3rw, blacklist)
+
+		sched, configError := scheduler.LoadSchedulerFromFile(ctx.String("cycles"), uuidCollectionBuilder, task, stateRw, defaultThrottle, checkpointInterval)
 		if configError != nil {
 			log.WithError(configError).Error("Failed to load cycles configuration file")
 		}

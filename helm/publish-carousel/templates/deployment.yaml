@@ -28,7 +28,7 @@ spec:
                 values:
                 - {{ .Values.service.name }}
             topologyKey: "kubernetes.io/hostname"
-      containers: 
+      containers:
       - name: {{ .Values.service.name }} 
         image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}

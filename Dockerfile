@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM golang:1.8.3-alpine
 
 COPY . /source/
 
@@ -32,5 +32,7 @@ RUN apk add --update bash \
   && rm -rf $GOPATH /var/cache/apk/*
 
 EXPOSE 8080
+
+WORKDIR /
 
 CMD [ "/publish-carousel" ]

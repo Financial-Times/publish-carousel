@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/Financial-Times/publish-carousel/etcd"
-	log "github.com/Sirupsen/logrus"
 	"github.com/Financial-Times/publish-carousel/cluster"
+	"github.com/Financial-Times/publish-carousel/etcd"
+	log "github.com/sirupsen/logrus"
 )
 
 type externalService struct {

@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/Financial-Times/service-status-go/httphandlers"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 const healthPath = "/__health"

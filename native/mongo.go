@@ -5,12 +5,13 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-	mgo "gopkg.in/mgo.v2"
 	"errors"
-	"strings"
 	"fmt"
 	"net"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
+	mgo "gopkg.in/mgo.v2"
 )
 
 var expectedConnections = 1
@@ -132,9 +133,9 @@ func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error 
 	}
 
 	for _, mongoUrl := range mongoUrls {
-		host, port, err := net.SplitHostPort(mongoUrl);
+		host, port, err := net.SplitHostPort(mongoUrl)
 		if err != nil {
-			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s",mongoUrl, err.Error())
+			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s", mongoUrl, err.Error())
 		}
 		if host == "" || port == "" {
 			return fmt.Errorf("One of the MongoDB URLs is incomplete: %s. It should have host and port.", mongoUrl)

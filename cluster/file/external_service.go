@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/file"
 	"sync"

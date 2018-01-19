@@ -39,7 +39,9 @@ func TestWholeCollectionCycleRunWithMetadata(t *testing.T) {
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	cycle := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	cycle := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	metadata := CycleMetadata{Completed: expectedSkip, Iteration: 1, Attempts: 36}
 	cycle.SetMetadata(metadata)
@@ -89,7 +91,9 @@ func TestWholeCollectionCycleTaskPrepareFails(t *testing.T) {
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -123,7 +127,9 @@ func TestWholeCollectionCycleTaskFails(t *testing.T) {
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -161,7 +167,9 @@ func TestWholeCollectionCycleRunCompleted(t *testing.T) {
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -211,7 +219,9 @@ func TestWholeCollectionCycleIterationError(t *testing.T) {
 	tx := mockTx(iter, nil)
 	db := mockDB(opened, tx, nil)
 
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 
@@ -237,7 +247,9 @@ func TestWholeCollectionCycleMongoDBConnectionError(t *testing.T) {
 	tx := new(native.MockTX)
 	db := mockDB(opened, tx, errors.New("nein"))
 
-	c := NewThrottledWholeCollectionCycle("name", blacklist.NoOpBlacklist, db, "collection", "origin", time.Millisecond*50, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("name", uuidCollectionBuilder, "collection", "origin", time.Millisecond*50, throttle, task)
 
 	c.Start()
 	<-opened
@@ -268,7 +280,9 @@ func TestWholeCollectionCycleRunEmptyCollection(t *testing.T) {
 	task := new(tasks.MockTask)
 	throttle := new(MockThrottle)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("test-cycle", uuidCollectionBuilder, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Start()
 
 	<-opened
@@ -292,7 +306,9 @@ func TestThrottledWholeCollectionTransformToConfig(t *testing.T) {
 
 	throttle.On("Interval").Return(time.Minute)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("test-cycle", uuidCollectionBuilder, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 
 	conf := c.TransformToConfig()
 	assert.Equal(t, "a-collection", conf.Collection)
@@ -410,7 +426,9 @@ func TestWholeCollectionCycleCanBeStoppedEvenIfNotStarted(t *testing.T) {
 	task := new(tasks.MockTask)
 	throttle := new(MockThrottle)
 
-	c := NewThrottledWholeCollectionCycle("test-cycle", blacklist.NoOpBlacklist, db, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c := NewThrottledWholeCollectionCycle("test-cycle", uuidCollectionBuilder, "a-collection", "a-origin-id", 1*time.Second, throttle, task)
 	c.Stop()
 
 	mock.AssertExpectationsForObjects(t, db, task, throttle)
