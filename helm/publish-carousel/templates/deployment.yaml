@@ -78,13 +78,7 @@ spec:
           tcpSocket: 
             port: 8080 
           initialDelaySeconds: 70 
-        readinessProbe: 
-          httpGet: 
-            path: "/__gtg" 
-            port: 8080 
-          initialDelaySeconds: 70 
-          periodSeconds: 30 
-        resources: 
+        resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
       - name: monitor-configs-volume
