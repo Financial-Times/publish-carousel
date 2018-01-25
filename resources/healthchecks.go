@@ -9,38 +9,64 @@ import (
 	"sync"
 	"time"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/Financial-Times/publish-carousel/scheduler"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Financial-Times/service-status-go/gtg"
+	log "github.com/sirupsen/logrus"
 )
 
+type HealthService struct {
+	healthCheck fthealth.HealthCheck
+}
+
+
+func NewHealthService(appSystemCode string, appName string, description string, db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) *HealthService {
+	service := &HealthService{
+		healthCheck: fthealth.HealthCheck{
+			SystemCode: appSystemCode,
+			Name:       appName,
+			Description:   description,
+		},
+	}
+	service.healthCheck.Checks = service.getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)
+	return service
+}
+
 // Health returns a handler for the standard FT healthchecks
-func Health(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
-	return fthealth.HandlerParallel("publish-carousel", "A microservice that continuously republishes content and annotations available in the native store.", getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)...)
+func (healthService *HealthService) Health() func(w http.ResponseWriter, r *http.Request) {
+	hc := fthealth.TimedHealthCheck{
+		HealthCheck: healthService.healthCheck,
+		Timeout: 10 * time.Second,
+	}
+	return fthealth.Handler(hc)
+}
+
+func (healthService *HealthService) gtgCheck(check fthealth.Check) gtg.Status {
+	if _, err := check.Checker(); err != nil {
+		return gtg.Status{GoodToGo: false, Message: err.Error()}
+	}
+	return gtg.Status{GoodToGo: true}
 }
 
 // GTG returns a handler for a standard GTG endpoint.
-func GTG(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		checks := []func() (string, error){pingMongo(db), pingS3(s3Service), cmsNotifierGTG(notifier), unhealthyCycles(sched), configHealthcheck(configError), unhealthyClusters(sched, upServices...), clusterFailoverHealthcheck(sched)}
+func (healthService *HealthService) GTG() gtg.Status {
+	var checks []gtg.StatusChecker
 
-		for _, check := range checks {
-			_, err := check()
-			if err != nil {
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			}
-		}
-
-		w.WriteHeader(http.StatusOK)
+	for _, check := range healthService.healthCheck.Checks {
+		status := healthService.gtgCheck(check)
+		checks = append(checks, func() gtg.Status {
+			return status
+		})
 	}
+
+	return gtg.FailFastParallelCheck(checks)()
 }
 
-func getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) []fthealth.Check {
+func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) []fthealth.Check {
 	return []fthealth.Check{
 		{
 			Name:             "CheckConnectivityToNativeDatabase",
@@ -170,7 +196,7 @@ func toJSON(data interface{}) string {
 
 type checkResult struct {
 	serviceName string
-	err error
+	err         error
 }
 
 func unhealthyClusters(sched scheduler.Scheduler, upServices ...cluster.Service) func() (string, error) {
@@ -202,7 +228,7 @@ func checkServicesGTG(upServices []cluster.Service, results chan<- checkResult) 
 		go func(svc cluster.Service) {
 			err := svc.Check()
 			if err != nil {
-				results <- checkResult{serviceName: svc.Name(), err : err }
+				results <- checkResult{serviceName: svc.Name(), err: err}
 			} else {
 				results <- checkResult{}
 			}

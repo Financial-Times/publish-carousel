@@ -18,7 +18,17 @@ spec:
         app: {{ .Values.service.name }}
         visualize: "true" 
     spec:
-      containers: 
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Values.service.name }}
+            topologyKey: "kubernetes.io/hostname"
+      containers:
       - name: {{ .Values.service.name }} 
         image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -78,13 +88,7 @@ spec:
           tcpSocket: 
             port: 8080 
           initialDelaySeconds: 70 
-        readinessProbe: 
-          httpGet: 
-            path: "/__gtg" 
-            port: 8080 
-          initialDelaySeconds: 70 
-          periodSeconds: 30 
-        resources: 
+        resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
       - name: monitor-configs-volume

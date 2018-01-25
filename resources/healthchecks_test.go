@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/cms"
 	"github.com/Financial-Times/publish-carousel/native"
@@ -15,6 +15,13 @@ import (
 	"github.com/Financial-Times/publish-carousel/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/Financial-Times/service-status-go/httphandlers"
+)
+
+const (
+	appSystemCode = "publish-carousel"
+	appName       = "UPP Publish Carousel"
+	description   = "A microservice that continuously republishes content and annotations available in the native store."
 )
 
 func setupHappyMocks() map[string]interface{} {
@@ -69,28 +76,22 @@ func setupHappyMocks() map[string]interface{} {
 
 func setupTestHealthcheckEndpoint(configError error) (func(w http.ResponseWriter, r *http.Request), map[string]interface{}) {
 	mocks := setupHappyMocks()
-	return Health(
-		mocks["db"].(native.DB),
-		mocks["s3RW"].(s3.ReadWriter),
-		mocks["cmsNotifier"].(cms.Notifier),
-		mocks["scheduler"].(scheduler.Scheduler),
-		configError,
-		mocks["service1"].(cluster.Service),
-		mocks["service2"].(cluster.Service),
-	), mocks
+
+	healthService := NewHealthService(appSystemCode, appName, description,
+		mocks["db"].(native.DB), mocks["s3RW"].(s3.ReadWriter), mocks["cmsNotifier"].(cms.Notifier),
+			mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service))
+
+	return healthService.Health(), mocks
 }
 
 func setupTestGTGEndpoint(configError error) (func(w http.ResponseWriter, r *http.Request), map[string]interface{}) {
 	mocks := setupHappyMocks()
-	return GTG(
-		mocks["db"].(native.DB),
-		mocks["s3RW"].(s3.ReadWriter),
-		mocks["cmsNotifier"].(cms.Notifier),
-		mocks["scheduler"].(scheduler.Scheduler),
-		configError,
-		mocks["service1"].(cluster.Service),
-		mocks["service2"].(cluster.Service),
-	), mocks
+
+	healthService := NewHealthService(appSystemCode, appName, description,
+		mocks["db"].(native.DB), mocks["s3RW"].(s3.ReadWriter), mocks["cmsNotifier"].(cms.Notifier),
+		mocks["scheduler"].(scheduler.Scheduler), configError, mocks["service1"].(cluster.Service), mocks["service2"].(cluster.Service))
+
+	return httphandlers.NewGoodToGoHandler(healthService.GTG), mocks
 }
 
 func parseHealthcheck(healthcheckJSON string) ([]fthealth.CheckResult, error) {
@@ -115,7 +116,7 @@ func TestHappyHealthcheck(t *testing.T) {
 
 	for _, check := range checks {
 		assert.True(t, check.Ok)
-		assert.NotEmpty(t, check.Output)
+		assert.NotEmpty(t, check.CheckOutput)
 	}
 
 	for _, m := range mocks {

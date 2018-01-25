@@ -20,7 +20,9 @@ func TestSchedulerShouldStartWhenEnabled(t *testing.T) {
 	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -54,7 +56,9 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -79,7 +83,9 @@ func TestSchedulerDoNotStartWhenDisabled(t *testing.T) {
 
 func TestSchedulerResumeAfterDisable(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -146,7 +152,8 @@ func TestSchedulerResumeAfterDisable(t *testing.T) {
 
 func TestSchedulerInvalidToggleValue(t *testing.T) {
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -171,7 +178,8 @@ func TestAutomaticToggleDisabledAndManualToggleEnabled(t *testing.T) {
 	}
 
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -258,7 +266,8 @@ func TestAutomaticToggleEnabledAndManualToggleDisabled(t *testing.T) {
 		return
 	}
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -345,7 +354,8 @@ func TestAutomaticToggleFlappingAndManualToggleDisabled(t *testing.T) {
 		return
 	}
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -386,7 +396,8 @@ func TestAutomaticToggleDisabledAndManualToggleFlapping(t *testing.T) {
 		return
 	}
 	db := new(native.MockDB)
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &MockMetadataRW{}, 1*time.Minute, 1*time.Minute)
 
 	c1 := new(MockCycle)
 	c2 := new(MockCycle)
@@ -434,13 +445,16 @@ func TestSaveCycleMetadata(t *testing.T) {
 	origin := "testOrigin"
 	coolDown := time.Minute
 	throttle, _ := NewThrottle(time.Second, 1)
-	c2 := NewThrottledWholeCollectionCycle("test", blacklist.NoOpBlacklist, db, dbCollection, origin, coolDown, throttle, nil)
+
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c2 := NewThrottledWholeCollectionCycle("test", uuidCollectionBuilder, dbCollection, origin, coolDown, throttle, nil)
 	id2 := c2.ID()
 
 	rw := MockMetadataRW{}
 	rw.On("WriteMetadata", id2, c2.TransformToConfig(), c2.Metadata()).Return(nil)
 
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)
@@ -465,12 +479,15 @@ func TestCalculateArchiveCycleStartInterval(t *testing.T) {
 	coolDown := time.Minute
 	throttle, _ := NewThrottle(time.Second, 1)
 	throttle2, _ := NewThrottle(time.Second, 2)
-	c2 := NewThrottledWholeCollectionCycle("test", blacklist.NoOpBlacklist, db, dbCollection, origin, coolDown, throttle, nil)
-	c3 := NewThrottledWholeCollectionCycle("test2", blacklist.NoOpBlacklist, db, dbCollection, origin, coolDown, throttle2, nil)
+
+	uuidCollectionBuilder := native.NewNativeUUIDCollectionBuilder(db, nil, blacklist.NoOpBlacklist)
+
+	c2 := NewThrottledWholeCollectionCycle("test", uuidCollectionBuilder, dbCollection, origin, coolDown, throttle, nil)
+	c3 := NewThrottledWholeCollectionCycle("test2", uuidCollectionBuilder, dbCollection, origin, coolDown, throttle2, nil)
 
 	rw := MockMetadataRW{}
 
-	s := NewScheduler(blacklist.NoOpBlacklist, db, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(uuidCollectionBuilder, &tasks.MockTask{}, &rw, 1*time.Minute, 1*time.Minute)
 
 	s.AddCycle(c1)
 	s.AddCycle(c2)

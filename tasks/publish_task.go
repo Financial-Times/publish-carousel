@@ -11,7 +11,7 @@ import (
 	"github.com/Financial-Times/publish-carousel/image"
 	"github.com/Financial-Times/publish-carousel/native"
 	tid "github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type Task interface {

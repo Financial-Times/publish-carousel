@@ -2,15 +2,16 @@ package file
 
 import (
 	"context"
-	log "github.com/Sirupsen/logrus"
-	"path/filepath"
-	"os"
-	"strings"
-	"io/ioutil"
-	"github.com/pkg/errors"
 	"fmt"
-	"time"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+	"time"
+
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Watcher see Watch func for details
@@ -90,7 +91,7 @@ func (e *watcher) Watch(ctx context.Context, fileName string, callback func(val 
 		currentValue := e.fileContents[fileName]
 		e.RUnlock()
 
-		if newValue !=  currentValue{
+		if newValue != currentValue {
 			e.Lock()
 			e.fileContents[fileName] = newValue
 			e.Unlock()
