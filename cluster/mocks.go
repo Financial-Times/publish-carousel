@@ -1,13 +1,14 @@
 package cluster
 
 import (
-	"github.com/stretchr/testify/mock"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"net/http/httptest"
-	"net/http"
-	"context"
+	"github.com/stretchr/testify/mock"
 )
 
 type MockService struct {

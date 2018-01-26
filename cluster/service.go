@@ -21,6 +21,7 @@ type Service interface {
 }
 
 type clusterService struct {
+	client            httpClient
 	serviceName       string
 	gtgURL            *url.URL
 	healthURL         *url.URL
@@ -39,7 +40,7 @@ func NewService(serviceName string, urlString string, checkHealthchecks bool) (S
 		return nil, err
 	}
 
-	return &clusterService{serviceName: serviceName, gtgURL: gtgURL, healthURL: healthURL, checkHealthchecks: checkHealthchecks}, nil
+	return &clusterService{client: client, serviceName: serviceName, gtgURL: gtgURL, healthURL: healthURL, checkHealthchecks: checkHealthchecks}, nil
 }
 
 func (s *clusterService) Name() string {
@@ -111,5 +112,5 @@ func (s *clusterService) doGet(serviceUrl string) (*http.Response, error) {
 	}
 
 	req.Header.Add("User-Agent", "UPP Publish Carousel")
-	return client.Do(req)
+	return s.client.Do(req)
 }
