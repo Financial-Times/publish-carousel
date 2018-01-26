@@ -10,16 +10,16 @@ image:
   pullPolicy: Always
 env:
   etcd_peers: NOT_AVAILABLE
-  mongodb: 
+  mongodb:
     # timeout in milliseconds
     timeout: "5000"
     node_count: 3
-  cmsnotifier: 
+  cmsnotifier:
     url: http://cms-notifier:8080
-  pam: 
+  pam:
     url: http://publish-availability-monitor:8080
   # publishing cluster lagcheck
-  lagcheck: 
+  lagcheck:
     url: http://kafka-lagcheck:8080
   toggle: "true"
   throttle: "6s"
@@ -28,4 +28,3 @@ resources:
     memory: 128Mi
   limits:
     memory: 1Gi
-

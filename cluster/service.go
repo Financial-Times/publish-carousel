@@ -93,11 +93,14 @@ func (s *clusterService) gtg() error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("GTG for %v returned a non-200 code: %v", s.ServiceName(), resp.StatusCode)
 		log.WithError(err).Warn("GTG failed for external dependency.")
 		return err
 	}
+
 	return nil
 }
 
