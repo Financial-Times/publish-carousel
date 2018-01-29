@@ -62,6 +62,8 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
