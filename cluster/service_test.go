@@ -53,7 +53,40 @@ func TestGTGClosesConnectionsIfUnhealthy(t *testing.T) {
 	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 	body.On("Close").Return(nil)
 
-	assert.Error(t, s.Check(), "The service should be good to go")
+	assert.Error(t, s.Check(), "The service should not be good to go")
+	mock.AssertExpectationsForObjects(t, c, body)
+}
+
+func TestHealthClosesConnections(t *testing.T) {
+	c := &MockClient{}
+	gtg, _ := url.Parse("/__gtg")
+	health, _ := url.Parse("/__health")
+	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: true}
+
+	body := &MockBody{Reader: strings.NewReader(`{"ok":true}`)}
+	resp := &http.Response{Body: body, StatusCode: http.StatusOK}
+
+	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+	body.On("Read")
+	body.On("Close").Return(nil)
+
+	assert.NoError(t, s.Check(), "The service should be healthy")
+	mock.AssertExpectationsForObjects(t, c, body)
+}
+
+func TestHealthClosesConnectionsIfUnhealthy(t *testing.T) {
+	c := &MockClient{}
+	gtg, _ := url.Parse("/__gtg")
+	health, _ := url.Parse("/__health")
+	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: true}
+
+	body := &MockBody{Reader: strings.NewReader(`OK`)}
+	resp := &http.Response{Body: body, StatusCode: http.StatusForbidden}
+
+	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+	body.On("Close").Return(nil)
+
+	assert.Error(t, s.Check(), "The service should be unhealthy")
 	mock.AssertExpectationsForObjects(t, c, body)
 }
 

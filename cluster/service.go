@@ -68,6 +68,8 @@ func (s *clusterService) health() error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf(`Non-200 code while checking "%v"`, s.healthURL.String())
 	}
