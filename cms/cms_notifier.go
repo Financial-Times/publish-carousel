@@ -20,12 +20,12 @@ type Notifier interface {
 
 type cmsNotifier struct {
 	cluster.Service
-	client      *http.Client
+	client      cluster.HttpClient
 	notifierURL string
 }
 
 // NewNotifier returns a new cms notifier instance
-func NewNotifier(notifierURL string, client *http.Client) (Notifier, error) {
+func NewNotifier(notifierURL string, client cluster.HttpClient) (Notifier, error) {
 	s, err := cluster.NewService("cms-notifier", notifierURL, false)
 	if err != nil {
 		return nil, err

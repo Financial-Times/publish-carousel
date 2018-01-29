@@ -26,7 +26,7 @@ func TestUnhappyNewService(t *testing.T) {
 }
 
 func TestGTGClosesConnectionsIfHealthy(t *testing.T) {
-	c := &mockClient{}
+	c := &MockClient{}
 	gtg, _ := url.Parse("/__gtg")
 	health, _ := url.Parse("/__health")
 	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: false}
@@ -42,7 +42,7 @@ func TestGTGClosesConnectionsIfHealthy(t *testing.T) {
 }
 
 func TestGTGClosesConnectionsIfUnhealthy(t *testing.T) {
-	c := &mockClient{}
+	c := &MockClient{}
 	gtg, _ := url.Parse("/__gtg")
 	health, _ := url.Parse("/__health")
 	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: false}
@@ -156,13 +156,4 @@ func TestServiceNameAndString(t *testing.T) {
 
 	assert.Equal(t, "pam", s.Name())
 	assert.Equal(t, "http://a-url-that-does-not-exixts.com/something/__gtg", s.String())
-}
-
-type mockClient struct {
-	mock.Mock
-}
-
-func (c *mockClient) Do(r *http.Request) (*http.Response, error) {
-	args := c.Called(r)
-	return args.Get(0).(*http.Response), args.Error(1)
 }

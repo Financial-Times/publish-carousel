@@ -7,9 +7,9 @@ import (
 
 const requestTimeout = 4500
 
-var client httpClient
+var client HttpClient
 
-type httpClient interface {
+type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 

@@ -56,6 +56,15 @@ func (m *MockService) Description() string {
 	return args.String(0)
 }
 
+type MockClient struct {
+	mock.Mock
+}
+
+func (c *MockClient) Do(r *http.Request) (*http.Response, error) {
+	args := c.Called(r)
+	return args.Get(0).(*http.Response), args.Error(1)
+}
+
 func setupFakeServer(t *testing.T, status int, path string, body string, isJSON bool, usingBasicAuth bool, called func()) *httptest.Server {
 	r := vestigo.NewRouter()
 	r.Get(path, func(w http.ResponseWriter, r *http.Request) {

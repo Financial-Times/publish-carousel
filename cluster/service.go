@@ -21,7 +21,7 @@ type Service interface {
 }
 
 type clusterService struct {
-	client            httpClient
+	client            HttpClient
 	serviceName       string
 	gtgURL            *url.URL
 	healthURL         *url.URL
