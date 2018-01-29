@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type MockBody struct {
+	mock.Mock
+	Reader io.Reader
+}
+
+func (b *MockBody) Close() error {
+	args := b.Called()
+	return args.Error(0)
+}
+
+func (b *MockBody) Read(p []byte) (n int, err error) {
+	b.Called()
+	return b.Reader.Read(p)
+}
 
 type MockService struct {
 	mock.Mock

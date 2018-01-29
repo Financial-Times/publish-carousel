@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,6 +20,7 @@ func TestPersistToS3(t *testing.T) {
 
 	err := persistInS3(rw, cursor)
 	assert.NoError(t, err)
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestPersistToS3Fails(t *testing.T) {
@@ -29,6 +31,7 @@ func TestPersistToS3Fails(t *testing.T) {
 
 	err := persistInS3(rw, cursor)
 	assert.Error(t, err)
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3(t *testing.T) {
@@ -45,6 +48,7 @@ func TestReadFromS3(t *testing.T) {
 
 	assert.Len(t, uuids, 1)
 	assert.Equal(t, uuids[0], "a-uuid")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3NoPreviousSave(t *testing.T) {
@@ -54,6 +58,7 @@ func TestReadFromS3NoPreviousSave(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "nooo")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3ReadFails(t *testing.T) {
@@ -66,6 +71,7 @@ func TestReadFromS3ReadFails(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "something failed")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3NotFound(t *testing.T) {
@@ -78,6 +84,7 @@ func TestReadFromS3NotFound(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "Key not found, has it recently been deleted?")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3UnsupportMediaType(t *testing.T) {
@@ -90,6 +97,7 @@ func TestReadFromS3UnsupportMediaType(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "Unexpected or nil content type")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3NilMediaType(t *testing.T) {
@@ -103,6 +111,7 @@ func TestReadFromS3NilMediaType(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "Unexpected or nil content type")
+	mock.AssertExpectationsForObjects(t, rw)
 }
 
 func TestReadFromS3InvalidDataType(t *testing.T) {
@@ -116,4 +125,25 @@ func TestReadFromS3InvalidDataType(t *testing.T) {
 	uuids, err := readFromS3(rw, "collection")
 	assert.Nil(t, uuids)
 	assert.EqualError(t, err, "json: cannot unmarshal object into Go value of type []string")
+	mock.AssertExpectationsForObjects(t, rw)
+}
+
+func TestReadFromS3ClosesResponseBody(t *testing.T) {
+	rw := new(s3.MockReadWriter)
+	body := &cluster.MockBody{Reader: strings.NewReader(`{}}`)}
+
+	body.On("Read")
+	body.On("Close").Return(nil)
+
+	rw.On("GetLatestKeyForID", "collection-uuids").Return("key", nil)
+
+	contentType := "application/json"
+
+	rw.On("Read", "key").Return(true, body, &contentType, nil)
+
+	uuids, err := readFromS3(rw, "collection")
+	assert.Nil(t, uuids)
+	assert.EqualError(t, err, "json: cannot unmarshal object into Go value of type []string")
+
+	mock.AssertExpectationsForObjects(t, rw, body)
 }

@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -32,7 +31,7 @@ func TestGTGClosesConnectionsIfHealthy(t *testing.T) {
 	health, _ := url.Parse("/__health")
 	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: false}
 
-	body := &mockBody{r: strings.NewReader(`OK`)}
+	body := &MockBody{Reader: strings.NewReader(`OK`)}
 	resp := &http.Response{Body: body, StatusCode: http.StatusOK}
 
 	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
@@ -48,7 +47,7 @@ func TestGTGClosesConnectionsIfUnhealthy(t *testing.T) {
 	health, _ := url.Parse("/__health")
 	s := clusterService{client: c, serviceName: "pam", gtgURL: gtg, healthURL: health, checkHealthchecks: false}
 
-	body := &mockBody{r: strings.NewReader(`OK`)}
+	body := &MockBody{Reader: strings.NewReader(`OK`)}
 	resp := &http.Response{Body: body, StatusCode: http.StatusForbidden}
 
 	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
@@ -166,19 +165,4 @@ type mockClient struct {
 func (c *mockClient) Do(r *http.Request) (*http.Response, error) {
 	args := c.Called(r)
 	return args.Get(0).(*http.Response), args.Error(1)
-}
-
-type mockBody struct {
-	mock.Mock
-	r io.Reader
-}
-
-func (b *mockBody) Close() error {
-	args := b.Called()
-	return args.Error(0)
-}
-
-func (b *mockBody) Read(p []byte) (n int, err error) {
-	b.Called()
-	return b.r.Read(p)
 }
