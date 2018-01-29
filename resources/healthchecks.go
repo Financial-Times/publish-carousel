@@ -23,13 +23,12 @@ type HealthService struct {
 	healthCheck fthealth.HealthCheck
 }
 
-
 func NewHealthService(appSystemCode string, appName string, description string, db native.DB, s3Service s3.ReadWriter, notifier cms.Notifier, sched scheduler.Scheduler, configError error, upServices ...cluster.Service) *HealthService {
 	service := &HealthService{
 		healthCheck: fthealth.HealthCheck{
-			SystemCode: appSystemCode,
-			Name:       appName,
-			Description:   description,
+			SystemCode:  appSystemCode,
+			Name:        appName,
+			Description: description,
 		},
 	}
 	service.healthCheck.Checks = service.getHealthchecks(db, s3Service, notifier, sched, configError, upServices...)
@@ -40,7 +39,7 @@ func NewHealthService(appSystemCode string, appName string, description string, 
 func (healthService *HealthService) Health() func(w http.ResponseWriter, r *http.Request) {
 	hc := fthealth.TimedHealthCheck{
 		HealthCheck: healthService.healthCheck,
-		Timeout: 10 * time.Second,
+		Timeout:     10 * time.Second,
 	}
 	return fthealth.Handler(hc)
 }

@@ -1,6 +1,8 @@
 package file
 
 import (
+	"net/http"
+	"strings"
 	"testing"
 
 	"errors"
@@ -20,7 +22,7 @@ func TestExternalServiceWithoutBasicAuth(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("environment1:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -44,7 +46,7 @@ func TestExternalServiceWithBasicAuth(t *testing.T) {
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "credsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "credsFile")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "credsFile")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -66,7 +68,7 @@ func TestExternalServiceFails(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("environment1:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -86,7 +88,7 @@ func TestExternalServiceCloses(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("environment1:"+server.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -106,7 +108,7 @@ func TestSomeExternalServicesFail(t *testing.T) {
 	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "envsFile").Return("environment1:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -133,7 +135,7 @@ func TestSomeExternalServicesSendUnexpectedCodes(t *testing.T) {
 	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "envsFile").Return("environment1:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -160,7 +162,7 @@ func TestMultipleExternalServicesFail(t *testing.T) {
 	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "envsFile").Return("environment1:"+server1.URL+",environment2:"+server2.URL, nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -182,7 +184,7 @@ func TestExternalServiceNameAndString(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("environment:localhost", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 	assert.Equal(t, "kafka-lagcheck-delivery", kafkaLagcheck.Name())
 	assert.Equal(t, "kafka-lagcheck-delivery - environment: localhost,", kafkaLagcheck.String())
@@ -192,7 +194,7 @@ func TestExternalServiceConstructorFail(t *testing.T) {
 	watcher := new(cluster.MockWatcher)
 	watcher.On("Read", "envsFile").Return("", errors.New("read error"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NotNil(t, err)
 	assert.Nil(t, kafkaLagcheck)
 }
@@ -202,7 +204,7 @@ func TestExternalServiceCheckInvalidURL(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("environment1:localhost:not-a-number", nil)
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
-	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", "kafka-lagcheck", watcher, "envsFile", "")
+	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
 	assert.NoError(t, err)
 
 	name := kafkaLagcheck.ServiceName()
@@ -210,4 +212,23 @@ func TestExternalServiceCheckInvalidURL(t *testing.T) {
 
 	err = kafkaLagcheck.Check()
 	assert.NotNil(t, err)
+}
+
+func TestExternalServiceClosesRespBody(t *testing.T) {
+	c := &cluster.MockClient{}
+	watcher := new(cluster.MockWatcher)
+	watcher.On("Read", "envsFile").Return("environment1:localhost:not-a-number", nil)
+	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
+
+	s, err := NewExternalService("kafka-lagcheck-delivery", c, "kafka-lagcheck", watcher, "envsFile", "")
+	assert.NoError(t, err)
+
+	body := &cluster.MockBody{Reader: strings.NewReader(`OK`)}
+	resp := &http.Response{Body: body, StatusCode: http.StatusOK}
+
+	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+	body.On("Close").Return(nil)
+
+	assert.NoError(t, s.Check(), "The service should be healthy")
+	mock.AssertExpectationsForObjects(t, c, watcher, body)
 }

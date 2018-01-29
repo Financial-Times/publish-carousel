@@ -18,16 +18,17 @@ type externalService struct {
 	name               string
 	serviceName        string
 	environmentService *environmentService
+	client             cluster.HttpClient
 }
 
 // NewExternalService returns a new instance of a UPP cluster service which is in an external cluster (i.e. delivery)
-func NewExternalService(name string, serviceName string, watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (cluster.Service, error) {
+func NewExternalService(name string, client cluster.HttpClient, serviceName string, watcher file.Watcher, readEnvironmentsFile string, credentialsFile string) (cluster.Service, error) {
 	environmentService, err := newEnvironmentService(watcher, readEnvironmentsFile, credentialsFile)
 	if err != nil {
 		return nil, err
 	}
 	environmentService.startWatcher(context.Background(), readEnvironmentsFile, credentialsFile)
-	return &externalService{name: name, serviceName: serviceName, environmentService: environmentService}, err
+	return &externalService{name: name, client: client, serviceName: serviceName, environmentService: environmentService}, err
 }
 
 func (e *externalService) Name() string {
@@ -60,7 +61,7 @@ func (e *externalService) Check() error {
 		}
 
 		req.Header.Add("User-Agent", "UPP Publish Carousel")
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := e.client.Do(req)
 
 		if err != nil {
 			log.WithError(err).WithField("service", e.ServiceName()).Warn("Failed to call the GTG endpoint of the service")
