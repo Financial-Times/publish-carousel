@@ -3,10 +3,11 @@ package file
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/Financial-Times/publish-carousel/cluster"
-	"github.com/stretchr/testify/mock"
 	"errors"
+
+	"github.com/Financial-Times/publish-carousel/cluster"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestExternalServiceWithoutBasicAuth(t *testing.T) {

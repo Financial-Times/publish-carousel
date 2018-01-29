@@ -61,6 +61,8 @@ func (e *externalService) Check() error {
 			continue
 		}
 
+		defer resp.Body.Close()
+
 		if resp.StatusCode != http.StatusOK {
 			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.ServiceName(), gtg, resp.StatusCode)
 			log.WithError(err).Warn("GTG failed for external dependency.")

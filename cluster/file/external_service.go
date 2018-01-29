@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
+	"context"
+	"sync"
+
 	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/file"
-	"sync"
-	"context"
+	log "github.com/sirupsen/logrus"
 )
 
 type externalService struct {
@@ -66,6 +67,8 @@ func (e *externalService) Check() error {
 			errs = append(errs, err)
 			continue
 		}
+
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			err := fmt.Errorf("GTG for %v@%v returned a non-200 code: %v", e.ServiceName(), gtg, resp.StatusCode)
