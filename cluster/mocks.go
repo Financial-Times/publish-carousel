@@ -1,14 +1,31 @@
 package cluster
 
 import (
-	"github.com/stretchr/testify/mock"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"net/http/httptest"
-	"net/http"
-	"context"
+	"github.com/stretchr/testify/mock"
 )
+
+type MockBody struct {
+	mock.Mock
+	Reader io.Reader
+}
+
+func (b *MockBody) Close() error {
+	args := b.Called()
+	return args.Error(0)
+}
+
+func (b *MockBody) Read(p []byte) (n int, err error) {
+	b.Called()
+	return b.Reader.Read(p)
+}
 
 type MockService struct {
 	mock.Mock
@@ -37,6 +54,15 @@ func (m *MockService) String() string {
 func (m *MockService) Description() string {
 	args := m.Called()
 	return args.String(0)
+}
+
+type MockClient struct {
+	mock.Mock
+}
+
+func (c *MockClient) Do(r *http.Request) (*http.Response, error) {
+	args := c.Called(r)
+	return args.Get(0).(*http.Response), args.Error(1)
 }
 
 func setupFakeServer(t *testing.T, status int, path string, body string, isJSON bool, usingBasicAuth bool, called func()) *httptest.Server {

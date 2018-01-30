@@ -40,6 +40,8 @@ func readFromS3(rw s3.ReadWriter, collection string) ([]string, error) {
 		return nil, errors.New("Unexpected or nil content type")
 	}
 
+	defer data.Close()
+
 	dec := json.NewDecoder(data)
 	var uuids []string
 	err = dec.Decode(&uuids)

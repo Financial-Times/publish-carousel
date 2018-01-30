@@ -187,10 +187,12 @@ func main() {
 			panic(err)
 		}
 
+		client := &http.Client{Timeout: time.Second * 30}
+
 		mongo := native.NewMongoDatabase(ctx.String("mongo-db"), ctx.Int("mongo-timeout"))
 
 		reader := native.NewMongoNativeReader(mongo)
-		notifier, err := cms.NewNotifier(ctx.String("cms-notifier-url"), &http.Client{Timeout: time.Second * 30})
+		notifier, err := cms.NewNotifier(ctx.String("cms-notifier-url"), client)
 		if err != nil {
 			log.WithError(err).Error("Error in CMS Notifier configuration")
 		}
@@ -234,9 +236,7 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			deliveryLagcheck, err = cluster_file.NewExternalService(
-				"kafka-lagcheck-delivery", "kafka-lagcheck",
-				fileWatcher, "read.environments", "read.credentials")
+			deliveryLagcheck, err = cluster_file.NewExternalService("kafka-lagcheck-delivery", client, "kafka-lagcheck", fileWatcher, "read.environments", "read.credentials")
 			if err != nil {
 				panic(err)
 			}
@@ -254,8 +254,7 @@ func main() {
 				panic(err)
 			}
 
-			deliveryLagcheck, err = cluster_etcd.NewExternalService("kafka-lagcheck-delivery",
-				"kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
+			deliveryLagcheck, err = cluster_etcd.NewExternalService("kafka-lagcheck-delivery", client, "kafka-lagcheck", etcdWatcher, ctx.String("read-monitoring-etcd-key"))
 			if err != nil {
 				panic(err)
 			}

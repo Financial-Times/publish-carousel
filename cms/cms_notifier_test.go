@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/Financial-Times/publish-carousel/cluster"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/husobee/vestigo"
 	"github.com/stretchr/testify/assert"
@@ -142,4 +144,20 @@ func TestInvalidURL(t *testing.T) {
 	notifier, err := NewNotifier(":#", &http.Client{})
 	assert.Error(t, err)
 	assert.Nil(t, notifier)
+}
+
+func TestCMSNotifierClosesResponseBodies(t *testing.T) {
+	c := &cluster.MockClient{}
+	notifier, err := NewNotifier("/", c)
+
+	assert.NoError(t, err)
+
+	body := &cluster.MockBody{Reader: strings.NewReader(`OK`)}
+	resp := &http.Response{Body: body, StatusCode: http.StatusOK}
+
+	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+	body.On("Close").Return(nil)
+
+	notifier.Notify("origin", "tid", &native.Content{}, "hash")
+	mock.AssertExpectationsForObjects(t, c, body)
 }
