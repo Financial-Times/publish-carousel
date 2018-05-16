@@ -22,7 +22,7 @@ env:
   lagcheck:
     url: http://kafka-lagcheck:8080
   toggle: "true"
-  throttle: "6s"
+  throttle: "2s"
 resources:
   requests:
     memory: 128Mi
