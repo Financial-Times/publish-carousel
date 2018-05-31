@@ -4,7 +4,7 @@ cycles:
       origin: methode-web-pub
       collection: methode
       coolDown: 5m
-      throttle: 1s
+      throttle: 3s
    -  name: wordpress-whole-archive
       type: ThrottledWholeCollection
       origin: wordpress
