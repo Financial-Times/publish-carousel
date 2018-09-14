@@ -20,8 +20,9 @@ var connections = 0
 const sortByDate = "-content.lastModified"
 
 type Content struct {
-	Body        map[string]interface{} `bson:"content"`
-	ContentType string                 `bson:"content-type"`
+	Body           map[string]interface{} `bson:"content"`
+	ContentType    string                 `bson:"content-type"`
+	SystemOriginID string                 `bson:"system-origin-id"`
 }
 
 // DB contains database functions
