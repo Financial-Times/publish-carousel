@@ -49,8 +49,8 @@ func (c *cmsNotifier) Notify(origin string, tid string, content *native.Content,
 	req.Header.Add("Content-Type", content.ContentType)
 	req.Header.Add("X-Request-Id", tid)
 	req.Header.Add("X-Native-Hash", hash)
-	if content.SystemOriginID != "" {
-		origin = content.SystemOriginID
+	if content.OriginSystemID != "" {
+		origin = content.OriginSystemID
 	}
 	req.Header.Add("X-Origin-System-Id", origin)
 	log.WithField("transaction_id", tid).WithField("nativeHash", hash).Info(fmt.Sprintf("Calling CMS notifier with contentType=%s, Origin=%s", content.ContentType, origin))

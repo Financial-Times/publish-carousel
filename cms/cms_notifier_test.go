@@ -73,6 +73,19 @@ func TestNotify(t *testing.T) {
 	mockNotifier.AssertExpectations(t)
 }
 
+func TestNotifyWithMsgOrigin(t *testing.T) {
+	mockNotifier := new(mockNotifierServer)
+	mockNotifier.On("Notify", "systemOriginId", "tid_1234", "12345", "application/json").Return(200)
+
+	server := mockNotifier.startMockNotifierServer(t)
+
+	notifier, err := NewNotifier(server.URL, &http.Client{})
+	assert.NoError(t, err)
+
+	err = notifier.Notify("origin", "tid_1234", &native.Content{Body: map[string]interface{}{"uuid": "uuid"}, ContentType: "application/json", OriginSystemID: "systemOriginId"}, "12345")
+	assert.NoError(t, err)
+	mockNotifier.AssertExpectations(t)
+}
 func TestNotifyFails(t *testing.T) {
 	mockNotifier := new(mockNotifierServer)
 	mockNotifier.On("Notify", "origin", "tid_1234", "12345", "application/json").Return(500)

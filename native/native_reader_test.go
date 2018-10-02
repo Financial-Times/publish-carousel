@@ -29,7 +29,7 @@ func TestNativeReaderGet(t *testing.T) {
 	mockTx.AssertExpectations(t)
 
 	assert.Equal(t, "application/vnd.expect-this", actual.ContentType)
-	assert.Equal(t, "", actual.SystemOriginID)
+	assert.Equal(t, "", actual.OriginSystemID)
 }
 
 func TestNativeReaderGetWithOrigin(t *testing.T) {
@@ -39,7 +39,7 @@ func TestNativeReaderGetWithOrigin(t *testing.T) {
 	testCollection := "testing-123"
 	testUUID := "fake-uuid"
 
-	testContent := Content{Body: make(map[string]interface{}), ContentType: "application/vnd.expect-this", SystemOriginID: "http://cmdb.ft.com/systems/cct"}
+	testContent := Content{Body: make(map[string]interface{}), ContentType: "application/vnd.expect-this", OriginSystemID: "http://cmdb.ft.com/systems/cct"}
 
 	reader := NewMongoNativeReader(mockDb)
 
@@ -54,7 +54,7 @@ func TestNativeReaderGetWithOrigin(t *testing.T) {
 	mockTx.AssertExpectations(t)
 
 	assert.Equal(t, "application/vnd.expect-this", actual.ContentType)
-	assert.Equal(t, "http://cmdb.ft.com/systems/cct", actual.SystemOriginID)
+	assert.Equal(t, "http://cmdb.ft.com/systems/cct", actual.OriginSystemID)
 }
 
 func TestNativeReaderMongoOpenFails(t *testing.T) {

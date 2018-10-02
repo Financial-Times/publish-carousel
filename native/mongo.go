@@ -22,7 +22,7 @@ const sortByDate = "-content.lastModified"
 type Content struct {
 	Body           map[string]interface{} `bson:"content"`
 	ContentType    string                 `bson:"content-type"`
-	SystemOriginID string                 `bson:"system-origin-id"`
+	OriginSystemID string                 `bson:"origin-system-id"`
 }
 
 // DB contains database functions
