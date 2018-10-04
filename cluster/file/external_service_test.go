@@ -2,6 +2,7 @@ package file
 
 import (
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -195,6 +196,7 @@ func TestExternalServiceConstructorFail(t *testing.T) {
 	watcher.On("Read", "envsFile").Return("", errors.New("read error"))
 
 	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
+	runtime.Gosched()
 	assert.NotNil(t, err)
 	assert.Nil(t, kafkaLagcheck)
 }
@@ -228,7 +230,7 @@ func TestExternalServiceClosesRespBody(t *testing.T) {
 
 	c.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 	body.On("Close").Return(nil)
-
+	runtime.Gosched()
 	assert.NoError(t, s.Check(), "The service should be healthy")
 	mock.AssertExpectationsForObjects(t, c, watcher, body)
 }
