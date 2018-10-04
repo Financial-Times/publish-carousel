@@ -115,11 +115,7 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	result := &Content{}
 	err := find.One(result)
 
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+	return result, err
 }
 
 func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error {

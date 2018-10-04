@@ -40,22 +40,24 @@ func (d *DefaultThrottle) Interval() time.Duration {
 func (d *DefaultThrottle) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{"interval": d.interval.String()}
 	w := bytes.NewBuffer(make([]byte, 0, 1024))
-	json.NewEncoder(w).Encode(m)
+	err := json.NewEncoder(w).Encode(m)
 
-	return w.Bytes(), nil
+	return w.Bytes(), err
 }
 
 func (d *DefaultThrottle) UnmarshalJSON(in []byte) error {
 	m := make(map[string]string)
 	err := json.NewDecoder(bytes.NewReader(in)).Decode(&m)
-	if interval, ok := m["interval"]; ok {
-		var duration time.Duration
-		duration, err = time.ParseDuration(interval)
-		if err == nil {
-			d.interval = duration
+	if err == nil {
+		if interval, ok := m["interval"]; ok {
+			var duration time.Duration
+			duration, err = time.ParseDuration(interval)
+			if err == nil {
+				d.interval = duration
+			}
+		} else {
+			err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
 		}
-	} else {
-		err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
 	}
 
 	return err

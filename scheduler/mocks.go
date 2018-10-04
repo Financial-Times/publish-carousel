@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MetadataRWMock is a mock of a MetadataReadWriter taht can be used to test
+// MetadataRWMock is a mock of a MetadataReadWriter that can be used to test
 type MockMetadataRW struct {
 	mock.Mock
 }
