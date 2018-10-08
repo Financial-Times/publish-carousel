@@ -186,6 +186,7 @@ func TestExternalServiceNameAndString(t *testing.T) {
 	watcher.On("Watch", mock.AnythingOfType("*context.emptyCtx"), "envsFile", mock.AnythingOfType("func(string)"))
 
 	kafkaLagcheck, err := NewExternalService("kafka-lagcheck-delivery", http.DefaultClient, "kafka-lagcheck", watcher, "envsFile", "")
+	runtime.Gosched()
 	assert.NoError(t, err)
 	assert.Equal(t, "kafka-lagcheck-delivery", kafkaLagcheck.Name())
 	assert.Equal(t, "kafka-lagcheck-delivery - environment: localhost,", kafkaLagcheck.String())
