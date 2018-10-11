@@ -48,19 +48,22 @@ func (d *DefaultThrottle) MarshalJSON() ([]byte, error) {
 func (d *DefaultThrottle) UnmarshalJSON(in []byte) error {
 	m := make(map[string]string)
 	err := json.NewDecoder(bytes.NewReader(in)).Decode(&m)
-	if err == nil {
-		if interval, ok := m["interval"]; ok {
-			var duration time.Duration
-			duration, err = time.ParseDuration(interval)
-			if err == nil {
-				d.interval = duration
-			}
-		} else {
-			err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
+	if err != nil {
+		return err
+	}
+	if interval, ok := m["interval"]; ok {
+		var duration time.Duration
+		duration, err = time.ParseDuration(interval)
+		if err != nil {
+			return err
 		}
+		d.interval = duration
+	} else {
+		err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func NewCappedDynamicThrottle(interval time.Duration, minThrottle time.Duration, maxThrottle time.Duration, publishes int, burst int) (Throttle, context.CancelFunc) {
