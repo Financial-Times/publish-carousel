@@ -59,8 +59,7 @@ func (d *DefaultThrottle) UnmarshalJSON(in []byte) error {
 		}
 		d.interval = duration
 	} else {
-		err = fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
-		return err
+		return fmt.Errorf("no interval value, cannot be unmarshalled to DefaultThrottle")
 	}
 
 	return nil
