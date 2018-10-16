@@ -20,8 +20,9 @@ var connections = 0
 const sortByDate = "-content.lastModified"
 
 type Content struct {
-	Body        map[string]interface{} `bson:"content"`
-	ContentType string                 `bson:"content-type"`
+	Body           map[string]interface{} `bson:"content"`
+	ContentType    string                 `bson:"content-type"`
+	OriginSystemID string                 `bson:"origin-system-id"`
 }
 
 // DB contains database functions
@@ -114,11 +115,7 @@ func (tx *MongoTX) ReadNativeContent(collectionID string, uuid string) (*Content
 	result := &Content{}
 	err := find.One(result)
 
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+	return result, err
 }
 
 func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error {
@@ -135,10 +132,10 @@ func CheckMongoURLs(providedMongoUrls string, expectedMongoNodeCount int) error 
 	for _, mongoUrl := range mongoUrls {
 		host, port, err := net.SplitHostPort(mongoUrl)
 		if err != nil {
-			return fmt.Errorf("Cannot split MongoDB URL: %s into host and port. Error is: %s", mongoUrl, err.Error())
+			return fmt.Errorf("cannot split MongoDB URL: %s into host and port. Error is: %s", mongoUrl, err.Error())
 		}
 		if host == "" || port == "" {
-			return fmt.Errorf("One of the MongoDB URLs is incomplete: %s. It should have host and port.", mongoUrl)
+			return fmt.Errorf("one of the MongoDB URLs is incomplete: %s. It should have host and port", mongoUrl)
 		}
 	}
 

@@ -1,0 +1,82 @@
+# Gopkg.toml example
+#
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]]
+  name = "github.com/Financial-Times/go-fthealth"
+  version = "0.4.0"
+
+[[constraint]]
+  name = "github.com/Financial-Times/publish-carousel-ui"
+  version = "0.1.0"
+
+[[constraint]]
+  name = "github.com/Financial-Times/service-status-go"
+  version = "0.1.0"
+
+[[constraint]]
+  name = "github.com/Financial-Times/transactionid-utils-go"
+  version = "v0.1.0_tid-gen_rc4"
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "1.7.5"
+
+[[constraint]]
+  name = "github.com/coreos/etcd"
+  version = "2.3.8"
+
+[[constraint]]
+  name = "github.com/husobee/vestigo"
+  version = "1.0.1"
+
+[[constraint]]
+  name = "github.com/pborman/uuid"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/peteclark-ft/aws-testify-mocks"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "0.11.4"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.1.4"
+
+[[constraint]]
+  name = "gopkg.in/urfave/cli.v1"
+  version = "1.19.1"
+
+[prune]
+  go-tests = true
+  unused-packages = true

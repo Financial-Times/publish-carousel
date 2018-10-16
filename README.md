@@ -7,27 +7,29 @@ A microservice that continuously republishes content and annotations from the na
 
 See the Swagger YML [here](./api/api.yml) or the API Blueprint [here](./api/api.md).
 
-# Developer Notes
+## Installation
 
-The project is vendored using `govendor`. Please run:
+For the first time:
 
+```bash
+go get -u github.com/Financial-Times/publish-carousel
+cd $GOPATH/src/github.com/Financial-Times/publish-carousel
+dep ensure
+go build .
 ```
-govendor sync
-```
-
-before building and running the project locally.
 
 ## Testing
 To test the project, use:
 
 ```
-govendor test -v -race +local
+dep ensure
+go test -race ./...
 ```
 
 There are MongoDB and Etcd integration tests, which require local running instances of MongoDB and Etcd. These can be skipped (along with long running tests) by using the command:
 
 ```
-govendor test -v -race -short +local
+go test -race -short ./...
 ```
 
 To connect to a MongoDB instance, please use the environment variable `MONGO_TEST_URL` i.e. `export MONGO_TEST_URL=localhost:27017`. To connect to an Etcd instance, please use the environment variable `ETCD_TEST_URL` i.e. `export ETCD_TEST_URL=http://localhost:2379`.

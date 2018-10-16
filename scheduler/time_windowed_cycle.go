@@ -52,8 +52,6 @@ func (s *abstractTimeWindowedCycle) publishCollectionCycle(ctx context.Context, 
 	metadata := CycleMetadata{State: []string{runningState}, Attempts: s.CycleMetadata.Attempts + 1, Total: uuidCollection.Length(), Start: &copiedTime, End: &endTime}
 	s.SetMetadata(metadata)
 
-	startTime = endTime
-
 	if uuidCollection.Length() == 0 {
 		endTime = s.performCooldown(coolDownState)
 		return endTime, true

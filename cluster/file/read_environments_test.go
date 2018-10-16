@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"net/url"
 	"testing"
 
@@ -75,7 +74,7 @@ func TestParseEnvironmentsSuccessfully(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			envs, err := parseEnvironments(tc.readURLs, tc.credentials)
 
 			assert.NoError(t, err)
@@ -138,7 +137,7 @@ func TestParseEnvironmentsWithFailure(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			envs, err := parseEnvironments(tc.readURLs, tc.credentials)
 
 			assert.Error(t, err)
@@ -198,7 +197,7 @@ func TestNewEnvironmentService(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			watcher := new(cluster.MockWatcher)
 			watcher.On("Read", "envsFile").Return(tc.readURLs, nil)
 			watcher.On("Read", "credsFile").Return(tc.credentials, nil)
@@ -238,7 +237,7 @@ func TestNewEnvironmentServiceFileReadErrors(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			watcher := new(cluster.MockWatcher)
 
 			if tc.expectCredentialsFileError {
@@ -328,7 +327,7 @@ func TestEnvironmentServiceWatcher(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s", tc.description), func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			//setup files with initial content
 			tempDir, _ := ioutil.TempDir(os.TempDir(), "testDir")
 
@@ -396,8 +395,7 @@ func buildEnvironment(envs ...string) map[string]readEnvironment {
 	readEnvs := make(map[string]readEnvironment)
 	for _, envs := range envs {
 		elements := strings.Split(envs, ":")
-		var readEnv readEnvironment
-		readEnv = readEnvironment{name: elements[0], readURL: &url.URL{Host: elements[2], Scheme: elements[1]}}
+		readEnv := readEnvironment{name: elements[0], readURL: &url.URL{Host: elements[2], Scheme: elements[1]}}
 		if len(elements) == 5 {
 			readEnv.credentials = &credentials{username: elements[3], password: elements[4]}
 		}

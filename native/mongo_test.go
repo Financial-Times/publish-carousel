@@ -65,8 +65,8 @@ func TestFindByUUID(t *testing.T) {
 	defer db.Close()
 
 	tx, err := db.Open()
-	defer tx.Close()
 	assert.NoError(t, err)
+	defer tx.Close()
 
 	testUUID := uuid.NewUUID().String()
 	t.Log("Test uuid to use", testUUID)
@@ -101,8 +101,8 @@ func TestFindUUIDsDateSort(t *testing.T) {
 	defer db.Close()
 
 	tx, err := db.Open()
-	defer tx.Close()
 	assert.NoError(t, err)
+	defer tx.Close()
 
 	testUUID1 := uuid.NewUUID().String()
 	testUUID2 := uuid.NewUUID().String()
@@ -120,11 +120,8 @@ func TestFindUUIDsDateSort(t *testing.T) {
 	for !iter.Done() {
 		result := map[string]interface{}{}
 		iter.Next(&result)
-		val, ok := result["uuid"]
+		val := result["uuid"]
 		actualUUIDs = append(actualUUIDs, parseBinaryUUID(val))
-		if !ok {
-			continue
-		}
 	}
 	assert.Equal(t, testUUIDs, actualUUIDs, "uuids do not match therefore they are not in expected descending date order")
 
@@ -136,8 +133,8 @@ func TestFindByTimeWindow(t *testing.T) {
 	defer db.Close()
 
 	tx, err := db.Open()
-	defer tx.Close()
 	assert.NoError(t, err)
+	defer tx.Close()
 
 	testUUID := uuid.NewUUID().String()
 	testUUID2 := uuid.NewUUID().String()
@@ -178,8 +175,8 @@ func TestReadNativeContent(t *testing.T) {
 	defer db.Close()
 
 	tx, err := db.Open()
-	defer tx.Close()
 	assert.NoError(t, err)
+	defer tx.Close()
 
 	testUUID := uuid.NewUUID().String()
 	t.Log("Test uuid to use", testUUID)
@@ -199,8 +196,8 @@ func TestPing(t *testing.T) {
 	defer db.Close()
 
 	tx, err := db.Open()
-	defer tx.Close()
 	assert.NoError(t, err)
+	defer tx.Close()
 
 	err = tx.Ping(context.Background())
 	assert.NoError(t, err)

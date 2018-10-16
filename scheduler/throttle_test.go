@@ -79,7 +79,7 @@ func TestMarshaler(t *testing.T) {
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	err := json.NewEncoder(buf).Encode(throttle)
 	assert.NoError(t, err, "marshalling should have occurred without error")
-	assert.Equal(t, `{"interval":"30s"}`, strings.Trim(string(buf.Bytes()), "\r\n"), "marshalled JSON")
+	assert.Equal(t, `{"interval":"30s"}`, strings.Trim(buf.String(), "\r\n"), "marshalled JSON")
 }
 
 func TestUnmarshaler(t *testing.T) {

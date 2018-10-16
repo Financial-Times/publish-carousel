@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Financial-Times/publish-carousel/blacklist"
 	"github.com/Financial-Times/publish-carousel/native"
 	"github.com/Financial-Times/publish-carousel/tasks"
 	log "github.com/sirupsen/logrus"
@@ -35,13 +34,10 @@ type Scheduler interface {
 type defaultScheduler struct {
 	uuidCollectionBuilder *native.NativeUUIDCollectionBuilder
 	publishTask           tasks.Task
-	blacklist             blacklist.IsBlacklisted
-	database              native.DB
 	cycles                map[string]Cycle
 	metadataReadWriter    MetadataReadWriter
 	cycleLock             *sync.RWMutex
 	state                 *schedulerState
-	autoDisabled          bool
 	toggleHandlerLock     *sync.Mutex
 	defaultThrottle       time.Duration
 	checkpointHandler     *checkpointHandler

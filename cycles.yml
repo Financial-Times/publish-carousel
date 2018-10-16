@@ -1,16 +1,24 @@
 cycles:
-   -  name: methode-whole-archive
-      type: ThrottledWholeCollection
-      origin: methode-web-pub
-      collection: methode
-      coolDown: 5m
-      throttle: 3s
-   -  name: wordpress-whole-archive
-      type: ThrottledWholeCollection
-      origin: wordpress
-      collection: wordpress
-      coolDown: 5m
-      throttle: 6s
+  #  -  name: methode-whole-archive
+  #     type: ThrottledWholeCollection
+  #     origin: methode-web-pub
+  #     collection: methode
+  #     coolDown: 5m
+  #     throttle: 3s
+  #  
+  #    -  name: wordpress-whole-archive
+  #     type: ThrottledWholeCollection
+  #     origin: wordpress
+  #     collection: wordpress
+  #     coolDown: 5m
+  #     throttle: 6s
+  #
+  -  name: universal-content-whole-archive
+     type: ThrottledWholeCollection
+     origin: cct
+     collection: universal-content
+     coolDown: 5m
+     throttle: 3s
 
   # -  name: methode-one-hour
   #    type: ScalingWindow
