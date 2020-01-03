@@ -3,9 +3,8 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/publish-carousel
     docker:
-      - image: circleci/golang:1.10
+      - image: golang:1
         environment:
-          GOPATH: /go
           MONGO_TEST_URL: localhost:27017
           ETCD_TEST_URL: http://localhost:2379
           CIRCLE_TEST_REPORTS: /tmp/test-results
@@ -24,25 +23,21 @@ jobs:
     steps:
       - checkout
       - run:
-          name: External Dependencies
+          name: Download Dependencies
           command: |
-            go get -u github.com/mattn/goveralls
-            go get -u github.com/jstemmer/go-junit-report
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            GO111MODULE=off go get github.com/mattn/goveralls
+            GO111MODULE=off go get github.com/jstemmer/go-junit-report
       - run:
-          name: Make result folders
+          name: Test Results
           command: |
             mkdir -p ${CIRCLE_TEST_REPORTS}
             mkdir -p ${CIRCLE_COVERAGE_REPORT}
       - run:
-          name: Download vendored dependencies
-          command: dep ensure -v -vendor-only
-      - run:
           name: Go Build
-          command: go build -v
+          command: go build -mod=readonly -v
       - run:
           name: Run Tests
-          command: go test -v -race -timeout 120s -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
+          command: go test -mod=readonly -v -cover -race -timeout 120s -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
       - run:
           name: Upload Coverage
           command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=${COVERALLS_TOKEN}
