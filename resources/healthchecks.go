@@ -72,7 +72,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The service is unable to connect to MongoDB. Content will not be periodically republished.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          pingMongo(db),
 		},
 		{
@@ -80,7 +80,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The service is unable to connect to S3, which prevents the reading and writing of Carousel cycle state information, which will force the carousel to restart all cycles from the beginning.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          pingS3(s3Service),
 		},
 		{
@@ -88,7 +88,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "The CMS Notifier service is unhealthy. Carousel publishes may fail, and will not be retried until the next cycle. ",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          cmsNotifierGTG(notifier),
 		},
 		{
@@ -96,7 +96,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: "At least one of the Carousel cycles is unhealthy. This should be investigated.",
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          unhealthyCycles(sched),
 		},
 		{
@@ -104,7 +104,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: `At least one error occurred while intialising cycles from the "cycles.yml" file.`,
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          configHealthcheck(configError),
 		},
 		{
@@ -112,7 +112,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: `If the cluster is unhealthy, the Carousel scheduler will shutdown until the system has stabilised.`,
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          unhealthyClusters(sched, upServices...),
 		},
 		{
@@ -120,7 +120,7 @@ func (healthService *HealthService) getHealthchecks(db native.DB, s3Service s3.R
 			BusinessImpact:   "No Business Impact.",
 			TechnicalSummary: `In case of a failover of the publishing cluster, the Carousel will be automatically disabled.`,
 			Severity:         1,
-			PanicGuide:       "https://dewey.ft.com/publish-carousel.html",
+			PanicGuide:       "https://runbooks.in.ft.com/publish-carousel",
 			Checker:          clusterFailoverHealthcheck(sched),
 		},
 	}
