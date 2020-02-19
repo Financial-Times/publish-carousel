@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/husobee/vestigo"
@@ -103,12 +104,17 @@ func SetupFakeServerBasicAuth(t *testing.T, status int, path string, body string
 
 type MockWatcher struct {
 	mock.Mock
+	mu sync.Mutex
 }
 
 func (m *MockWatcher) Watch(ctx context.Context, key string, callback func(val string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Called(ctx, key, callback)
 }
 func (m *MockWatcher) Read(key string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(key)
 	return args.String(0), args.Error(1)
 }
