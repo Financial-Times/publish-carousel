@@ -1,0 +1,4 @@
+replicaCount: 0
+
+service:
+  name: publish-carousel
