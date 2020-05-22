@@ -1,63 +1,35 @@
-version: 2
+version: 2.1
+orbs:
+  ft-golang-ci: financial-times/golang-ci@1
 jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/publish-carousel
     docker:
       - image: golang:1
         environment:
+          GOPATH: /go
           MONGO_TEST_URL: localhost:27017
           ETCD_TEST_URL: http://localhost:2379
           CIRCLE_TEST_REPORTS: /tmp/test-results
           CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
       - image: mongo:3.2.18
       - image: quay.io/coreos/etcd:v3.2.11
-        command: |
-          /usr/local/bin/etcd -name etcd0
-            -advertise-client-urls http://localhost:2379,http://localhost:4001
-            -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001
-            -initial-advertise-peer-urls http://localhost:2380
-            -listen-peer-urls http://localhost:2380
-            -initial-cluster-token etcd-cluster-1
-            -initial-cluster etcd0=http://localhost:2380
-            -initial-cluster-state new
     steps:
       - checkout
-      - run:
-          name: Download Dependencies
-          command: |
-            GO111MODULE=off go get github.com/mattn/goveralls
-            GO111MODULE=off go get github.com/jstemmer/go-junit-report
-      - run:
-          name: Test Results
-          command: |
-            mkdir -p ${CIRCLE_TEST_REPORTS}
-            mkdir -p ${CIRCLE_COVERAGE_REPORT}
-      - run:
-          name: Go Build
-          command: go build -mod=readonly -v
-      - run:
-          name: Run Tests
-          command: go test -mod=readonly -v -cover -race -timeout 120s -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
-      - run:
-          name: Upload Coverage
-          command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=${COVERALLS_TOKEN}
-      - store_test_results:
-          path: /tmp/test-results
-  dockerfile:
-    working_directory: /publish-carousel
-    docker:
-      - image: docker:18.03
-    steps:
-      - checkout
-      - setup_docker_engine
-      - run:
-          name: Build Dockerfile
-          command: docker build .
+      - ft-golang-ci/build
+      - ft-golang-ci/lint
+      - ft-golang-ci/test
+
 workflows:
-  version: 2
   test-and-build-docker:
     jobs:
       - build
-      - dockerfile:
+      - ft-golang-ci/docker-build:
+          name: build-docker-image
           requires:
             - build
+  snyk-scanning:
+    jobs:
+      - ft-golang-ci/scan:
+          name: scan-dependencies
+          context: cm-team-snyk
