@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 orbs:
   ft-golang-ci: financial-times/golang-ci@1
