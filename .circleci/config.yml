@@ -31,21 +31,12 @@ jobs:
       - ft-golang-ci/lint
       - ft-golang-ci/test
 
-  dockerfile:
-    working_directory: /publish-carousel
-    docker:
-      - image: docker:18.03
-    steps:
-      - checkout
-      - setup_docker_engine
-      - run:
-          name: Build Dockerfile
-          command: docker build .
 workflows:
   version: 2
   test-and-build-docker:
     jobs:
       - build
-      - dockerfile:
-          requires:
-            - build
+      - ft-golang-ci/docker-build:
+        name: build-docker-image
+        requires:
+          - build-and-test-project
