@@ -37,6 +37,6 @@ workflows:
     jobs:
       - build
       - ft-golang-ci/docker-build:
-        name: build-docker-image
-        requires:
-          - build-and-test-project
+          name: build-docker-image
+          requires:
+            - build
