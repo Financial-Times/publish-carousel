@@ -1,4 +1,8 @@
 version: 2
+
+orbs:
+  ft-golang-ci: financial-times/golang-ci@1
+
 jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/publish-carousel
@@ -23,31 +27,10 @@ jobs:
             -initial-cluster-state new
     steps:
       - checkout
-      - run:
-          name: External Dependencies
-          command: |
-            go get -u github.com/mattn/goveralls
-            go get -u github.com/jstemmer/go-junit-report
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-      - run:
-          name: Make result folders
-          command: |
-            mkdir -p ${CIRCLE_TEST_REPORTS}
-            mkdir -p ${CIRCLE_COVERAGE_REPORT}
-      - run:
-          name: Download vendored dependencies
-          command: dep ensure -v -vendor-only
-      - run:
-          name: Go Build
-          command: go build -v
-      - run:
-          name: Run Tests
-          command: go test -v -race -timeout 120s -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
-      - run:
-          name: Upload Coverage
-          command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=${COVERALLS_TOKEN}
-      - store_test_results:
-          path: /tmp/test-results
+      - ft-golang-ci/build
+      - ft-golang-ci/lint
+      - ft-golang-ci/test
+
   dockerfile:
     working_directory: /publish-carousel
     docker:
