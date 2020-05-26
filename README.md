@@ -9,21 +9,19 @@ See the Swagger YML [here](./api/api.yml) or the API Blueprint [here](./api/api.
 
 ## Installation
 
-For the first time:
+Download the source code, dependencies, and build the binary:
 
 ```bash
-go get -u github.com/Financial-Times/publish-carousel
+go get github.com/Financial-Times/publish-carousel
 cd $GOPATH/src/github.com/Financial-Times/publish-carousel
-dep ensure
-go build .
+go build -mod=readonly .
 ```
 
 ## Testing
 To test the project, use:
 
 ```
-dep ensure
-go test -race ./...
+go test -mod=readonly -race ./...
 ```
 
 There are MongoDB and Etcd integration tests, which require local running instances of MongoDB and Etcd. These can be skipped (along with long running tests) by using the command:

@@ -504,7 +504,7 @@ Runs application healthchecks and returns FT Healthcheck style json.
                   "lastUpdated": "2017-01-16T10:26:47.222805121Z",
                   "name": "UnhealthyCycles",
                   "ok": true,
-                  "panicGuide": "https://dewey.ft.com/upp-publish-carousel.html",
+                  "panicGuide": "https://runbooks.in.ft.com/publish-carousel",
                   "severity": 1,
                   "technicalSummary": "At least one of the Carousel cycles is unhealthy. This should be investigated."
                 }

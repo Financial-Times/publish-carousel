@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -22,7 +23,9 @@ func TestHappyNewService(t *testing.T) {
 
 func TestUnhappyNewService(t *testing.T) {
 	_, err := NewService("pam", "a not valid url", false)
-	assert.EqualError(t, err, "parse a not valid url/__gtg: invalid URI for request", "It should return an error for invalid URI")
+	var urlError *url.Error
+	errors.As(err, &urlError)
+	assert.Equal(t, urlError.Op, "parse")
 }
 
 func TestGTGClosesConnectionsIfHealthy(t *testing.T) {
