@@ -1,0 +1,5 @@
+replicaCount: 1
+eksCluster: true
+
+service:
+  name: publish-carousel
