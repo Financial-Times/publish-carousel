@@ -29,4 +29,3 @@ resources:
   limits:
     memory: 1Gi
 
-eksCluster: false
