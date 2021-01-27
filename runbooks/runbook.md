@@ -65,7 +65,7 @@ FullyAutomated
 
 ## Failover Details
 
-The service is deployed in both clusters. The failover guide for the cluster is located here: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
+The service is deployed in both Publishing clusters. The failover guide for the cluster is located here: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
 
 ## Data Recovery Process Type
 
