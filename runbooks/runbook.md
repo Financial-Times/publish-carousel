@@ -65,7 +65,7 @@ FullyAutomated
 
 ## Failover Details
 
-The service is deployed in both Delivery clusters. The failover guide for the cluster is located here: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/delivery-cluster>
+The service is deployed in both Delivery clusters. The failover guide for the cluster is located here: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
 
 ## Data Recovery Process Type
 
@@ -99,8 +99,8 @@ There is no key rotation procedure for this system.
 
 Look for the pods in the cluster health endpoint and click to see pod health and checks:
 
-- <https://upp-prod-delivery-eu.upp.ft.com/__health/>
-- <https://upp-prod-delivery-us.upp.ft.com/__health/>
+- <https://upp-prod-publish-eu.upp.ft.com/__health/>
+- <https://upp-prod-publish-us.upp.ft.com/__health/>
 
 ## First Line Troubleshooting
 
