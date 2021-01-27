@@ -53,7 +53,7 @@ No
 
 ## Failover Architecture Type
 
-ActiveActive
+ActivePassive
 
 ## Failover Process Type
 
