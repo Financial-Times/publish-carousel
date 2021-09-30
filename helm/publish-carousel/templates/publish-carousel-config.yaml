@@ -3,6 +3,7 @@ apiVersion: v1
 metadata:
   name: publish-carousel-configs
   namespace: default
+immutable: false
 data:
   toggle: "true"
   active-cluster: "true"
