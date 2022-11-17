@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -10,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	log "github.com/sirupsen/logrus"
 )
 
 // ReadWriter is responsible for reading, writing and locating the latest cycle restore files from S3
@@ -77,6 +78,12 @@ func (s *DefaultReadWriter) open() (s3iface.S3API, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		credValues, err := sess.Config.Credentials.Get()
+		if err != nil {
+			return nil, fmt.Errorf("failed to obtain AWS credentials values with error: %w", err)
+		}
+		log.WithField("Provider", credValues.ProviderName).Info("Establishing AWS session using authentication provider", credValues.ProviderName)
 
 		s.session = s3.New(sess)
 	}
