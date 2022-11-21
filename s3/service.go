@@ -83,7 +83,7 @@ func (s *DefaultReadWriter) open() (s3iface.S3API, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to obtain AWS credentials values with error: %w", err)
 		}
-		log.WithField("Provider", credValues.ProviderName).Info("Establishing AWS session using authentication provider", credValues.ProviderName)
+		log.WithField("Provider", credValues.ProviderName).Info("Establishing AWS session using authentication provider ", credValues.ProviderName)
 
 		s.session = s3.New(sess)
 	}
