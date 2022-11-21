@@ -16,7 +16,6 @@ require (
 	github.com/kardianos/osext v0.0.0-20170309185600-9d302b58e975 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/pborman/uuid v0.0.0-20160209185913-a97ce2ca70fa
-	github.com/peteclark-ft/aws-testify-mocks v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v0.11.4
 	github.com/stretchr/testify v1.5.1
