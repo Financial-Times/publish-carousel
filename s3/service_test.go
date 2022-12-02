@@ -12,19 +12,45 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	mocks "github.com/peteclark-ft/aws-testify-mocks"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
+type MockS3API struct {
+	mock.Mock
+	s3iface.S3API
+}
+
+func (_m *MockS3API) PutObject(input *s3.PutObjectInput) (*s3.PutObjectOutput, error) {
+	ret := _m.Called(input)
+	r0 := ret.Get(0).(*s3.PutObjectOutput)
+	r1 := ret.Error(1)
+	return r0, r1
+}
+
+func (_m *MockS3API) GetObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+	ret := _m.Called(input)
+	r0 := ret.Get(0).(*s3.GetObjectOutput)
+	r1 := ret.Error(1)
+	return r0, r1
+}
+
+func (_m *MockS3API) ListObjects(input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error) {
+	ret := _m.Called(input)
+	r0 := ret.Get(0).(*s3.ListObjectsOutput)
+	r1 := ret.Error(1)
+	return r0, r1
+}
 func TestWrite(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.PutObjectInput{
-		Bucket: aws.String("test"),
-		Key:    aws.String("fake-id/fake-key"),
-		Body:   bytes.NewReader([]byte(`hi`)),
+		Bucket:      aws.String("test"),
+		Key:         aws.String("fake-id/fake-key"),
+		Body:        bytes.NewReader([]byte(`hi`)),
+		ContentType: aws.String("application/json"),
 	}
 
 	output := &s3.PutObjectOutput{}
@@ -36,23 +62,25 @@ func TestWrite(t *testing.T) {
 		actual, err := ioutil.ReadAll(putObj.Body)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "hi", string(actual))
-		assert.Equal(t, "application/json", *putObj.ContentType)
+		expectedBody, err := ioutil.ReadAll(expected.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, string(expectedBody), string(actual))
+		assert.Equal(t, *expected.ContentType, *putObj.ContentType)
 		return true
 	})).Return(output, nil)
-
 	err := rw.Write("fake-id", "fake-key", []byte(`hi`), "application/json")
 	assert.NoError(t, err)
 }
 
 func TestWriteFails(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.PutObjectInput{
-		Bucket: aws.String("test"),
-		Key:    aws.String("fake-id/fake-key"),
-		Body:   bytes.NewReader([]byte(`hi`)),
+		Bucket:      aws.String("test"),
+		Key:         aws.String("fake-id/fake-key"),
+		Body:        bytes.NewReader([]byte(`hi`)),
+		ContentType: aws.String("application/json"),
 	}
 
 	output := &s3.PutObjectOutput{}
@@ -64,17 +92,18 @@ func TestWriteFails(t *testing.T) {
 		actual, err := ioutil.ReadAll(putObj.Body)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "hi", string(actual))
-		assert.Equal(t, "application/json", *putObj.ContentType)
+		expectedBody, err := ioutil.ReadAll(expected.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, string(expectedBody), string(actual))
+		assert.Equal(t, *expected.ContentType, *putObj.ContentType)
 		return true
 	})).Return(output, errors.New("oh no"))
-
 	err := rw.Write("fake-id", "fake-key", []byte(`hi`), "application/json")
 	assert.Error(t, err)
 }
 
 func TestRead(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.GetObjectInput{
@@ -104,7 +133,7 @@ func TestRead(t *testing.T) {
 }
 
 func TestReadFails(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.GetObjectInput{
@@ -116,19 +145,17 @@ func TestReadFails(t *testing.T) {
 		Body:        ioutil.NopCloser(strings.NewReader(`hi`)),
 		ContentType: aws.String("application/json"),
 	}
-
 	mockS3.On("GetObject", mock.MatchedBy(func(obj *s3.GetObjectInput) bool {
 		assert.Equal(t, *expected.Bucket, *obj.Bucket)
 		assert.Equal(t, *expected.Key, *obj.Key)
 		return true
 	})).Return(output, errors.New("fail"))
-
 	_, _, _, err := rw.Read("key")
 	assert.Error(t, err)
 }
 
 func TestReadKeyNotFound(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.GetObjectInput{
@@ -153,7 +180,7 @@ func TestReadKeyNotFound(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 	err := rw.Ping()
 	assert.NoError(t, err)
@@ -164,7 +191,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestGetLatestKeyForID(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.ListObjectsInput{
@@ -193,7 +220,7 @@ func TestGetLatestKeyForID(t *testing.T) {
 }
 
 func TestGetLatestKeyForIDFails(t *testing.T) {
-	mockS3 := new(mocks.MockS3API)
+	mockS3 := new(MockS3API)
 	rw := DefaultReadWriter{bucketName: "test", session: mockS3, lock: &sync.Mutex{}}
 
 	expected := &s3.ListObjectsInput{
