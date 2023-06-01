@@ -96,5 +96,5 @@ spec:
         secret:
           secretName: global-secrets
           items:
-          - key: publish_monitor.read_credentials
+          - key: PUBLISH_MONITOR_READ_CREDENTIALS
             path: read.credentials
